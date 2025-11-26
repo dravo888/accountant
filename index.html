@@ -1,0 +1,2646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Karta - Pharmacy OS (Secure Multi-User)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jsPDF & AutoTable for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        karta: {
+                            bg: '#0b0b0b',       // Deep Black
+                            surface: '#121212',  // Surface Black
+                            border: '#27272a',   // Border Gray
+                            primary: '#00c853',  // Vibrant Green
+                            primaryDark: '#009624',
+                            text: '#e0e0e0',
+                            muted: '#9e9e9e',
+                            danger: '#ef4444',
+                            warning: '#f59e0b'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        body {
+            background-color: #0b0b0b;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #121212; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00c853; }
+
+        /* Utilities */
+        .glass-panel {
+            background: rgba(18, 18, 18, 0.95);
+            border: 1px solid #27272a;
+        }
+        
+        .input-field {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #00c853;
+        }
+
+        /* Responsive Table Wrapper */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Print Layout - A4 Specification Fixed */
+        @media print {
+            @page { size: A4; margin: 10mm; }
+            body { 
+                background: white; 
+                color: black; 
+                -webkit-print-color-adjust: exact; 
+                margin: 0;
+                padding: 0;
+                overflow: visible !important;
+            }
+            
+            /* Hide everything by default */
+            body * {
+                visibility: hidden;
+            }
+
+            /* Show ONLY the printable area and its children */
+            #printable-area, #printable-area * { 
+                visibility: visible !important;
+            }
+            
+            #printable-area { 
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background: white;
+                color: black;
+                z-index: 9999;
+            }
+            
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden text-sm relative">
+
+    <!-- AUTH LOGIN SCREEN -->
+    <div id="auth-screen" class="absolute inset-0 z-50 bg-karta-bg flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-karta-surface border border-karta-border p-8 rounded-lg shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 rounded bg-karta-primary flex items-center justify-center text-black font-bold text-3xl mx-auto mb-4">
+                    <i class="fa-solid fa-leaf"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white">Welcome to KARTA</h1>
+                <p class="text-karta-muted mt-2">Secure Pharmacy OS</p>
+                <div class="mt-4 p-3 bg-blue-900/20 border border-blue-800 rounded text-xs text-blue-300 text-left">
+                    <i class="fa-solid fa-shield-halved mr-2"></i> <strong>Private Database:</strong> Each user has a completely separate database. Data is never shared between accounts.
+                </div>
+            </div>
+            
+            <form id="authForm" class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-400">Email Address</label>
+                    <input type="email" id="authEmail" class="input-field mt-1" placeholder="admin@karta.com" required>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Password</label>
+                    <input type="password" id="authPass" class="input-field mt-1" placeholder="••••••••" required>
+                </div>
+                
+                <div id="authError" class="text-red-500 text-xs hidden"></div>
+
+                <div class="pt-4 flex flex-col gap-3">
+                    <button type="submit" id="btnSignIn" class="w-full bg-karta-primary hover:bg-karta-primaryDark text-black font-bold py-3 rounded transition">
+                        <i class="fa-solid fa-lock mr-2"></i> Access My Database
+                    </button>
+                    <button type="button" id="btnSignUp" class="w-full bg-transparent border border-karta-border hover:border-gray-500 text-white py-2 rounded transition">
+                        Create New Private Database
+                    </button>
+                </div>
+            </form>
+            <div class="mt-6 text-center text-xs text-gray-500">
+                Secured by Firebase
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Sidebar Overlay Backdrop -->
+    <div id="mobile-backdrop" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden glass-panel" onclick="toggleSidebar()"></div>
+
+    <!-- Wrapper for Main App (to hide during print) -->
+    <div id="app-root" class="flex h-full w-full hidden opacity-0 transition-opacity duration-500">
+
+        <!-- Sidebar -->
+        <!-- CHANGED: Added mobile specific classes for slide-out drawer behavior -->
+        <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 w-64 bg-karta-surface border-r border-karta-border flex flex-col z-30 transition-transform duration-300 ease-in-out">
+            <div class="p-6 flex items-center justify-between border-b border-karta-border">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded bg-karta-primary flex items-center justify-center text-black font-bold text-xl">
+                        <i class="fa-solid fa-leaf"></i>
+                    </div>
+                    <div class="overflow-hidden">
+                        <h1 class="text-xl font-bold tracking-tight text-white">KARTA</h1>
+                        <p class="text-xs text-karta-primary truncate max-w-[100px]" id="userEmailDisplay">User</p>
+                    </div>
+                </div>
+                <!-- Mobile Close Button -->
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+
+            <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+                <div class="text-xs font-bold text-karta-muted uppercase px-3 py-2 mt-2">Core</div>
+                <button onclick="nav('dashboard')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-karta-primary bg-white/5">
+                    <i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard
+                </button>
+                <button onclick="nav('pos')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
+                    <i class="fa-solid fa-cash-register w-5 text-center"></i> POS Terminal
+                </button>
+                <button onclick="nav('invoices')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
+                    <i class="fa-solid fa-receipt w-5 text-center"></i> Invoices
+                </button>
+
+                <div class="text-xs font-bold text-karta-muted uppercase px-3 py-2 mt-4">Management</div>
+                <button onclick="nav('inventory')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
+                    <i class="fa-solid fa-pills w-5 text-center"></i> Products & Stock
+                </button>
+                <button onclick="nav('customers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
+                    <i class="fa-solid fa-users w-5 text-center"></i> Customers
+                </button>
+                <button onclick="nav('suppliers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
+                    <i class="fa-solid fa-truck-field w-5 text-center"></i> Suppliers
+                </button>
+
+                <div class="text-xs font-bold text-karta-muted uppercase px-3 py-2 mt-4">Finance</div>
+                <button onclick="nav('purchases')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
+                    <i class="fa-solid fa-file-invoice w-5 text-center"></i> Purchases & Exp
+                </button>
+                <button onclick="nav('reports')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
+                    <i class="fa-solid fa-chart-line w-5 text-center"></i> Reports
+                </button>
+            </nav>
+
+            <div class="p-4 border-t border-karta-border space-y-2">
+                <div class="text-xs text-center text-gray-500 mb-2">
+                    <span id="syncStatusIndicator" class="text-green-500"><i class="fa-solid fa-circle"></i> Private Database Active</span>
+                </div>
+                <button onclick="nav('settings')" class="flex items-center gap-2 text-gray-400 hover:text-white transition w-full p-2 hover:bg-white/5 rounded">
+                    <i class="fa-solid fa-gear"></i> Settings
+                </button>
+                <button onclick="handleLogout()" class="flex items-center gap-2 text-red-500 hover:text-red-400 transition w-full p-2 hover:bg-white/5 rounded">
+                    <i class="fa-solid fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col bg-karta-bg relative overflow-hidden">
+            
+            <!-- Top Bar -->
+            <header class="h-16 border-b border-karta-border bg-karta-bg flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
+                <div class="flex items-center gap-3">
+                    <!-- Mobile Menu Button -->
+                    <button onclick="toggleSidebar()" class="md:hidden text-white p-2">
+                        <i class="fa-solid fa-bars fa-lg"></i>
+                    </button>
+                    <h2 id="pageTitle" class="text-lg md:text-xl font-bold text-white truncate">Dashboard</h2>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-sm font-bold text-white" id="clock">12:00 PM</div>
+                        <div class="text-xs text-karta-muted" id="date">Jan 01, 2025</div>
+                    </div>
+                    <div class="h-8 w-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-karta-primary" title="User">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Scroll Area -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth" id="mainContainer">
+                
+                <!-- DASHBOARD -->
+                <section id="dashboard" class="space-y-6 animate-fade pb-20 md:pb-0">
+                    <!-- KPI Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden group">
+                            <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition text-karta-primary"><i class="fa-solid fa-sack-dollar fa-3x"></i></div>
+                            <p class="text-karta-muted text-xs uppercase tracking-wider">Total Revenue (Monthly)</p>
+                            <h3 class="text-2xl font-bold text-white mt-1" id="kpiRevenue">$0.00</h3>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden">
+                            <div class="absolute right-0 top-0 p-4 opacity-10 text-blue-500"><i class="fa-solid fa-boxes-stacked fa-3x"></i></div>
+                            <p class="text-karta-muted text-xs uppercase tracking-wider">Stock Value</p>
+                            <h3 class="text-2xl font-bold text-white mt-1" id="kpiStockVal">$0.00</h3>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden">
+                            <div class="absolute right-0 top-0 p-4 opacity-10 text-red-500"><i class="fa-solid fa-file-invoice fa-3x"></i></div>
+                            <p class="text-karta-muted text-xs uppercase tracking-wider">Outstanding (Receivables)</p>
+                            <h3 class="text-2xl font-bold text-white mt-1" id="kpiReceivables">$0.00</h3>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden">
+                            <div class="absolute right-0 top-0 p-4 opacity-10 text-orange-500"><i class="fa-solid fa-triangle-exclamation fa-3x"></i></div>
+                            <p class="text-karta-muted text-xs uppercase tracking-wider">Low Stock Alerts</p>
+                            <h3 class="text-2xl font-bold text-white mt-1" id="kpiLowStock">0</h3>
+                        </div>
+                    </div>
+
+                    <!-- Charts Area -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-karta-surface border border-karta-border rounded-lg p-4">
+                            <h3 class="font-bold mb-4 text-white">Sales & Purchase Volume</h3>
+                            <!-- Fixed Container for Chart -->
+                            <div class="relative h-64 md:h-80 w-full">
+                                <canvas id="mainChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 flex flex-col">
+                            <h3 class="font-bold mb-4 text-white">Top Categories</h3>
+                            <div class="flex-1 flex items-center justify-center relative h-64">
+                                <canvas id="categoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Low Stock Table (Restored) -->
+                    <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                        <div class="p-4 border-b border-karta-border flex justify-between items-center">
+                            <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-circle-exclamation text-orange-500 mr-2"></i>Critical Low Stock</h3>
+                            <button onclick="nav('purchases')" class="text-xs text-karta-primary hover:underline">Order Stock</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="w-full text-left text-xs min-w-[500px]">
+                                <thead class="bg-white/5 text-gray-400">
+                                    <tr>
+                                        <th class="p-3">Product</th>
+                                        <th class="p-3">SKU</th>
+                                        <th class="p-3">Supplier</th>
+                                        <th class="p-3 text-right">Stock</th>
+                                        <th class="p-3 text-right">Reorder Lvl</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lowStockBody" class="divide-y divide-gray-800">
+                                    <!-- JS Populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- POS TERMINAL -->
+                <section id="pos" class="hidden h-full flex flex-col md:flex-row gap-4 pb-20 md:pb-0">
+                    <!-- Left: Catalog -->
+                    <div class="w-full md:w-2/3 flex flex-col gap-4 h-auto md:h-full order-2 md:order-1">
+                        <div class="bg-karta-surface p-3 rounded-lg border border-karta-border flex flex-col md:flex-row gap-3">
+                            <div class="relative flex-1">
+                                <i class="fa-solid fa-search absolute left-3 top-3 text-gray-500"></i>
+                                <input type="text" id="posSearch" placeholder="Scan Barcode or Search..." class="input-field pl-10 h-10 md:h-full">
+                            </div>
+                            <div class="flex gap-3 h-10 md:h-full">
+                                <div class="w-24">
+                                    <input type="number" id="posQtyInput" value="1" min="1" class="input-field text-center h-full" placeholder="Qty">
+                                </div>
+                                <select id="posCatFilter" class="input-field w-full md:w-40 h-full">
+                                    <option value="all">All Cats</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex-1 md:overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 content-start pr-1 min-h-[300px]" id="posGrid">
+                            <!-- Products JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Right: Cart -->
+                    <div class="w-full md:w-1/3 bg-karta-surface border border-karta-border rounded-lg flex flex-col h-auto md:h-full order-1 md:order-2 shrink-0">
+                        <div class="p-3 border-b border-karta-border">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="font-bold text-white">Current Sale</h3>
+                                <button onclick="clearCart()" class="text-xs text-red-400 hover:text-red-300">Clear</button>
+                            </div>
+                            <!-- Customer Select -->
+                            <div class="relative">
+                                <input list="custDataList" id="posCustomerInput" placeholder="Guest Customer (Walk-in)" class="input-field text-xs">
+                                <datalist id="custDataList"></datalist>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1 md:overflow-y-auto p-2 space-y-1 min-h-[150px] max-h-[300px] md:max-h-none" id="posCartBody">
+                            <!-- Cart Items -->
+                            <div class="flex h-full items-center justify-center text-gray-600 flex-col py-8 md:py-0">
+                                <i class="fa-solid fa-basket-shopping text-4xl mb-2"></i>
+                                <p>Cart is empty</p>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-white/5 border-t border-karta-border space-y-2">
+                            <div class="flex justify-between text-xs text-gray-400 items-center">
+                                <span>Subtotal</span>
+                                <span id="posSubTotal">$0.00</span>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-400 items-center">
+                                <label class="flex items-center cursor-pointer select-none">
+                                    <input type="checkbox" id="posVatToggle" checked onchange="renderCart()" class="mr-2"> Apply VAT (<span id="posVatRate">0</span>%)
+                                </label>
+                                <span id="posTax">$0.00</span>
+                            </div>
+                            <div class="flex justify-between text-xl font-bold text-karta-primary border-t border-gray-700 pt-2">
+                                <span>Total</span>
+                                <span id="posTotal">$0.00</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <button onclick="checkout('credit')" class="bg-yellow-600 hover:bg-yellow-700 text-black py-3 rounded font-bold transition text-xs md:text-sm">Credit Sale</button>
+                                <button onclick="checkout('cash')" class="bg-karta-primary hover:bg-karta-primaryDark text-black py-3 rounded font-bold transition text-xs md:text-sm"><i class="fa-solid fa-print"></i> Pay & Print</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- INVOICES -->
+                <section id="invoices" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <input type="text" id="invoiceSearch" placeholder="Search Invoice # or Customer Name..." class="input-field w-full md:w-80" onkeyup="loadInvoices()">
+                    </div>
+                    <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                        <div class="table-container">
+                            <table class="w-full text-left text-sm min-w-[600px]">
+                                <thead class="bg-white/5 text-gray-400">
+                                    <tr>
+                                        <th class="p-3">Date</th>
+                                        <th class="p-3">Invoice #</th>
+                                        <th class="p-3">Customer</th>
+                                        <th class="p-3 text-right">Amount</th>
+                                        <th class="p-3 text-center">Status</th>
+                                        <th class="p-3 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoiceListBody" class="divide-y divide-gray-800"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- INVENTORY -->
+                <section id="inventory" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <input type="text" id="invSearch" placeholder="Search Inventory..." class="input-field w-full md:w-64">
+                        </div>
+                        <button onclick="openModal('prodModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i> New Product
+                        </button>
+                    </div>
+                    
+                    <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                        <div class="table-container">
+                            <table class="w-full text-left text-sm min-w-[800px]">
+                                <thead class="bg-white/5 text-gray-400 border-b border-karta-border">
+                                    <tr>
+                                        <th class="p-3">Product Name</th>
+                                        <th class="p-3">SKU</th>
+                                        <th class="p-3">Category</th>
+                                        <th class="p-3 text-right">Stock</th>
+                                        <th class="p-3 text-right">Cost</th>
+                                        <th class="p-3 text-right">Retail Price</th>
+                                        <th class="p-3 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invBody" class="divide-y divide-gray-800"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CUSTOMERS -->
+                <section id="customers" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <input type="text" id="custSearch" placeholder="Search Customers..." class="input-field w-full md:w-80">
+                        <button onclick="openModal('custModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition">
+                            <i class="fa-solid fa-user-plus"></i> Add Customer
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="custGrid">
+                        <!-- Customer Cards JS -->
+                    </div>
+                </section>
+
+                <!-- SUPPLIERS -->
+                <section id="suppliers" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <input type="text" id="supSearch" placeholder="Search Suppliers..." class="input-field w-full md:w-64">
+                        <button onclick="openModal('supModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition">
+                            <i class="fa-solid fa-truck"></i> Add Supplier
+                        </button>
+                    </div>
+                    <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                        <div class="table-container">
+                            <table class="w-full text-left text-sm min-w-[700px]">
+                                <thead class="bg-white/5 text-gray-400">
+                                    <tr>
+                                        <th class="p-3">Company Name</th>
+                                        <th class="p-3">Contact Person</th>
+                                        <th class="p-3">Phone</th>
+                                        <th class="p-3">Tax/VAT ID</th>
+                                        <th class="p-3 text-right">Balance Due</th>
+                                        <th class="p-3 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="supBody" class="divide-y divide-gray-800"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PURCHASES & EXPENSES -->
+                <section id="purchases" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <h3 class="text-white font-bold text-lg">Transactions & Expenses</h3>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <button onclick="openModal('expModal')" class="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-xs md:text-sm">
+                                <i class="fa-solid fa-receipt"></i> Record Expense
+                            </button>
+                            <button onclick="openModal('purchModal')" class="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold text-xs md:text-sm">
+                                <i class="fa-solid fa-cart-shopping"></i> Purchase Order
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 h-96 overflow-y-auto">
+                            <h4 class="font-bold mb-3 text-karta-primary">Purchase History (GRN)</h4>
+                            <div id="purchHistory" class="space-y-2"></div>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 h-96 overflow-y-auto">
+                            <h4 class="font-bold mb-3 text-red-500">Expense Log</h4>
+                            <div id="expHistory" class="space-y-2"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- REPORTS -->
+                <section id="reports" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="bg-karta-surface border border-karta-border p-4 rounded-lg flex flex-col gap-4">
+                        <div class="flex flex-col md:flex-row gap-4 items-end">
+                            <div class="w-full md:w-auto">
+                                <label class="text-xs text-gray-400">From Date</label>
+                                <input type="date" id="repFrom" class="input-field">
+                            </div>
+                            <div class="w-full md:w-auto">
+                                <label class="text-xs text-gray-400">To Date</label>
+                                <input type="date" id="repTo" class="input-field">
+                            </div>
+                            <div class="w-full md:flex-1 flex justify-end gap-2">
+                                <button onclick="exportReportCSV()" class="flex-1 md:flex-none bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded font-bold flex items-center justify-center gap-2 text-xs md:text-sm"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+                                <button onclick="printReport()" class="flex-1 md:flex-none bg-white text-black px-4 py-2 rounded font-bold flex items-center justify-center gap-2 text-xs md:text-sm"><i class="fa-solid fa-print"></i> Print Report</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                            <button onclick="runReports('daily')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Daily Report</button>
+                            <button onclick="runReports('sales')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Sales Report</button>
+                            <button onclick="runReports('vat')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">VAT Report</button>
+                            <button onclick="runReports('purchase')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Purchase Report</button>
+                            <button onclick="runReports('expense')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Expense Report</button>
+                            <button onclick="runReports('balance')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Balance Sheet</button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Report Title -->
+                    <h3 id="reportTitle" class="text-xl font-bold text-white">Select a Report</h3>
+
+                    <!-- Dynamic Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="reportCards">
+                        <!-- Injected via JS -->
+                    </div>
+
+                    <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                        <div class="p-3 bg-white/5 font-bold">Details</div>
+                        <div class="table-container">
+                            <table class="w-full text-left text-xs min-w-[500px]">
+                                <thead class="text-gray-400 border-b border-gray-700" id="repHead"></thead>
+                                <tbody id="repTable" class="divide-y divide-gray-800"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                 <!-- SETTINGS -->
+                 <section id="settings" class="hidden space-y-6 max-w-2xl pb-20 md:pb-0">
+                    <div class="bg-karta-surface border border-karta-border rounded-lg p-6">
+                        <h3 class="text-xl font-bold mb-4 text-karta-primary">Company Profile & Configuration</h3>
+                        <form id="settingsForm" class="space-y-4">
+                             <!-- LOGO UPLOAD SECTION -->
+                             <div>
+                                <label class="block text-xs text-gray-400 mb-1">Brand Logo</label>
+                                <div class="flex items-center gap-4">
+                                    <div class="h-16 w-16 bg-gray-800 rounded flex items-center justify-center overflow-hidden border border-gray-700 shrink-0">
+                                        <img id="confLogoPreview" src="" class="h-full w-full object-contain hidden">
+                                        <i id="confLogoPlaceholder" class="fa-solid fa-image text-gray-600"></i>
+                                    </div>
+                                    <input type="file" id="confLogoInput" accept="image/*" class="text-xs text-gray-400 w-full">
+                                    <button type="button" onclick="clearLogo()" class="text-xs text-red-500 hover:text-red-400">Remove</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">Company Name</label>
+                                <input type="text" id="confName" class="input-field">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">Address</label>
+                                <input type="text" id="confAddr" class="input-field">
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">Phone</label>
+                                    <input type="text" id="confPhone" class="input-field">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">Tax/VAT ID</label>
+                                    <input type="text" id="confTax" class="input-field">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">Default VAT Rate (%)</label>
+                                    <input type="number" id="confVatRate" class="input-field">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">Currency Symbol</label>
+                                    <input type="text" id="confCurr" class="input-field">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full md:w-auto bg-karta-primary text-black font-bold py-2 px-6 rounded hover:bg-green-600">Save Changes</button>
+                        </form>
+                        
+                        <div class="mt-10 pt-6 border-t border-gray-700 space-y-4">
+                            <h4 class="font-bold text-white">Data Management</h4>
+                            
+                            <!-- FIREBASE CLOUD SYNC -->
+                            <div class="p-4 bg-white/5 rounded border border-gray-700 mb-4">
+                                <h5 class="text-karta-primary font-bold mb-2"><i class="fa-solid fa-cloud"></i> Private Database</h5>
+                                <p class="text-xs text-gray-400 mb-3">You are connected to your private isolated database. Data is synced in real-time only to your account.</p>
+                                <div class="text-xs text-green-500"><i class="fa-solid fa-check-circle"></i> Status: Secured & Synced</div>
+                                <div class="mt-2 text-xs text-gray-500">Database ID: <span id="dbIdDisplay" class="font-mono text-white">...</span></div>
+                            </div>
+
+                            <div class="flex flex-col md:flex-row gap-4">
+                                <button onclick="exportDB()" class="bg-gray-700 text-white px-4 py-2 rounded text-xs hover:bg-gray-600 text-center"><i class="fa-solid fa-download"></i> Backup (Export File)</button>
+                                <label class="bg-gray-700 text-white px-4 py-2 rounded text-xs hover:bg-gray-600 cursor-pointer text-center">
+                                    <i class="fa-solid fa-upload"></i> Restore (Import File)
+                                    <input type="file" id="importFile" class="hidden" onchange="importDB(this)">
+                                </label>
+                            </div>
+                            <div class="mt-4">
+                                <button onclick="resetData()" class="text-red-500 text-xs hover:text-red-400 underline">Danger: Wipe My Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+    <div id="modalBackdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        
+        <!-- Product Modal -->
+        <div id="prodModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-4 text-white">Product Details</h3>
+            <form id="prodForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="prodId">
+                <div class="md:col-span-2">
+                    <label class="text-xs text-gray-400">Product Name</label>
+                    <input type="text" id="pName" required class="input-field">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">SKU / Barcode</label>
+                    <input type="text" id="pSku" required class="input-field">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Category</label>
+                    <input type="text" id="pCat" list="catList" class="input-field">
+                    <datalist id="catList"><option value="Medicine"><option value="Equipment"><option value="Supplement"></datalist>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Cost Price</label>
+                    <input type="number" step="0.01" id="pCost" required class="input-field">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Retail Price</label>
+                    <input type="number" step="0.01" id="pRetail" required class="input-field">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Wholesale Price</label>
+                    <input type="number" step="0.01" id="pWhole" class="input-field">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Stock Qty</label>
+                    <input type="number" id="pStock" required class="input-field">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Reorder Level</label>
+                    <input type="number" id="pReorder" class="input-field" value="10">
+                </div>
+                <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Invoice Edit Modal -->
+        <div id="invEditModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Edit Invoice #<span id="editInvId"></span></h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="mb-4 bg-red-900/20 p-3 rounded border border-red-800 text-red-200 text-xs">
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i> Warning: Editing an invoice reverses original stock/balance changes and applies new ones.
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="text-xs text-gray-400">Customer</label>
+                    <select id="editInvCust" class="input-field"></select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Payment Type</label>
+                    <select id="editInvPay" class="input-field">
+                        <option value="cash">Cash</option>
+                        <option value="credit">Credit</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h4 class="text-gray-400 text-xs font-bold mb-2">Items</h4>
+                <div id="editInvItems" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                <button onclick="addEditItem()" class="mt-2 text-xs text-karta-primary hover:underline">+ Add Item Row</button>
+            </div>
+
+            <div class="flex flex-col md:flex-row justify-end gap-2 mt-4 border-t border-gray-700 pt-4">
+                <button type="button" onclick="deleteInvoice()" class="px-4 py-2 bg-red-600 rounded text-white md:mr-auto">Delete/Void Invoice</button>
+                <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
+                <button type="button" onclick="saveInvoiceEdit()" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save Changes</button>
+            </div>
+        </div>
+
+        <!-- Customer Modal -->
+        <div id="custModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-4 text-white">Customer Profile</h3>
+            <form id="custForm" class="space-y-4">
+                <input type="hidden" id="custId">
+                <input type="text" id="cName" placeholder="Full Name" required class="input-field">
+                <input type="text" id="cPhone" placeholder="Phone Number" required class="input-field">
+                <input type="text" id="cAddr" placeholder="Address" class="input-field">
+                <div class="flex gap-4">
+                    <input type="text" id="cTax" placeholder="VAT/Tax ID" class="input-field">
+                    <input type="number" id="cLimit" placeholder="Credit Limit" class="input-field">
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Customer History & PDF Modal -->
+        <div id="custHistoryModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-4xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-start mb-6 shrink-0">
+                <div>
+                    <h3 class="text-2xl font-bold text-white" id="chName">Customer Name</h3>
+                    <p class="text-gray-400 text-sm mt-1"><i class="fa-solid fa-phone mr-2"></i><span id="chPhone"></span> | <i class="fa-solid fa-location-dot mx-2"></i><span id="chAddr"></span></p>
+                </div>
+                <div class="text-right flex flex-col items-end gap-2">
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times fa-lg"></i></button>
+                    <button onclick="downloadCustomerPDF()" class="bg-white text-black px-4 py-2 rounded font-bold text-xs hover:bg-gray-200 transition">
+                        <i class="fa-solid fa-file-pdf mr-2"></i>Export
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 shrink-0">
+                <div class="bg-white/5 p-4 rounded border border-karta-border">
+                    <div class="text-gray-400 text-xs uppercase">Current Balance</div>
+                    <div class="text-2xl font-bold text-white mt-1" id="chBalance">$0.00</div>
+                </div>
+                <div class="bg-white/5 p-4 rounded border border-karta-border">
+                    <div class="text-gray-400 text-xs uppercase">Total Spent</div>
+                    <div class="text-2xl font-bold text-karta-primary mt-1" id="chTotalSpent">$0.00</div>
+                </div>
+                <div class="bg-white/5 p-4 rounded border border-karta-border">
+                    <div class="text-gray-400 text-xs uppercase">Total Transactions</div>
+                    <div class="text-2xl font-bold text-blue-400 mt-1" id="chTxnCount">0</div>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-hidden flex flex-col border border-karta-border rounded-lg">
+                <div class="bg-white/5 p-3 font-bold border-b border-karta-border text-sm shrink-0">Transaction History</div>
+                <div class="overflow-y-auto flex-1">
+                    <table class="w-full text-left text-xs" id="chTableContainer">
+                        <thead class="bg-karta-surface text-gray-400 sticky top-0">
+                            <tr>
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Type</th>
+                                <th class="p-3">Ref</th>
+                                <th class="p-3">Details</th>
+                                <th class="p-3 text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chTableBody" class="divide-y divide-gray-800">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- NEW: Supplier History Modal -->
+        <div id="supHistoryModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-4xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-start mb-6 shrink-0">
+                <div>
+                    <h3 class="text-2xl font-bold text-white" id="shName">Supplier Name</h3>
+                    <p class="text-gray-400 text-sm mt-1"><i class="fa-solid fa-phone mr-2"></i><span id="shPhone"></span> | <i class="fa-solid fa-user-tie mx-2"></i><span id="shContact"></span></p>
+                </div>
+                <div class="text-right flex flex-col items-end gap-2">
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times fa-lg"></i></button>
+                    <button onclick="downloadSupplierPDF()" class="bg-white text-black px-4 py-2 rounded font-bold text-xs hover:bg-gray-200 transition">
+                        <i class="fa-solid fa-file-pdf mr-2"></i>Export
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 shrink-0">
+                <div class="bg-white/5 p-4 rounded border border-karta-border">
+                    <div class="text-gray-400 text-xs uppercase">Current Balance Due</div>
+                    <div class="text-2xl font-bold text-red-500 mt-1" id="shBalance">$0.00</div>
+                </div>
+                <div class="bg-white/5 p-4 rounded border border-karta-border">
+                    <div class="text-gray-400 text-xs uppercase">Total Purchased</div>
+                    <div class="text-2xl font-bold text-white mt-1" id="shTotalPurchased">$0.00</div>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-hidden flex flex-col border border-karta-border rounded-lg">
+                <div class="bg-white/5 p-3 font-bold border-b border-karta-border text-sm shrink-0">Supplier Transaction History</div>
+                <div class="overflow-y-auto flex-1">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-karta-surface text-gray-400 sticky top-0">
+                            <tr>
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Type</th>
+                                <th class="p-3">Ref</th>
+                                <th class="p-3">Items/Desc</th>
+                                <th class="p-3 text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shTableBody" class="divide-y divide-gray-800">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Payment Modal -->
+        <div id="payModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-sm">
+            <h3 class="text-xl font-bold mb-4 text-white">Receive Payment</h3>
+            <p id="payCustName" class="text-gray-400 mb-4 text-sm"></p>
+            <form id="payForm" class="space-y-4">
+                <input type="hidden" id="payCustId">
+                <input type="number" step="0.01" id="payAmount" placeholder="Amount Received" required class="input-field">
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white font-bold rounded">Record Receipt</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- NEW: Supplier Payment Modal -->
+        <div id="supPayModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-sm">
+            <h3 class="text-xl font-bold mb-4 text-white">Record Payment to Supplier</h3>
+            <p id="spSupName" class="text-gray-400 mb-4 text-sm"></p>
+            <form id="supPayForm" class="space-y-4">
+                <input type="hidden" id="spSupId">
+                <input type="number" step="0.01" id="spAmount" placeholder="Amount Paid" required class="input-field">
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white font-bold rounded">Record Payment</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Supplier Modal -->
+        <div id="supModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-4 text-white">Supplier Profile</h3>
+            <form id="supForm" class="space-y-4">
+                <input type="hidden" id="supId">
+                <input type="text" id="sName" placeholder="Company Name" required class="input-field">
+                <input type="text" id="sContact" placeholder="Contact Person" class="input-field">
+                <input type="text" id="sPhone" placeholder="Phone" class="input-field">
+                <input type="text" id="sTax" placeholder="VAT Reg No" class="input-field">
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save</button>
+                </div>
+            </form>
+        </div>
+
+         <!-- Purchase Modal -->
+         <div id="purchModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-4 text-white">New Purchase (Stock In)</h3>
+            <form id="purchForm" class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-400">Supplier</label>
+                    <select id="poSup" class="input-field"></select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Product</label>
+                    <select id="poProd" class="input-field"></select>
+                </div>
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <label class="text-xs text-gray-400">Qty</label>
+                        <input type="number" id="poQty" required class="input-field">
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-xs text-gray-400">Total Cost</label>
+                        <input type="number" step="0.01" id="poCost" required class="input-field">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Ref / Invoice No</label>
+                    <input type="text" id="poRef" class="input-field">
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white font-bold rounded">Confirm Purchase</button>
+                </div>
+            </form>
+        </div>
+
+         <!-- Expense Modal -->
+         <div id="expModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-sm">
+            <h3 class="text-xl font-bold mb-4 text-red-500">Record Expense</h3>
+            <form id="expForm" class="space-y-4">
+                <input type="text" id="expDesc" placeholder="Description (e.g. Rent)" required class="input-field">
+                <input type="number" step="0.01" id="expAmt" placeholder="Amount" required class="input-field">
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white font-bold rounded">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hidden Printable Invoice Area -->
+    <div id="printable-area">
+        <!-- INVOICE VIEW -->
+        <div id="invoice-print-view">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                <div style="display: flex; gap: 15px;">
+                     <!-- Logo Container -->
+                     <img id="printInvLogo" src="" style="width: 60px; height: 60px; object-fit: contain; display: none;">
+                    <div>
+                        <h1 style="font-size: 24px; font-weight: bold; margin: 0; color: #000;" id="invCompName">KARTA PHARMACY</h1>
+                        <p style="margin: 2px 0; font-size: 14px;" id="invCompAddr">123 Green Street</p>
+                        <p style="margin: 2px 0; font-size: 14px;" id="invCompPhone">Tel: 9800000000</p>
+                        <p style="margin: 2px 0; font-size: 14px;" id="invCompTax">VAT Reg: 123456789</p>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <h2 style="font-size: 20px; color: #333; margin: 0;">INVOICE</h2>
+                    <p style="margin: 2px 0;">#<span id="invNo">INV-001</span></p>
+                    <p style="margin: 2px 0;">Date: <span id="invDate">2025-01-01</span></p>
+                </div>
+            </div>
+
+            <!-- Customer Info -->
+            <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <p style="margin: 0; font-weight: bold;">Bill To:</p>
+                <p style="margin: 2px 0;" id="invCustName">Guest Customer</p>
+                <p style="margin: 2px 0;" id="invCustContact"></p>
+            </div>
+
+            <!-- Items Table -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+                <thead>
+                    <tr style="background: #f0f0f0; border-bottom: 2px solid #000;">
+                        <th style="padding: 8px; text-align: left;">SN</th>
+                        <th style="padding: 8px; text-align: left;">Description</th>
+                        <th style="padding: 8px; text-align: right;">Qty</th>
+                        <th style="padding: 8px; text-align: right;">Unit Price</th>
+                        <th style="padding: 8px; text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="invItemsBody">
+                    <!-- Items -->
+                </tbody>
+            </table>
+
+            <!-- Totals -->
+            <div style="display: flex; justify-content: flex-end;">
+                <div style="width: 250px;">
+                    <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                        <span>Subtotal:</span>
+                        <span id="invSub">0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                        <span>VAT:</span>
+                        <span id="invTax">0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 2px solid #000; font-weight: bold; font-size: 16px;">
+                        <span>Grand Total:</span>
+                        <span id="invTotal">0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 10px;">
+                <p>Thank you for your business. Get well soon!</p>
+                <p>Generated by KARTA System</p>
+            </div>
+        </div>
+
+        <!-- REPORT VIEW (Hidden by default) -->
+        <div id="report-print-view" class="hidden">
+            <!-- Generated via JS -->
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        // IMPORT ONVALUE FOR REALTIME UPDATES
+        import { getDatabase, ref, set, get, child, onValue } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR_ZXBaDY19TwNpK-grHbrQM-E1nadDp8",
+            authDomain: "account-9482d.firebaseapp.com",
+            databaseURL: "https://account-9482d-default-rtdb.firebaseio.com",
+            projectId: "account-9482d",
+            storageBucket: "account-9482d.firebasestorage.app",
+            messagingSenderId: "742088303662",
+            appId: "1:742088303662:web:c23726104923389f156bbf",
+            measurementId: "G-K165K36HRF"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const dbRealtime = getDatabase(app);
+        
+        // --- Firebase Auth & Sync Logic ---
+        const authScreen = document.getElementById('auth-screen');
+        const appRoot = document.getElementById('app-root');
+        const authError = document.getElementById('authError');
+        const syncStatusIndicator = document.getElementById('syncStatusIndicator');
+        let currentUser = null;
+        let dbUnsubscribe = null; // Store listener to detach on logout
+        let DB_KEY = ''; // DYNAMIC KEY: Will be set to 'karta_db_UID'
+
+        /** CORE INITIAL STATE - No data loaded yet **/
+        const APP_STATE = {
+            config: {
+                name: 'Karta Pharmacy', address: 'Kathmandu, Nepal', phone: '+977-9800000000',
+                taxId: 'PAN-101010', vatRate: 13, currency: 'Rs.', logo: null
+            },
+            products: [],   
+            customers: [], 
+            suppliers: [],
+            transactions: []
+        };
+        
+        // Start with empty state
+        let db = JSON.parse(JSON.stringify(APP_STATE));
+        let cart = [];
+        let editTxnId = null;
+        let currentReportData = [];
+        let currentReportTitle = ""; 
+        let activeCustomerReportId = null; 
+        let activeSupplierReportId = null;
+        let tempLogoBase64 = null;
+
+        /**
+         * CRITICAL FIX: Ensure DB integrity
+         * Firebase Realtime Database deletes keys if they are empty arrays (e.g. products: []).
+         * When data comes back from cloud, if products is missing, the app crashes.
+         * This function forces empty arrays to exist if they are missing.
+         */
+        function ensureDbStructure(data) {
+            if (!data) return JSON.parse(JSON.stringify(APP_STATE));
+            return {
+                config: data.config || APP_STATE.config,
+                // If Array is missing (deleted by Firebase optimization), force empty array []
+                products: Array.isArray(data.products) ? data.products : [],
+                customers: Array.isArray(data.customers) ? data.customers : [],
+                suppliers: Array.isArray(data.suppliers) ? data.suppliers : [],
+                transactions: Array.isArray(data.transactions) ? data.transactions : []
+            };
+        }
+
+        // AUTH & ISOLATION LOGIC
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in
+                currentUser = user;
+                
+                // 1. GENERATE UNIQUE KEY FOR THIS USER
+                DB_KEY = `karta_db_${user.uid}`;
+                
+                // 2. LOAD LOCAL DATA SPECIFIC TO THIS USER
+                const localData = localStorage.getItem(DB_KEY);
+                if (localData) {
+                    // FIX: Run through sanitizer
+                    db = ensureDbStructure(JSON.parse(localData));
+                } else {
+                    db = JSON.parse(JSON.stringify(APP_STATE));
+                }
+                
+                refreshUI(); // Show data immediately
+                
+                authScreen.classList.add('hidden');
+                appRoot.classList.remove('hidden');
+                appRoot.classList.remove('opacity-0');
+                document.getElementById('userEmailDisplay').innerText = user.email;
+                document.getElementById('dbIdDisplay').innerText = user.uid.slice(0,8) + "...";
+                
+                console.log("Logged in as: ", user.email);
+                
+                // 3. START SECURE CLOUD SYNC
+                // Path is securely isolated to users/{uid}/data
+                const userRef = ref(dbRealtime, 'users/' + user.uid + '/data');
+                
+                // Set up real-time listener
+                dbUnsubscribe = onValue(userRef, (snapshot) => {
+                    const cloudData = snapshot.val();
+                    if (cloudData) {
+                        // Data exists in cloud, update local state
+                        // FIX: Run through sanitizer to prevent "undefined" arrays crash
+                        db = ensureDbStructure(cloudData);
+                        
+                        localStorage.setItem(DB_KEY, JSON.stringify(db)); // Update Isolated Local Storage
+                        refreshUI();
+                        console.log("Data synced from Cloud");
+                        updateSyncStatus("Synced", "text-green-500");
+                    } else {
+                        // No data in cloud (New User), upload current local default
+                        updateSyncStatus("Initializing Private DB...", "text-yellow-500");
+                        set(userRef, db);
+                    }
+                });
+
+            } else {
+                // User is signed out
+                currentUser = null;
+                DB_KEY = ''; // Clear key
+                if(dbUnsubscribe) dbUnsubscribe(); // Stop listening
+                
+                // WIPE MEMORY FOR SECURITY
+                db = JSON.parse(JSON.stringify(APP_STATE));
+                
+                appRoot.classList.add('hidden');
+                appRoot.classList.add('opacity-0');
+                authScreen.classList.remove('hidden');
+            }
+        });
+        
+        function updateSyncStatus(text, colorClass) {
+            syncStatusIndicator.innerHTML = `<i class="fa-solid fa-circle text-[8px]"></i> ${text}`;
+            syncStatusIndicator.className = colorClass;
+        }
+
+        // Sign In
+        document.getElementById('authForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPass').value;
+            authError.classList.add('hidden');
+
+            signInWithEmailAndPassword(auth, email, pass)
+                .then((userCredential) => {
+                    // Signed in via onAuthStateChanged
+                })
+                .catch((error) => {
+                    authError.innerText = error.message;
+                    authError.classList.remove('hidden');
+                });
+        });
+
+        // Sign Up
+        document.getElementById('btnSignUp').addEventListener('click', () => {
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPass').value;
+            if(!email || !pass) return alert("Enter email and password to create account");
+
+            createUserWithEmailAndPassword(auth, email, pass)
+                .then((userCredential) => {
+                    alert("Account Created! You are now logged in.");
+                })
+                .catch((error) => {
+                    authError.innerText = error.message;
+                    authError.classList.remove('hidden');
+                });
+        });
+
+        // Global Logout
+        window.handleLogout = () => {
+            if(confirm("Are you sure you want to logout?")) {
+                signOut(auth).then(() => {
+                    location.reload(); // Reload to clear memory completely
+                }).catch((error) => {
+                    alert("Error signing out");
+                });
+            }
+        };
+
+
+        /** KARTA CORE LOGIC **/
+        
+        // --- NEW: Toggle Sidebar for Mobile ---
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('mobile-backdrop');
+            
+            // Check if closed
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            
+            if (isClosed) {
+                // Open
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                // Close
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        // MODIFIED AUTO-SAVE FUNCTION
+        function saveDB() {
+            if(!currentUser || !DB_KEY) return;
+            
+            // 1. Save Locally to ISOLATED Key
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            
+            // 2. Auto-Save to Cloud (If Logged In)
+            updateSyncStatus("Saving...", "text-yellow-500");
+            const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
+            set(userRef, db)
+                .then(() => updateSyncStatus("Synced", "text-green-500"))
+                .catch((err) => {
+                    console.error(err);
+                    updateSyncStatus("Sync Error", "text-red-500");
+                });
+            
+            refreshUI();
+        }
+
+        // Attach global functions to window so HTML onclick works
+        window.nav = function(page) {
+            document.querySelectorAll('main section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(page).classList.remove('hidden');
+            document.getElementById('pageTitle').innerText = page.charAt(0).toUpperCase() + page.slice(1);
+            
+            // Close Sidebar on Mobile when nav clicked
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                document.getElementById('mobile-backdrop').classList.add('hidden');
+            }
+
+            // Specific Loaders
+            if(page === 'dashboard') loadDashboard();
+            if(page === 'pos') loadPOS();
+            if(page === 'invoices') loadInvoices();
+            if(page === 'reports') runReports('daily');
+        }
+
+        window.openModal = function(id) {
+            document.getElementById('modalBackdrop').classList.remove('hidden');
+            document.getElementById(id).classList.remove('hidden');
+            if(id === 'purchModal') loadPurchSelects();
+        }
+
+        window.closeModal = function() {
+            document.getElementById('modalBackdrop').classList.add('hidden');
+            document.querySelectorAll('.modal-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('form').forEach(f => f.reset());
+            editTxnId = null;
+            activeCustomerReportId = null;
+            activeSupplierReportId = null;
+        }
+        
+        window.openPaymentModal = function(custId, custName) {
+            document.getElementById('payCustId').value = custId;
+            document.getElementById('payCustName').innerText = "Settling due for: " + custName;
+            window.openModal('payModal');
+        }
+        
+        window.resetData = function() {
+            if(confirm("DANGER: This will wipe all data permanently!")) {
+                // Remove isolated key
+                if(DB_KEY) localStorage.removeItem(DB_KEY);
+                
+                // Clear cloud if connected
+                if(currentUser) {
+                    set(ref(dbRealtime, 'users/' + currentUser.uid + '/data'), APP_STATE);
+                }
+                location.reload();
+            }
+        }
+
+        window.exportDB = function() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "karta_backup_" + (currentUser ? currentUser.uid.slice(0,5) : 'local') + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        window.importDB = function(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if(confirm("This will overwrite current data with the backup. Continue?")) {
+                        // FIX: Sanitize import data too
+                        db = ensureDbStructure(imported);
+                        saveDB(); // Triggers cloud save
+                        alert("Database Restored Successfully!");
+                    }
+                } catch(err) {
+                    alert("Invalid Backup File");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- Product Management ---
+        document.getElementById('prodForm').onsubmit = e => {
+            e.preventDefault();
+            const p = {
+                id: Date.now(),
+                name: document.getElementById('pName').value,
+                sku: document.getElementById('pSku').value,
+                category: document.getElementById('pCat').value,
+                cost: parseFloat(document.getElementById('pCost').value),
+                retail: parseFloat(document.getElementById('pRetail').value),
+                wholesale: parseFloat(document.getElementById('pWhole').value) || 0,
+                stock: parseInt(document.getElementById('pStock').value),
+                reorder: parseInt(document.getElementById('pReorder').value)
+            };
+            db.products.push(p);
+            saveDB();
+            window.closeModal();
+        };
+
+        function renderProducts() {
+            const tbody = document.getElementById('invBody');
+            tbody.innerHTML = '';
+            const search = document.getElementById('invSearch').value.toLowerCase();
+            
+            // Safety Check: ensure db.products exists
+            if (!db.products) db.products = [];
+
+            db.products.filter(p => p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search))
+            .forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-white/5 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-white">${p.name}</td>
+                    <td class="p-3 text-gray-400 font-mono text-xs">${p.sku}</td>
+                    <td class="p-3"><span class="px-2 py-1 bg-gray-800 rounded text-xs">${p.category}</span></td>
+                    <td class="p-3 text-right font-bold ${p.stock <= p.reorder ? 'text-red-500' : 'text-green-500'}">${p.stock}</td>
+                    <td class="p-3 text-right text-gray-500">${db.config.currency} ${p.cost}</td>
+                    <td class="p-3 text-right text-white">${db.config.currency} ${p.retail}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="delProd(${p.id})" class="text-red-500 hover:text-white"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        window.delProd = function(id) { if(confirm("Delete Product?")) { db.products = db.products.filter(p=>p.id!==id); saveDB(); } }
+
+        // --- Customer Management ---
+        document.getElementById('custForm').onsubmit = e => {
+            e.preventDefault();
+            db.customers.push({
+                id: Date.now(),
+                name: document.getElementById('cName').value,
+                phone: document.getElementById('cPhone').value,
+                address: document.getElementById('cAddr').value,
+                taxId: document.getElementById('cTax').value,
+                limit: parseFloat(document.getElementById('cLimit').value) || 0,
+                balance: 0
+            });
+            saveDB();
+            window.closeModal();
+        };
+
+        // Payment Settlement
+        document.getElementById('payForm').onsubmit = e => {
+            e.preventDefault();
+            const custId = parseInt(document.getElementById('payCustId').value);
+            const amount = parseFloat(document.getElementById('payAmount').value);
+            
+            const cust = db.customers.find(c => c.id === custId);
+            if(cust) {
+                cust.balance -= amount;
+                db.transactions.push({
+                    id: Date.now(),
+                    type: 'payment', // payment received
+                    date: new Date().toISOString(),
+                    entityId: custId,
+                    entityName: cust.name,
+                    items: [], // no items for payment
+                    total: amount,
+                    tax: 0
+                });
+                saveDB();
+                window.closeModal();
+                alert("Payment Recorded");
+            }
+        };
+
+        function renderCustomers() {
+            const grid = document.getElementById('custGrid');
+            grid.innerHTML = '';
+            const search = document.getElementById('custSearch').value.toLowerCase();
+            
+            if (!db.customers) db.customers = [];
+
+            db.customers.filter(c => c.name.toLowerCase().includes(search) || (c.address && c.address.toLowerCase().includes(search))).forEach(c => {
+                const el = document.createElement('div');
+                el.className = "bg-karta-surface border border-karta-border p-4 rounded-lg hover:border-karta-primary transition group flex flex-col h-full";
+                
+                // Calculate quick stats for the card
+                const txns = (db.transactions || []).filter(t => t.entityId === c.id);
+                const totalSpent = txns.filter(t => t.type === 'sale').reduce((a,x) => a + x.total, 0);
+
+                el.innerHTML = `
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-white text-lg">${c.name}</h4>
+                            <span class="text-xs ${c.balance > 0 ? 'text-red-500' : 'text-green-500'} font-bold border border-current px-2 py-0.5 rounded">
+                                ${c.balance > 0 ? 'Due' : 'Bal'}: ${db.config.currency}${c.balance.toFixed(2)}
+                            </span>
+                        </div>
+                        <div class="text-xs text-gray-400 mb-1 flex items-center"><i class="fa-solid fa-location-dot w-4"></i> ${c.address || 'No Address'}</div>
+                        <div class="text-xs text-gray-400 mb-2 flex items-center"><i class="fa-solid fa-phone w-4"></i> ${c.phone}</div>
+                        <div class="text-xs text-gray-500 mt-2 mb-4">Total Orders: <span class="text-white">${txns.length}</span> | Spent: <span class="text-white">${db.config.currency}${totalSpent.toFixed(0)}</span></div>
+                    </div>
+                    
+                    <div class="mt-auto pt-3 border-t border-gray-800 flex gap-2">
+                         <button onclick="viewCustomerHistory(${c.id})" class="flex-1 bg-white/10 hover:bg-white/20 text-white text-xs py-2 rounded transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-list-ul"></i> History
+                         </button>
+                         ${c.balance > 0 ? `<button onclick="openPaymentModal(${c.id}, '${c.name}')" class="flex-1 text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-2 rounded font-bold">Settle Due</button>` : ''}
+                    </div>
+                `;
+                grid.appendChild(el);
+            });
+            
+            const dl = document.getElementById('custDataList');
+            dl.innerHTML = '';
+            db.customers.forEach(c => {
+                dl.innerHTML += `<option value="${c.name} [ID:${c.id}]">`;
+            });
+        }
+
+        // --- NEW: Customer History & PDF Logic ---
+        window.viewCustomerHistory = function(id) {
+            activeCustomerReportId = id;
+            const cust = db.customers.find(c => c.id === id);
+            if(!cust) return;
+
+            // Gather Data
+            const txns = db.transactions.filter(t => t.entityId === id).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const totalSpent = txns.filter(t => t.type === 'sale').reduce((a,x) => a + x.total, 0);
+
+            // Populate Modal Header
+            document.getElementById('chName').innerText = cust.name;
+            document.getElementById('chPhone').innerText = cust.phone;
+            document.getElementById('chAddr').innerText = cust.address || "N/A";
+            
+            document.getElementById('chBalance').innerText = `${db.config.currency}${cust.balance.toFixed(2)}`;
+            document.getElementById('chBalance').className = `text-2xl font-bold mt-1 ${cust.balance > 0 ? 'text-red-500' : 'text-green-500'}`;
+            
+            document.getElementById('chTotalSpent').innerText = `${db.config.currency}${totalSpent.toFixed(2)}`;
+            document.getElementById('chTxnCount').innerText = txns.length;
+
+            // Populate Table
+            const tbody = document.getElementById('chTableBody');
+            tbody.innerHTML = '';
+            
+            if(txns.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No transactions found for this customer.</td></tr>`;
+            } else {
+                txns.forEach(t => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-white/5 border-b border-gray-800 text-gray-300";
+                    
+                    // Format Items String
+                    let itemsStr = '-';
+                    if(t.items && t.items.length > 0) {
+                        itemsStr = t.items.map(i => `${i.qty}x ${i.name}`).join(', ');
+                        if(itemsStr.length > 40) itemsStr = itemsStr.substring(0, 40) + '...';
+                    } else if (t.type === 'payment') {
+                        itemsStr = 'Payment Received';
+                    }
+
+                    // Type styling
+                    const typeColor = t.type === 'sale' ? 'text-blue-400' : (t.type === 'payment' ? 'text-green-400' : 'text-gray-400');
+                    
+                    tr.innerHTML = `
+                        <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3 uppercase text-xs font-bold ${typeColor}">${t.type}</td>
+                        <td class="p-3 font-mono text-xs">#${t.id.toString().slice(-6)}</td>
+                        <td class="p-3 text-xs text-gray-400 max-w-[150px] truncate">${itemsStr}</td>
+                        <td class="p-3 text-right font-bold">${db.config.currency}${t.total.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            window.openModal('custHistoryModal');
+        }
+
+        window.downloadCustomerPDF = function() {
+            if(!activeCustomerReportId) return;
+            const cust = db.customers.find(c => c.id === activeCustomerReportId);
+            const txns = db.transactions.filter(t => t.entityId === activeCustomerReportId).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Logo for PDF
+            let yPos = 20;
+            if(db.config.logo) {
+                try {
+                    doc.addImage(db.config.logo, 'JPEG', 14, 15, 20, 20); // x, y, w, h
+                    yPos = 40; // Push text down if logo exists
+                } catch(e) { console.error("Logo error", e); }
+            }
+
+            // Header
+            doc.setFontSize(18);
+            doc.text(db.config.name, 14, yPos);
+            doc.setFontSize(10);
+            doc.text(db.config.address, 14, yPos + 5);
+            doc.text("Customer Account Statement", 14, yPos + 15);
+            
+            // Customer Details
+            doc.setDrawColor(200);
+            doc.line(14, yPos + 18, 196, yPos + 18);
+            
+            doc.setFontSize(12);
+            doc.text(`Customer: ${cust.name}`, 14, yPos + 28);
+            doc.setFontSize(10);
+            doc.text(`Phone: ${cust.phone}`, 14, yPos + 33);
+            doc.text(`Address: ${cust.address || '-'}`, 14, yPos + 38);
+            
+            // Summary
+            doc.text(`Current Balance Due: ${db.config.currency} ${cust.balance.toFixed(2)}`, 140, yPos + 28);
+            doc.text(`Total Lifetime Spend: ${db.config.currency} ${txns.filter(t=>t.type==='sale').reduce((a,x)=>a+x.total,0).toFixed(2)}`, 140, yPos + 33);
+
+            // Table
+            const tableData = txns.map(t => [
+                new Date(t.date).toLocaleDateString(),
+                t.type.toUpperCase(),
+                `#${t.id.toString().slice(-6)}`,
+                t.type === 'sale' ? t.items.map(i => `${i.qty}x ${i.name}`).join(', ') : 'Payment Received',
+                `${db.config.currency} ${t.total.toFixed(2)}`
+            ]);
+
+            doc.autoTable({
+                startY: yPos + 45,
+                head: [['Date', 'Type', 'Ref #', 'Description / Items', 'Amount']],
+                body: tableData,
+                theme: 'grid',
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [0, 200, 83] } // Green header
+            });
+
+            // Footer
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(8);
+            doc.text("Generated by Karta Pharmacy OS", 14, finalY);
+            doc.text(new Date().toLocaleString(), 14, finalY + 5);
+
+            doc.save(`${cust.name.replace(/\s+/g, '_')}_History.pdf`);
+        }
+
+        // --- Supplier Management ---
+        document.getElementById('supForm').onsubmit = e => {
+            e.preventDefault();
+            db.suppliers.push({
+                id: Date.now(),
+                name: document.getElementById('sName').value,
+                contact: document.getElementById('sContact').value,
+                phone: document.getElementById('sPhone').value,
+                taxId: document.getElementById('sTax').value,
+                balance: 0
+            });
+            saveDB();
+            window.closeModal();
+        };
+        
+        // NEW: Supplier History & Logic
+        window.viewSupplierHistory = function(id) {
+            activeSupplierReportId = id;
+            const sup = db.suppliers.find(s => s.id === id);
+            if(!sup) return;
+
+            // Fetch Transactions (Purchases and Payments Out)
+            const txns = db.transactions.filter(t => t.entityId === id && (t.type === 'purchase' || t.type === 'payment_out'))
+                                        .sort((a,b) => new Date(b.date) - new Date(a.date));
+                                        
+            const totalPurchased = txns.filter(t => t.type === 'purchase').reduce((a,x) => a + x.total, 0);
+
+            // Populate Header
+            document.getElementById('shName').innerText = sup.name;
+            document.getElementById('shContact').innerText = sup.contact || 'N/A';
+            document.getElementById('shPhone').innerText = sup.phone || 'N/A';
+            
+            document.getElementById('shBalance').innerText = `${db.config.currency}${sup.balance.toFixed(2)}`;
+            document.getElementById('shTotalPurchased').innerText = `${db.config.currency}${totalPurchased.toFixed(2)}`;
+
+            // Populate Table
+            const tbody = document.getElementById('shTableBody');
+            tbody.innerHTML = '';
+            
+            if(txns.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No transactions found for this supplier.</td></tr>`;
+            } else {
+                txns.forEach(t => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-white/5 border-b border-gray-800 text-gray-300";
+                    
+                    let itemsStr = '-';
+                    if(t.type === 'purchase' && t.items) {
+                         itemsStr = t.items.map(i => `${i.qty}x ${i.name}`).join(', ');
+                    } else if (t.type === 'payment_out') {
+                        itemsStr = 'Payment Sent to Supplier';
+                    }
+
+                    const typeColor = t.type === 'purchase' ? 'text-blue-400' : 'text-red-400';
+                    const amountSign = t.type === 'payment_out' ? '-' : '';
+                    
+                    tr.innerHTML = `
+                        <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3 uppercase text-xs font-bold ${typeColor}">${t.type === 'payment_out' ? 'Payment' : 'Purchase'}</td>
+                        <td class="p-3 text-xs text-gray-500">${t.ref || '-'}</td>
+                        <td class="p-3 text-xs text-gray-400 max-w-[150px] truncate">${itemsStr}</td>
+                        <td class="p-3 text-right font-bold">${amountSign}${db.config.currency}${t.total.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            window.openModal('supHistoryModal');
+        }
+
+        // NEW: Open Supplier Pay Modal
+        window.openSupPayModal = function(id, name) {
+            document.getElementById('spSupId').value = id;
+            document.getElementById('spSupName').innerText = "Recording payment to: " + name;
+            window.openModal('supPayModal');
+        }
+
+        // NEW: Submit Supplier Payment
+        document.getElementById('supPayForm').onsubmit = e => {
+            e.preventDefault();
+            const supId = parseInt(document.getElementById('spSupId').value);
+            const amount = parseFloat(document.getElementById('spAmount').value);
+            
+            const sup = db.suppliers.find(s => s.id === supId);
+            if(sup) {
+                sup.balance -= amount; // Reduce debt
+                db.transactions.push({
+                    id: Date.now(),
+                    type: 'payment_out', // Payment Outflow
+                    date: new Date().toISOString(),
+                    entityId: supId,
+                    entityName: sup.name,
+                    items: [], 
+                    total: amount,
+                    tax: 0
+                });
+                saveDB();
+                window.closeModal();
+                alert("Payment Recorded");
+            }
+        };
+
+        // NEW: Download Supplier PDF
+        window.downloadSupplierPDF = function() {
+            if(!activeSupplierReportId) return;
+            const sup = db.suppliers.find(s => s.id === activeSupplierReportId);
+            const txns = db.transactions.filter(t => t.entityId === activeSupplierReportId && (t.type === 'purchase' || t.type === 'payment_out'))
+                                        .sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            let yPos = 20;
+            if(db.config.logo) {
+                try {
+                    doc.addImage(db.config.logo, 'JPEG', 14, 15, 20, 20);
+                    yPos = 40;
+                } catch(e) { }
+            }
+
+            // Header
+            doc.setFontSize(18);
+            doc.text(db.config.name, 14, yPos);
+            doc.setFontSize(10);
+            doc.text(db.config.address, 14, yPos + 5);
+            doc.text("Supplier Account Statement", 14, yPos + 15);
+            
+            doc.setDrawColor(200);
+            doc.line(14, yPos + 18, 196, yPos + 18);
+            
+            doc.setFontSize(12);
+            doc.text(`Supplier: ${sup.name}`, 14, yPos + 28);
+            doc.setFontSize(10);
+            doc.text(`Contact: ${sup.contact || '-'}`, 14, yPos + 33);
+            doc.text(`Phone: ${sup.phone || '-'}`, 14, yPos + 38);
+            
+            doc.text(`Current Balance Due: ${db.config.currency} ${sup.balance.toFixed(2)}`, 140, yPos + 28);
+
+            const tableData = txns.map(t => [
+                new Date(t.date).toLocaleDateString(),
+                t.type === 'payment_out' ? 'PAYMENT SENT' : 'PURCHASE',
+                t.ref || '-',
+                t.type === 'purchase' ? (t.items && t.items[0] ? t.items.map(i=>`${i.qty}x ${i.name}`).join(', ') : '-') : 'Payment to Supplier',
+                `${t.type === 'payment_out' ? '-' : ''}${db.config.currency} ${t.total.toFixed(2)}`
+            ]);
+
+            doc.autoTable({
+                startY: yPos + 45,
+                head: [['Date', 'Type', 'Ref', 'Details', 'Amount']],
+                body: tableData,
+                theme: 'grid',
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [66, 66, 66] }
+            });
+            
+            doc.save(`${sup.name.replace(/\s+/g, '_')}_Statement.pdf`);
+        }
+
+        function renderSuppliers() {
+            const tbody = document.getElementById('supBody');
+            tbody.innerHTML = '';
+            const search = document.getElementById('supSearch').value.toLowerCase();
+            
+            if (!db.suppliers) db.suppliers = [];
+
+            db.suppliers.filter(s => s.name.toLowerCase().includes(search)).forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-white/5";
+                tr.innerHTML = `
+                    <td class="p-3 text-white font-bold">${s.name}</td>
+                    <td class="p-3 text-gray-400">${s.contact}</td>
+                    <td class="p-3 text-gray-400">${s.phone}</td>
+                    <td class="p-3 text-gray-400 text-xs">${s.taxId}</td>
+                    <td class="p-3 text-right text-red-400 font-bold">${db.config.currency}${s.balance.toFixed(2)}</td>
+                    <td class="p-3 text-center flex justify-center gap-2">
+                         <button onclick="viewSupplierHistory(${s.id})" class="text-gray-400 hover:text-white" title="History"><i class="fa-solid fa-list-ul"></i></button>
+                         <button onclick="openSupPayModal(${s.id}, '${s.name}')" class="text-green-500 hover:text-green-400" title="Settle Balance"><i class="fa-solid fa-money-bill-wave"></i></button>
+                         <button onclick="delSup(${s.id})" class="text-red-500 hover:text-red-400" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        window.delSup = function(id) { if(confirm("Delete Supplier?")) { db.suppliers = db.suppliers.filter(s=>s.id!==id); saveDB(); } }
+
+        // --- Transactions (Purchase & Expense) ---
+        function loadPurchSelects() {
+            const sSel = document.getElementById('poSup');
+            const pSel = document.getElementById('poProd');
+            sSel.innerHTML = ''; pSel.innerHTML = '';
+            
+            db.suppliers.forEach(s => sSel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+            db.products.forEach(p => pSel.innerHTML += `<option value="${p.id}">${p.name} (Cur: ${p.stock})</option>`);
+        }
+
+        document.getElementById('purchForm').onsubmit = e => {
+            e.preventDefault();
+            const supId = parseInt(document.getElementById('poSup').value);
+            const prodId = parseInt(document.getElementById('poProd').value);
+            const qty = parseInt(document.getElementById('poQty').value);
+            const total = parseFloat(document.getElementById('poCost').value);
+            
+            const prod = db.products.find(p => p.id === prodId);
+            const sup = db.suppliers.find(s => s.id === supId);
+            
+            if(prod && sup) {
+                prod.stock += qty;
+                prod.cost = total / qty; 
+                sup.balance += total;
+                
+                db.transactions.push({
+                    id: Date.now(),
+                    type: 'purchase',
+                    date: new Date().toISOString(),
+                    entityId: supId,
+                    entityName: sup.name,
+                    items: [{ name: prod.name, qty, cost: prod.cost }],
+                    total: total,
+                    ref: document.getElementById('poRef').value
+                });
+                saveDB();
+                window.closeModal();
+            }
+        };
+
+        document.getElementById('expForm').onsubmit = e => {
+            e.preventDefault();
+            db.transactions.push({
+                id: Date.now(),
+                type: 'expense',
+                date: new Date().toISOString(),
+                entityName: 'Overhead',
+                items: [{ name: document.getElementById('expDesc').value }],
+                total: parseFloat(document.getElementById('expAmt').value)
+            });
+            saveDB();
+            window.closeModal();
+        };
+
+        // --- POS Logic ---
+        function loadPOS() {
+            const grid = document.getElementById('posGrid');
+            grid.innerHTML = '';
+            const search = document.getElementById('posSearch').value.toLowerCase();
+            
+            if (!db.products) db.products = [];
+
+            db.products.filter(p => p.stock > 0 && (p.name.toLowerCase().includes(search) || p.sku.includes(search)))
+            .forEach(p => {
+                const el = document.createElement('div');
+                el.className = "bg-karta-surface border border-karta-border p-3 rounded cursor-pointer hover:border-karta-primary transition";
+                // FIX: Use closure or string ID
+                el.onclick = () => addToCart(p);
+                el.innerHTML = `
+                    <div class="flex justify-between mb-1">
+                        <span class="text-xs bg-gray-800 px-1 rounded text-gray-400">${p.sku}</span>
+                        <span class="text-xs font-bold text-karta-primary">Qty: ${p.stock}</span>
+                    </div>
+                    <div class="font-bold text-white text-sm truncate">${p.name}</div>
+                    <div class="text-karta-primary font-bold mt-1">${db.config.currency}${p.retail}</div>
+                `;
+                grid.appendChild(el);
+            });
+        }
+
+        function addToCart(p) {
+            const qtyInput = document.getElementById('posQtyInput');
+            let manualQty = parseInt(qtyInput.value) || 1;
+            if(manualQty < 1) manualQty = 1;
+
+            const exist = cart.find(i => i.id === p.id);
+            
+            if(exist) {
+                if(exist.qty + manualQty <= p.stock) {
+                    exist.qty += manualQty;
+                } else {
+                    alert("Not enough stock!");
+                }
+            } else {
+                if(manualQty <= p.stock) {
+                    cart.push({...p, qty: manualQty});
+                } else {
+                    alert("Not enough stock!");
+                }
+            }
+            renderCart();
+            qtyInput.value = 1; 
+        }
+
+        window.updateCartQty = function(idx, change) {
+            const item = cart[idx];
+            const product = db.products.find(p => p.id === item.id);
+            const newQty = item.qty + change;
+            
+            if(newQty > 0 && newQty <= product.stock) {
+                item.qty = newQty;
+                renderCart();
+            } else if (newQty > product.stock) {
+                alert("Max stock reached!");
+            }
+        }
+
+        window.renderCart = function() {
+            const body = document.getElementById('posCartBody');
+            body.innerHTML = '';
+            let sub = 0;
+            
+            // Check VAT Toggle
+            const applyVat = document.getElementById('posVatToggle').checked;
+            
+            if(cart.length === 0) {
+                body.innerHTML = `<div class="flex h-full items-center justify-center text-gray-600 flex-col py-8 md:py-0"><i class="fa-solid fa-basket-shopping text-4xl mb-2"></i><p>Cart is empty</p></div>`;
+            } else {
+                cart.forEach((item, idx) => {
+                    sub += item.retail * item.qty;
+                    const row = document.createElement('div');
+                    row.className = "flex justify-between items-center bg-white/5 p-2 rounded text-xs";
+                    row.innerHTML = `
+                        <div class="flex-1">
+                            <div class="text-white font-bold">${item.name}</div>
+                            <div class="text-gray-400">${db.config.currency}${item.retail}</div>
+                        </div>
+                        <div class="flex items-center gap-2 mx-2">
+                            <button onclick="updateCartQty(${idx}, -1)" class="w-6 h-6 bg-gray-700 rounded hover:bg-gray-600">-</button>
+                            <span class="font-bold w-4 text-center">${item.qty}</span>
+                            <button onclick="updateCartQty(${idx}, 1)" class="w-6 h-6 bg-gray-700 rounded hover:bg-gray-600">+</button>
+                        </div>
+                        <div class="font-bold mr-2 w-16 text-right">${db.config.currency}${item.qty * item.retail}</div>
+                        <button onclick="cart.splice(${idx},1); renderCart()" class="text-red-500"><i class="fa-solid fa-times"></i></button>
+                    `;
+                    body.appendChild(row);
+                });
+            }
+
+            const tax = applyVat ? sub * (db.config.vatRate / 100) : 0;
+            
+            document.getElementById('posSubTotal').innerText = `${db.config.currency}${sub.toFixed(2)}`;
+            document.getElementById('posVatRate').innerText = db.config.vatRate;
+            document.getElementById('posTax').innerText = `${db.config.currency}${tax.toFixed(2)}`;
+            // If No VAT, strike through or dim the tax text
+            document.getElementById('posTax').className = applyVat ? "" : "line-through text-gray-600";
+            
+            document.getElementById('posTotal').innerText = `${db.config.currency}${(sub + tax).toFixed(2)}`;
+        }
+
+        window.clearCart = function() { cart = []; renderCart(); }
+
+        window.checkout = function(type) {
+            if(cart.length === 0) return alert("Empty Cart");
+            
+            const custInput = document.getElementById('posCustomerInput').value;
+            const custIdMatch = custInput.match(/\[ID:(\d+)\]/);
+            let custId = custIdMatch ? parseInt(custIdMatch[1]) : null;
+            let custName = custInput.split('[')[0].trim() || 'Guest Customer';
+
+            // Recalculate based on current toggle state
+            const applyVat = document.getElementById('posVatToggle').checked;
+            const sub = cart.reduce((a,c) => a + c.qty * c.retail, 0);
+            const tax = applyVat ? sub * (db.config.vatRate / 100) : 0;
+            const total = sub + tax;
+
+            if(type === 'credit') {
+                if(!custId) return alert("Please select a registered customer for credit sales.");
+                const customer = db.customers.find(c => c.id === custId);
+                customer.balance += total;
+            }
+
+            cart.forEach(item => {
+                const prod = db.products.find(p => p.id === item.id);
+                if(prod) prod.stock -= item.qty;
+            });
+
+            const txn = {
+                id: Date.now(),
+                type: 'sale',
+                date: new Date().toISOString(),
+                entityId: custId,
+                entityName: custName,
+                items: JSON.parse(JSON.stringify(cart)),
+                sub: sub,
+                tax: tax,
+                total: total,
+                payType: type
+            };
+            db.transactions.push(txn);
+            saveDB();
+            
+            if(type === 'cash') printInvoice(txn);
+            else alert("Credit Sale Recorded Successfully");
+            
+            clearCart();
+            document.getElementById('posCustomerInput').value = '';
+        }
+
+        // --- Invoice List Logic ---
+        window.loadInvoices = function() {
+            const tbody = document.getElementById('invoiceListBody');
+            tbody.innerHTML = '';
+            const search = document.getElementById('invoiceSearch').value.toLowerCase();
+
+            db.transactions.slice().reverse().filter(t => t.type === 'sale').forEach(t => {
+                if(t.id.toString().includes(search) || t.entityName.toLowerCase().includes(search)) {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-white/5 border-b border-gray-800";
+                    tr.innerHTML = `
+                        <td class="p-3 text-gray-400 text-xs">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3 font-mono">#${t.id.toString().slice(-6)}</td>
+                        <td class="p-3 font-bold text-white">${t.entityName}</td>
+                        <td class="p-3 text-right text-green-400">${db.config.currency}${t.total.toFixed(2)}</td>
+                        <td class="p-3 text-center"><span class="px-2 py-1 rounded text-xs ${t.payType==='credit' ? 'bg-yellow-900 text-yellow-300' : 'bg-green-900 text-green-300'} uppercase">${t.payType || 'cash'}</span></td>
+                        <td class="p-3 text-center">
+                            <button onclick="editInvoice(${t.id})" class="text-gray-400 hover:text-white mx-1"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick='printInvoiceStr(${JSON.stringify(t)})' class="text-blue-400 hover:text-blue-300 mx-1"><i class="fa-solid fa-print"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+        
+        // Helper to pass object in HTML string onclick
+        window.printInvoiceStr = function(txn) {
+            printInvoice(txn);
+        }
+
+        window.editInvoice = function(id) {
+            editTxnId = id;
+            const txn = db.transactions.find(t => t.id === id);
+            if(!txn) return;
+
+            window.openModal('invEditModal');
+            document.getElementById('editInvId').innerText = id;
+            
+            const custSel = document.getElementById('editInvCust');
+            custSel.innerHTML = db.customers.map(c => `<option value="${c.id}" ${c.id === txn.entityId ? 'selected' : ''}>${c.name}</option>`).join('');
+            // If Guest, add option
+            if(!txn.entityId) custSel.innerHTML += `<option value="" selected>Guest Customer</option>`;
+
+            document.getElementById('editInvPay').value = txn.payType || 'cash';
+            
+            const container = document.getElementById('editInvItems');
+            container.innerHTML = '';
+            txn.items.forEach(item => {
+                container.appendChild(createEditItemRow(item));
+            });
+        }
+
+        function createEditItemRow(item = {name: '', qty: 1, retail: 0}) {
+            const div = document.createElement('div');
+            div.className = "flex gap-2 items-center";
+            div.innerHTML = `
+                <input type="text" class="input-field w-1/2 text-xs" placeholder="Product" value="${item.name}">
+                <input type="number" class="input-field w-16 text-xs" placeholder="Qty" value="${item.qty}">
+                <input type="number" class="input-field w-20 text-xs" placeholder="Price" value="${item.retail}">
+                <button onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
+            `;
+            return div;
+        }
+
+        window.addEditItem = function() {
+            document.getElementById('editInvItems').appendChild(createEditItemRow());
+        }
+
+        window.saveInvoiceEdit = function() {
+            if(!editTxnId) return;
+            // REVERSE OLD TXN
+            const oldTxn = db.transactions.find(t => t.id === editTxnId);
+            // Revert stock
+            oldTxn.items.forEach(i => {
+                const p = db.products.find(x => x.name === i.name); // Match by name if ID lost, imperfect but functional
+                if(p) p.stock += i.qty;
+            });
+            // Revert customer balance
+            if(oldTxn.payType === 'credit' && oldTxn.entityId) {
+                const c = db.customers.find(x => x.id === oldTxn.entityId);
+                if(c) c.balance -= oldTxn.total;
+            }
+
+            // BUILD NEW TXN DATA
+            const rows = document.querySelectorAll('#editInvItems > div');
+            const newItems = [];
+            let sub = 0;
+            rows.forEach(r => {
+                const inputs = r.querySelectorAll('input');
+                const name = inputs[0].value;
+                const qty = parseInt(inputs[1].value);
+                const retail = parseFloat(inputs[2].value);
+                if(name && qty > 0) {
+                    newItems.push({name, qty, retail, id: 0}); // ID 0 implies manual entry/loss of link
+                    sub += qty * retail;
+                }
+            });
+
+            const tax = sub * (db.config.vatRate/100);
+            const total = sub + tax;
+            const payType = document.getElementById('editInvPay').value;
+            const custIdVal = document.getElementById('editInvCust').value;
+            const custId = custIdVal ? parseInt(custIdVal) : null;
+            const custName = custId ? db.customers.find(c=>c.id === custId).name : 'Guest Customer';
+
+            // APPLY NEW TXN
+            // Deduct stock
+            newItems.forEach(i => {
+                const p = db.products.find(x => x.name === i.name);
+                if(p) p.stock -= i.qty;
+            });
+            // Add balance
+            if(payType === 'credit' && custId) {
+                const c = db.customers.find(x => x.id === custId);
+                if(c) c.balance += total;
+            }
+
+            // Update Record
+            oldTxn.items = newItems;
+            oldTxn.sub = sub;
+            oldTxn.tax = tax;
+            oldTxn.total = total;
+            oldTxn.payType = payType;
+            oldTxn.entityId = custId;
+            oldTxn.entityName = custName;
+
+            saveDB();
+            window.closeModal();
+            loadInvoices(); // Refresh list
+            alert("Invoice Updated");
+        }
+
+        window.deleteInvoice = function() {
+            if(!editTxnId || !confirm("Delete this invoice permanently? This will reverse stock changes.")) return;
+            
+            const oldTxn = db.transactions.find(t => t.id === editTxnId);
+            // Revert stock
+            oldTxn.items.forEach(i => {
+                const p = db.products.find(x => x.name === i.name);
+                if(p) p.stock += i.qty;
+            });
+            // Revert customer balance
+            if(oldTxn.payType === 'credit' && oldTxn.entityId) {
+                const c = db.customers.find(x => x.id === oldTxn.entityId);
+                if(c) c.balance -= oldTxn.total;
+            }
+
+            db.transactions = db.transactions.filter(t => t.id !== editTxnId);
+            saveDB();
+            window.closeModal();
+            loadInvoices();
+        }
+
+        // --- Dashboard & Charts ---
+        let mainChart;
+        let catChart;
+
+        function loadDashboard() {
+            // FIX: Ensure arrays exist
+            if(!db.transactions) db.transactions = [];
+            if(!db.products) db.products = [];
+            if(!db.customers) db.customers = [];
+
+            const sales = db.transactions.filter(t => t.type === 'sale');
+            const revenue = sales.reduce((a,c) => a + c.total, 0);
+            const stockVal = db.products.reduce((a,c) => a + (c.stock * c.cost), 0);
+            const receivables = db.customers.reduce((a,c) => a + c.balance, 0);
+            const lowStock = db.products.filter(p => p.stock <= p.reorder);
+
+            document.getElementById('kpiRevenue').innerText = `${db.config.currency}${revenue.toFixed(2)}`;
+            document.getElementById('kpiStockVal').innerText = `${db.config.currency}${stockVal.toFixed(2)}`;
+            document.getElementById('kpiReceivables').innerText = `${db.config.currency}${receivables.toFixed(2)}`;
+            document.getElementById('kpiLowStock').innerText = lowStock.length;
+
+            const lsBody = document.getElementById('lowStockBody');
+            if (lsBody) {
+                lsBody.innerHTML = '';
+                lowStock.forEach(p => {
+                    lsBody.innerHTML += `
+                        <tr>
+                            <td class="p-3 text-white font-bold">${p.name}</td>
+                            <td class="p-3 text-gray-500">${p.sku}</td>
+                            <td class="p-3 text-gray-500">Internal</td>
+                            <td class="p-3 text-right text-red-500 font-bold">${p.stock}</td>
+                            <td class="p-3 text-right text-gray-400">${p.reorder}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Charts
+            const labels = [], salesData = [], purchData = [];
+            for(let i=6; i>=0; i--) {
+                const d = new Date(); d.setDate(d.getDate() - i);
+                const dateKey = d.toISOString().split('T')[0];
+                labels.push(d.toLocaleDateString(undefined, {weekday: 'short'}));
+                const dayTxns = db.transactions.filter(t => t.date.startsWith(dateKey));
+                salesData.push(dayTxns.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.total, 0));
+                purchData.push(dayTxns.filter(t => t.type === 'purchase').reduce((sum, t) => sum + t.total, 0));
+            }
+
+            const catTotals = {};
+            db.transactions.filter(t => t.type === 'sale').forEach(t => {
+                t.items.forEach(item => {
+                    const prod = db.products.find(p => p.id === item.id) || db.products.find(p => p.name === item.name);
+                    const cat = prod ? prod.category : 'Uncategorized';
+                    const lineTotal = item.qty * (item.retail || 0);
+                    catTotals[cat] = (catTotals[cat] || 0) + lineTotal;
+                });
+            });
+
+            const ctxMain = document.getElementById('mainChart').getContext('2d');
+            if(mainChart) mainChart.destroy();
+            mainChart = new Chart(ctxMain, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Sales', data: salesData, backgroundColor: '#00c853' },
+                        { label: 'Purchases', data: purchData, backgroundColor: '#333333' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            const ctxCat = document.getElementById('categoryChart').getContext('2d');
+            if(catChart) catChart.destroy();
+            catChart = new Chart(ctxCat, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(catTotals).length ? Object.keys(catTotals) : ['No Sales'],
+                    datasets: [{ data: Object.values(catTotals).length ? Object.values(catTotals) : [1], backgroundColor: ['#00c853', '#009624', '#69f0ae'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // --- Invoice Printing ---
+        function printInvoice(txn) {
+            // SHOW INVOICE VIEW, HIDE REPORT VIEW
+            document.getElementById('invoice-print-view').classList.remove('hidden');
+            document.getElementById('report-print-view').classList.add('hidden');
+
+            // Populate print area directly
+            // Show logo if exists
+            const logoImg = document.getElementById('printInvLogo');
+            if(db.config.logo) {
+                logoImg.src = db.config.logo;
+                logoImg.style.display = 'block';
+            } else {
+                logoImg.style.display = 'none';
+            }
+
+            document.getElementById('invCompName').innerText = db.config.name;
+            document.getElementById('invCompAddr').innerText = db.config.address;
+            document.getElementById('invCompPhone').innerText = db.config.phone;
+            document.getElementById('invCompTax').innerText = db.config.taxId;
+            
+            document.getElementById('invNo').innerText = txn.id.toString().slice(-6);
+            document.getElementById('invDate').innerText = new Date(txn.date).toLocaleDateString();
+            document.getElementById('invCustName').innerText = txn.entityName || 'Guest';
+            
+            const tbody = document.getElementById('invItemsBody');
+            tbody.innerHTML = '';
+            txn.items.forEach((item, idx) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${idx+1}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}</td>
+                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${item.qty}</td>
+                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${parseFloat(item.retail).toFixed(2)}</td>
+                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${(item.qty * item.retail).toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('invSub').innerText = (txn.sub || 0).toFixed(2);
+            document.getElementById('invTax').innerText = (txn.tax || 0).toFixed(2);
+            document.getElementById('invTotal').innerText = (txn.total || 0).toFixed(2);
+            
+            setTimeout(() => window.print(), 200);
+        }
+
+        // --- Report Printing ---
+        window.printReport = function() {
+            // HIDE INVOICE VIEW, SHOW REPORT VIEW
+            document.getElementById('invoice-print-view').classList.add('hidden');
+            const reportView = document.getElementById('report-print-view');
+            reportView.classList.remove('hidden');
+
+            // GENERATE REPORT HTML FOR PRINT
+            // Include Logo
+            let logoHtml = '';
+            if(db.config.logo) {
+                logoHtml = `<img src="${db.config.logo}" style="width: 50px; height: 50px; object-fit: contain; margin-bottom: 10px;">`;
+            }
+
+            let html = `
+                <div style="text-align:center; margin-bottom: 20px;">
+                    ${logoHtml}
+                    <h1 style="font-size: 24px; font-weight: bold; margin:0;">${db.config.name}</h1>
+                    <p style="margin:2px 0;">${db.config.address} | ${db.config.phone}</p>
+                    <h2 style="font-size: 18px; margin-top: 10px; text-decoration: underline;">${currentReportTitle}</h2>
+                    <p style="font-size: 12px;">Generated on: ${new Date().toLocaleString()}</p>
+                </div>
+            `;
+
+            // Table Construction
+            html += `<table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead>
+                    <tr style="background: #f0f0f0; border-bottom: 2px solid black;">`;
+            
+            // Derive headers from currentReportData logic (simplified based on known columns in currentReportData)
+            
+            if(currentReportTitle.includes("VAT")) {
+                html += `<th style="padding:5px; text-align:left;">Date</th>
+                         <th style="padding:5px; text-align:left;">Invoice #</th>
+                         <th style="padding:5px; text-align:right;">Taxable Amt</th>
+                         <th style="padding:5px; text-align:right;">VAT</th>
+                         <th style="padding:5px; text-align:right;">Total</th></tr></thead><tbody>`;
+                currentReportData.forEach(t => {
+                   html += `<tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding:5px;">${new Date(t.date).toLocaleDateString()}</td>
+                        <td style="padding:5px;">#${t.id.toString().slice(-6)}</td>
+                        <td style="padding:5px; text-align:right;">${db.config.currency}${(t.sub||0).toFixed(2)}</td>
+                        <td style="padding:5px; text-align:right;">${db.config.currency}${(t.tax||0).toFixed(2)}</td>
+                        <td style="padding:5px; text-align:right;">${db.config.currency}${t.total.toFixed(2)}</td>
+                   </tr>`; 
+                });
+            } else {
+                // Generic (Daily, Sales, etc)
+                html += `<th style="padding:5px; text-align:left;">Date</th>
+                         <th style="padding:5px; text-align:left;">Type</th>
+                         <th style="padding:5px; text-align:left;">Entity/Ref</th>
+                         <th style="padding:5px; text-align:right;">Amount</th></tr></thead><tbody>`;
+                currentReportData.forEach(t => {
+                   html += `<tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding:5px;">${new Date(t.date).toLocaleDateString()}</td>
+                        <td style="padding:5px; text-transform:uppercase;">${t.type}</td>
+                        <td style="padding:5px;">${t.entityName || '-'}</td>
+                        <td style="padding:5px; text-align:right;">${db.config.currency}${t.total.toFixed(2)}</td>
+                   </tr>`; 
+                });
+            }
+            
+            html += `</tbody></table>`;
+            
+            // Add Summary Footer
+            const total = currentReportData.reduce((a,c) => a + c.total, 0);
+
+            let footerHtml = '';
+            
+            if (currentReportTitle.includes("VAT")) {
+                // SPECIFIC VAT FOOTER
+                const totalVat = currentReportData.reduce((a,c) => a + (c.tax || 0), 0);
+                const totalTaxable = currentReportData.reduce((a,c) => a + (c.sub || 0), 0);
+                
+                footerHtml = `
+                <div style="text-align:right; margin-top: 10px; font-size: 14px; border-top: 2px solid black; padding-top: 5px;">
+                    <p style="margin: 2px 0;">Total Taxable: ${db.config.currency}${totalTaxable.toFixed(2)}</p>
+                    <p style="margin: 2px 0;">Total VAT Collected: ${db.config.currency}${totalVat.toFixed(2)}</p>
+                    <p style="margin: 5px 0; font-weight: bold; font-size: 16px;">Grand Total: ${db.config.currency}${total.toFixed(2)}</p>
+                </div>`;
+            } else {
+                // GENERIC FOOTER
+                footerHtml = `<div style="text-align:right; margin-top: 10px; font-weight:bold; border-top: 2px solid black; padding-top: 5px;">
+                    Total: ${db.config.currency}${total.toFixed(2)}
+                </div>`;
+            }
+
+            html += footerHtml;
+
+            reportView.innerHTML = html;
+            setTimeout(() => window.print(), 200);
+        }
+
+
+        // --- Settings ---
+        // Logo Handling
+        document.getElementById('confLogoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    tempLogoBase64 = evt.target.result;
+                    document.getElementById('confLogoPreview').src = tempLogoBase64;
+                    document.getElementById('confLogoPreview').classList.remove('hidden');
+                    document.getElementById('confLogoPlaceholder').classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        window.clearLogo = function() {
+            tempLogoBase64 = ''; // Empty string triggers removal
+            document.getElementById('confLogoInput').value = '';
+            document.getElementById('confLogoPreview').src = '';
+            document.getElementById('confLogoPreview').classList.add('hidden');
+            document.getElementById('confLogoPlaceholder').classList.remove('hidden');
+        }
+
+        document.getElementById('settingsForm').onsubmit = e => {
+            e.preventDefault();
+            db.config.name = document.getElementById('confName').value;
+            db.config.address = document.getElementById('confAddr').value;
+            db.config.phone = document.getElementById('confPhone').value;
+            db.config.taxId = document.getElementById('confTax').value;
+            db.config.vatRate = parseFloat(document.getElementById('confVatRate').value);
+            db.config.currency = document.getElementById('confCurr').value;
+
+            // Save Logo if changed
+            if(tempLogoBase64 !== null) {
+                db.config.logo = tempLogoBase64;
+            }
+
+            saveDB();
+            alert("Settings Saved");
+        };
+
+        function loadSettings() {
+            document.getElementById('confName').value = db.config.name;
+            document.getElementById('confAddr').value = db.config.address;
+            document.getElementById('confPhone').value = db.config.phone;
+            document.getElementById('confTax').value = db.config.taxId;
+            document.getElementById('confVatRate').value = db.config.vatRate;
+            document.getElementById('confCurr').value = db.config.currency;
+
+            // Load Logo
+            if(db.config.logo) {
+                document.getElementById('confLogoPreview').src = db.config.logo;
+                document.getElementById('confLogoPreview').classList.remove('hidden');
+                document.getElementById('confLogoPlaceholder').classList.add('hidden');
+                tempLogoBase64 = db.config.logo; // Initialize temp to current
+            } else {
+                clearLogo();
+                tempLogoBase64 = null; // Reset temp
+            }
+        }
+
+        // --- Reports Export Logic ---
+        window.exportReportCSV = function() {
+            if(!currentReportData || !currentReportData.length) {
+                alert("No report data to export. Please run a report first.");
+                return;
+            }
+            
+            // Define CSV Header
+            const headers = ["Date", "Type", "Entity/Ref", "Amount"];
+            const rows = [headers];
+            
+            // Add Data Rows
+            currentReportData.forEach(t => {
+                rows.push([
+                    new Date(t.date).toLocaleDateString(),
+                    t.type,
+                    t.entityName || '-',
+                    t.total.toFixed(2)
+                ]);
+            });
+            
+            // Convert to CSV String
+            const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+            
+            // Trigger Download
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "karta_report_export.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Reports ---
+        window.runReports = function(type) {
+            const tbody = document.getElementById('repTable');
+            const thead = document.getElementById('repHead');
+            const cards = document.getElementById('reportCards');
+            tbody.innerHTML = ''; cards.innerHTML = '';
+            
+            const fromDate = document.getElementById('repFrom').value;
+            const toDate = document.getElementById('repTo').value;
+
+            // Filter transactions by date
+            // FIX: Ensure transactions exists
+            if(!db.transactions) db.transactions = [];
+            
+            let filteredTxns = db.transactions.slice().reverse();
+            if(fromDate) filteredTxns = filteredTxns.filter(t => t.date.substring(0,10) >= fromDate);
+            if(toDate) filteredTxns = filteredTxns.filter(t => t.date.substring(0,10) <= toDate);
+
+            // Set Title
+            currentReportTitle = type.toUpperCase() + " REPORT";
+            document.getElementById('reportTitle').innerText = currentReportTitle;
+
+            // Helper to create card
+            const createCard = (title, value, color='white') => {
+                return `<div class="bg-karta-surface border border-karta-border p-6 rounded-lg"><h4 class="text-gray-400 text-xs uppercase">${title}</h4><h2 class="text-2xl font-bold text-${color} mt-2">${db.config.currency}${value.toFixed(2)}</h2></div>`;
+            };
+
+            if(type === 'trading') {
+                currentReportData = []; 
+                const sales = filteredTxns.filter(t => t.type === 'sale').reduce((a,c)=>a+c.total, 0);
+                const purchases = filteredTxns.filter(t => t.type === 'purchase').reduce((a,c)=>a+c.total, 0);
+                let cogs = 0;
+                filteredTxns.filter(t => t.type === 'sale').forEach(t => {
+                    t.items.forEach(i => { const p = db.products.find(x => x.name === i.name); if(p) cogs += (p.cost * i.qty); });
+                });
+                const grossProfit = sales - cogs;
+                cards.innerHTML += createCard('Total Sales', sales, 'green-400');
+                cards.innerHTML += createCard('COGS', cogs, 'red-400');
+                cards.innerHTML += createCard('Gross Profit', grossProfit, 'karta-primary');
+                thead.innerHTML = `<tr><th class="p-3">Metric</th><th class="p-3 text-right">Amount</th></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3">Sales Revenue</td><td class="p-3 text-right">${db.config.currency}${sales.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3">Less: Cost of Goods Sold</td><td class="p-3 text-right text-red-400">(${db.config.currency}${cogs.toFixed(2)})</td></tr>`;
+                tbody.innerHTML += `<tr class="font-bold border-t border-gray-700"><td class="p-3">Gross Profit</td><td class="p-3 text-right text-karta-primary">${db.config.currency}${grossProfit.toFixed(2)}</td></tr>`;
+                return;
+            }
+
+            if(type === 'balance') {
+                currentReportData = []; 
+                const stockVal = db.products.reduce((a,c) => a + (c.stock * c.cost), 0);
+                const receivables = db.customers.reduce((a,c) => a + c.balance, 0);
+                const payables = db.suppliers.reduce((a,c) => a + c.balance, 0);
+                const cashIn = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a,c) => a + c.total, 0) + db.transactions.filter(t => t.type === 'payment').reduce((a,c) => a + c.total, 0);
+                const cashOut = db.transactions.filter(t => t.type === 'expense').reduce((a,c) => a + c.total, 0);
+                const cashHand = cashIn - cashOut;
+                const assets = stockVal + receivables + cashHand;
+                const equity = assets - payables;
+                cards.innerHTML += createCard('Total Assets', assets, 'blue-400');
+                cards.innerHTML += createCard('Liabilities', payables, 'red-400');
+                cards.innerHTML += createCard('Equity', equity, 'green-400');
+                thead.innerHTML = `<tr><th class="p-3">Category</th><th class="p-3 text-right">Amount</th></tr>`;
+                tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 font-bold" colspan="2">Assets</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3">Current Stock</td><td class="p-3 text-right">${db.config.currency}${stockVal.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3">Accounts Receivable</td><td class="p-3 text-right">${db.config.currency}${receivables.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3">Cash/Bank (Est.)</td><td class="p-3 text-right">${db.config.currency}${cashHand.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 font-bold" colspan="2">Liabilities</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3">Accounts Payable</td><td class="p-3 text-right">${db.config.currency}${payables.toFixed(2)}</td></tr>`;
+                return;
+            }
+
+            // --- VAT REPORT LOGIC ---
+            if(type === 'vat') {
+                const sales = filteredTxns.filter(t => t.type === 'sale');
+                const totalTaxable = sales.reduce((a,c) => a + (c.sub || 0), 0);
+                const totalVat = sales.reduce((a,c) => a + (c.tax || 0), 0);
+                const totalWithVat = sales.reduce((a,c) => a + c.total, 0);
+
+                cards.innerHTML += createCard('Taxable Sales', totalTaxable, 'white');
+                cards.innerHTML += createCard('Total VAT Collected', totalVat, 'karta-primary');
+                cards.innerHTML += createCard('Grand Total', totalWithVat, 'green-400');
+
+                thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Invoice #</th><th class="p-3 text-right">Taxable Amt</th><th class="p-3 text-right">VAT</th><th class="p-3 text-right">Total</th></tr>`;
+                
+                sales.forEach(t => {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-800 text-gray-300";
+                    tr.innerHTML = `
+                        <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3 font-mono text-xs">#${t.id.toString().slice(-6)}</td>
+                        <td class="p-3 text-right">${db.config.currency}${(t.sub||0).toFixed(2)}</td>
+                        <td class="p-3 text-right text-karta-primary font-bold">${db.config.currency}${(t.tax||0).toFixed(2)}</td>
+                        <td class="p-3 text-right">${db.config.currency}${t.total.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                currentReportData = sales;
+                return;
+            }
+
+            // Standard Transaction Reports (Daily, Sales, Purchase, Expense)
+            
+            // Map 'sales' string to 'sale' database type
+            let dbType = type;
+            if(type === 'sales') dbType = 'sale'; 
+            
+            let total = 0;
+            let reportTxns = [];
+
+            if(type === 'daily') {
+                reportTxns = filteredTxns; // Show all for daily
+                thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Type</th><th class="p-3">Details</th><th class="p-3 text-right">Amount</th></tr>`;
+                reportTxns.forEach(t => {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-800 text-gray-300";
+                    let color = t.type === 'sale' || t.type === 'payment' ? 'text-green-500' : 'text-red-500';
+                    tr.innerHTML = `<td class="p-3">${new Date(t.date).toLocaleDateString()}</td><td class="p-3 uppercase text-xs font-bold">${t.type}</td><td class="p-3">${t.entityName || t.items[0]?.name || '-'}</td><td class="p-3 text-right ${color}">${db.config.currency}${t.total.toFixed(2)}</td>`;
+                    tbody.appendChild(tr);
+                });
+                // Summary for daily
+                const dSales = reportTxns.filter(t => t.type === 'sale').reduce((a,c)=>a+c.total,0);
+                const dExp = reportTxns.filter(t => t.type === 'expense').reduce((a,c)=>a+c.total,0);
+                cards.innerHTML += createCard('Sales', dSales, 'green-400');
+                cards.innerHTML += createCard('Expenses', dExp, 'red-400');
+                cards.innerHTML += createCard('Net', dSales - dExp, 'white');
+            } else {
+                // Filter specific type
+                reportTxns = filteredTxns.filter(t => t.type === dbType);
+                
+                // Add Action Header for Sales/Invoices
+                thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Entity/Ref</th><th class="p-3 text-right">Amount</th><th class="p-3 text-center">Action</th></tr>`;
+                
+                reportTxns.forEach(t => {
+                    total += t.total;
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-800 text-gray-300";
+                    
+                    // Action Button Logic
+                    let actionBtn = '';
+                    if(t.type === 'sale') {
+                        actionBtn = `<button onclick='printInvoiceStr(${JSON.stringify(t)})' class="text-gray-400 hover:text-white" title="Print/Export Invoice"><i class="fa-solid fa-print"></i></button>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3">${t.entityName || '-'}</td>
+                        <td class="p-3 text-right">${db.config.currency}${t.total.toFixed(2)}</td>
+                        <td class="p-3 text-center">${actionBtn}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                cards.innerHTML += createCard(`Total ${type}`, total, 'karta-primary');
+            }
+            
+            // Save for export
+            currentReportData = reportTxns;
+        }
+
+        // --- Global Refresh ---
+        function refreshUI() {
+            renderProducts();
+            renderCustomers();
+            renderSuppliers();
+            loadSettings();
+            
+            // Ensure array exists before filtering
+            const txns = db.transactions || [];
+
+            // Populate Purch History
+            const ph = document.getElementById('purchHistory');
+            ph.innerHTML = '';
+            txns.filter(t => t.type === 'purchase').slice().reverse().forEach(t => {
+                ph.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white">${t.entityName}</div><div class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString()}</div></div><div class="text-red-400 font-bold">-${t.total.toFixed(2)}</div></div>`;
+            });
+            
+             // Populate Expense History
+            const eh = document.getElementById('expHistory');
+            eh.innerHTML = '';
+            txns.filter(t => t.type === 'expense').slice().reverse().forEach(t => {
+                eh.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white">${t.items[0].name}</div><div class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString()}</div></div><div class="text-red-400 font-bold">-${t.total.toFixed(2)}</div></div>`;
+            });
+        }
+        
+        // --- Init ---
+        document.getElementById('invSearch').addEventListener('input', renderProducts);
+        document.getElementById('posSearch').addEventListener('input', loadPOS);
+        document.getElementById('custSearch').addEventListener('input', renderCustomers);
+        document.getElementById('supSearch').addEventListener('input', renderSuppliers);
+
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+            document.getElementById('date').innerText = new Date().toLocaleDateString(undefined, {weekday:'short', year:'numeric', month:'short', day:'numeric'});
+        }, 1000);
+
+        window.onload = () => {
+            refreshUI();
+            nav('dashboard');
+        };
+
+    </script>
+</body>
+</html>
