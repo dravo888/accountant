@@ -200,6 +200,10 @@
                     <i class="fa-solid fa-receipt w-5 text-center"></i> Invoices
                 </button>
 
+                <button onclick="nav('returns')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
+                    <i class="fa-solid fa-rotate-left w-5 text-center"></i> Returns & Refunds
+                </button>
+
                 <div class="text-xs font-bold text-karta-muted uppercase px-3 py-2 mt-4">Management</div>
                 <button onclick="nav('inventory')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
                     <i class="fa-solid fa-pills w-5 text-center"></i> Products & Stock
@@ -283,6 +287,11 @@
                             <p class="text-karta-muted text-xs uppercase tracking-wider">Low Stock Alerts</p>
                             <h3 class="text-2xl font-bold text-white mt-1" id="kpiLowStock">0</h3>
                         </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden">
+                            <div class="absolute right-0 top-0 p-4 opacity-10 text-red-600"><i class="fa-solid fa-calendar-xmark fa-3x"></i></div>
+                            <p class="text-karta-muted text-xs uppercase tracking-wider">Expired Products</p>
+                            <h3 class="text-2xl font-bold text-red-500 mt-1" id="kpiExpired">0</h3>
+                        </div>
                     </div>
 
                     <!-- Charts Area -->
@@ -325,6 +334,31 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Expired Products Alert -->
+                    <div class="bg-karta-surface border border-red-800 rounded-lg overflow-hidden">
+                        <div class="p-4 border-b border-red-800 flex justify-between items-center bg-red-950/30">
+                            <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-calendar-xmark text-red-500 mr-2"></i>Expired Products Alert</h3>
+                            <button onclick="nav('inventory')" class="text-xs text-red-400 hover:text-red-300">View & Remove</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="w-full text-left text-xs min-w-[500px]">
+                                <thead class="bg-white/5 text-gray-400">
+                                    <tr>
+                                        <th class="p-3">Product</th>
+                                        <th class="p-3">SKU</th>
+                                        <th class="p-3">Batch</th>
+                                        <th class="p-3 text-center">Expiry Date</th>
+                                        <th class="p-3 text-right">Stock</th>
+                                        <th class="p-3 text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="expiredBody" class="divide-y divide-gray-800">
+                                    <!-- JS Populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- POS TERMINAL -->
@@ -358,9 +392,26 @@
                                 <button onclick="clearCart()" class="text-xs text-red-400 hover:text-red-300">Clear</button>
                             </div>
                             <!-- Customer Select -->
-                            <div class="relative">
+                            <div class="relative mb-2">
                                 <input list="custDataList" id="posCustomerInput" placeholder="Guest Customer (Walk-in)" class="input-field text-xs">
                                 <datalist id="custDataList"></datalist>
+                            </div>
+                            <!-- Price Type Selector -->
+                            <div class="flex gap-2 mb-2">
+                                <label class="flex-1 flex items-center justify-center px-2 py-1 rounded border border-karta-border bg-karta-primary/20 text-xs cursor-pointer" title="Retail/Customer Price">
+                                    <input type="radio" name="priceType" value="retail" checked onchange="renderCart()" class="mr-1"> Retail
+                                </label>
+                                <label class="flex-1 flex items-center justify-center px-2 py-1 rounded border border-karta-border hover:bg-white/5 text-xs cursor-pointer" title="Wholesale Price">
+                                    <input type="radio" name="priceType" value="wholesale" onchange="renderCart()" class="mr-1"> Wholesale
+                                </label>
+                            </div>
+                            <!-- Discount Input -->
+                            <div class="flex gap-2 items-center">
+                                <label class="text-xs text-gray-400 flex-1">Discount %</label>
+                                <div class="flex items-center gap-1 flex-1">
+                                    <input type="number" id="posDiscount" value="0" min="0" max="100" step="0.1" class="input-field text-right text-xs" onchange="renderCart()" onkeyup="renderCart()">
+                                    <span class="text-xs text-gray-400">%</span>
+                                </div>
                             </div>
                         </div>
                         
@@ -397,8 +448,12 @@
 
                 <!-- INVOICES -->
                 <section id="invoices" class="hidden space-y-6 pb-20 md:pb-0">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <input type="text" id="invoiceSearch" placeholder="Search Invoice # or Customer Name..." class="input-field w-full md:w-80" onkeyup="loadInvoices()">
+                    <div class="flex flex-col gap-4">
+                        <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-end">
+                            <input type="text" id="invoiceSearch" placeholder="Search Invoice # or Customer Name..." class="input-field flex-1" onkeyup="loadInvoices()">
+                            <input type="date" id="invoiceDateFilter" class="input-field md:w-48" onchange="loadInvoices()" title="Filter by Date">
+                            <button onclick="clearInvoiceFilters()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded font-bold text-xs whitespace-nowrap">Clear All</button>
+                        </div>
                     </div>
                     <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
                         <div class="table-container">
@@ -419,6 +474,110 @@
                     </div>
                 </section>
 
+                <!-- RETURNS & REFUNDS -->
+                <section id="returns" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                        
+                        <!-- LEFT: CUSTOMER RETURN (SALES RETURN) -->
+                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 flex flex-col">
+                            <div class="border-b border-gray-700 pb-3 mb-3">
+                                <h3 class="font-bold text-white text-lg"><i class="fa-solid fa-user-tag text-blue-500 mr-2"></i>Sales Return (From Customer)</h3>
+                                <p class="text-xs text-gray-400">Process customer returns. Restocks items & refunds payment.</p>
+                            </div>
+                            
+                            <div class="space-y-4 mb-auto">
+                                <div>
+                                    <label class="text-xs text-gray-400">Select Customer</label>
+                                    <select id="retCustSelect" class="input-field" onchange="loadReturnProducts('cust')"></select>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Select Product to Return</label>
+                                    <select id="retCustProd" class="input-field" onchange="updateReturnPrice('cust')"></select>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="bg-white/5 p-3 rounded border border-gray-700">
+                                        <div class="text-xs text-gray-500">Retail Price</div>
+                                        <div class="text-xl font-bold text-white" id="retCustPrice">-</div>
+                                    </div>
+                                    <div class="bg-white/5 p-3 rounded border border-gray-700">
+                                        <div class="text-xs text-gray-500">Qty Purchased</div>
+                                        <div class="text-xl font-bold text-white" id="retCustQtyPurchased">-</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="text-xs text-gray-400">Quantity to Return (Max: <span id="retCustMaxQty">0</span>)</label>
+                                    <input type="number" id="retCustQty" class="input-field font-bold text-lg" value="1" min="1" max="1" onchange="updateReturnPrice('cust')">
+                                    <div id="retCustQtyWarning" class="text-xs text-red-400 mt-1 hidden"></div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-gray-700 pt-3 mt-4">
+                                <div class="flex justify-between text-sm text-gray-300 mb-3">
+                                    <span>Refund Amount (Incl. VAT):</span>
+                                    <span class="font-bold text-white" id="retCustAmt">$0.00</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="processReturn('cust', 'cash')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded font-bold text-xs">Cash Refund</button>
+                                    <button onclick="processReturn('cust', 'credit')" class="bg-blue-600 hover:bg-blue-500 text-white py-2 rounded font-bold text-xs">Credit Balance</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT: SUPPLIER RETURN (PURCHASE RETURN) -->
+                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 flex flex-col">
+                            <div class="border-b border-gray-700 pb-3 mb-3">
+                                <h3 class="font-bold text-white text-lg"><i class="fa-solid fa-truck-ramp-box text-orange-500 mr-2"></i>Purchase Return (To Supplier)</h3>
+                                <p class="text-xs text-gray-400">Return damaged/expired items to supplier. Reduces stock & balance.</p>
+                            </div>
+
+                            <div class="space-y-4 mb-auto">
+                                <div>
+                                    <label class="text-xs text-gray-400">Select Supplier</label>
+                                    <select id="retSupSelect" class="input-field" onchange="loadSupplierProducts()"></select>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Select Product to Return</label>
+                                    <select id="retSupProd" class="input-field" onchange="updateReturnPrice('sup')"></select>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="bg-white/5 p-3 rounded border border-gray-700">
+                                        <div class="text-xs text-gray-500">Cost Price</div>
+                                        <div class="text-xl font-bold text-white" id="retSupCost">-</div>
+                                    </div>
+                                    <div class="bg-white/5 p-3 rounded border border-gray-700">
+                                        <div class="text-xs text-gray-500">Stock Available</div>
+                                        <div class="text-xl font-bold text-white" id="retSupStock">-</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="text-xs text-gray-400">Quantity to Return</label>
+                                    <input type="number" id="retSupQty" class="input-field font-bold text-lg" value="1" min="1" onchange="updateReturnPrice('sup')">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Reason / Notes</label>
+                                    <input type="text" id="retSupReason" class="input-field" placeholder="e.g. Expired, Damaged">
+                                </div>
+                            </div>
+
+                            <div class="border-t border-gray-700 pt-3 mt-4">
+                                <div class="flex justify-between text-sm text-gray-300 mb-3">
+                                    <span>Total Value:</span>
+                                    <span class="font-bold text-white" id="retSupAmt">$0.00</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="processReturn('sup', 'cash')" class="bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold text-xs transition">Cash Return</button>
+                                    <button onclick="processReturn('sup', 'credit')" class="bg-orange-600 hover:bg-orange-500 text-white py-2 rounded font-bold text-xs transition">Credit Return</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
                 <!-- INVENTORY -->
                 <section id="inventory" class="hidden space-y-6 pb-20 md:pb-0">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -432,11 +591,12 @@
                     
                     <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
                         <div class="table-container">
-                            <table class="w-full text-left text-sm min-w-[800px]">
+                            <table class="w-full text-left text-sm min-w-[1000px]">
                                 <thead class="bg-white/5 text-gray-400 border-b border-karta-border">
                                     <tr>
                                         <th class="p-3">Product Name</th>
                                         <th class="p-3">SKU</th>
+                                        <th class="p-3">Batch/Expiry</th>
                                         <th class="p-3">Category</th>
                                         <th class="p-3 text-right">Stock</th>
                                         <th class="p-3 text-right">Cost</th>
@@ -512,6 +672,32 @@
                         <div class="bg-karta-surface border border-karta-border rounded-lg p-4 h-96 overflow-y-auto">
                             <h4 class="font-bold mb-3 text-red-500">Expense Log</h4>
                             <div id="expHistory" class="space-y-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Batch Tracking -->
+                    <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                        <div class="p-4 border-b border-karta-border flex justify-between items-center">
+                            <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-layer-group text-blue-400 mr-2"></i>Stock Batches (Old & New)</h3>
+                            <button onclick="loadBatches()" class="text-xs text-karta-primary hover:underline">Refresh</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="w-full text-left text-xs min-w-[900px]">
+                                <thead class="bg-white/5 text-gray-400">
+                                    <tr>
+                                        <th class="p-3">Product</th>
+                                        <th class="p-3">Batch Number</th>
+                                        <th class="p-3">Expiry Date</th>
+                                        <th class="p-3 text-right">Qty</th>
+                                        <th class="p-3 text-right">Cost/Unit</th>
+                                        <th class="p-3">Purchase Date</th>
+                                        <th class="p-3">Supplier</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="batchBody" class="divide-y divide-gray-800">
+                                    <!-- JS Populated -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </section>
@@ -660,6 +846,14 @@
                     <label class="text-xs text-gray-400">Category</label>
                     <input type="text" id="pCat" list="catList" class="input-field">
                     <datalist id="catList"><option value="Medicine"><option value="Equipment"><option value="Supplement"></datalist>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Batch Number</label>
+                    <input type="text" id="pBatch" class="input-field" placeholder="e.g. BATCH-001">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Expiry Date</label>
+                    <input type="date" id="pExpiry" class="input-field">
                 </div>
                 <div>
                     <label class="text-xs text-gray-400">Cost Price</label>
@@ -907,6 +1101,16 @@
                         <input type="number" step="0.01" id="poCost" required class="input-field">
                     </div>
                 </div>
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <label class="text-xs text-gray-400">Batch Number</label>
+                        <input type="text" id="poBatch" placeholder="e.g. BATCH-001" class="input-field">
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-xs text-gray-400">Expiry Date</label>
+                        <input type="date" id="poExpiry" class="input-field">
+                    </div>
+                </div>
                 <div>
                     <label class="text-xs text-gray-400">Ref / Invoice No</label>
                     <input type="text" id="poRef" class="input-field">
@@ -985,6 +1189,10 @@
                         <span>Subtotal:</span>
                         <span id="invSub">0.00</span>
                     </div>
+                    <div style="display: flex; justify-content: space-between; padding: 4px 0; color: #e74c3c;" id="invDiscountRow" style="display: none;">
+                        <span>Discount (<span id="invDiscountPercent">0</span>%):</span>
+                        <span id="invDiscount">0.00</span>
+                    </div>
                     <div style="display: flex; justify-content: space-between; padding: 4px 0;">
                         <span>VAT:</span>
                         <span id="invTax">0.00</span>
@@ -1051,6 +1259,7 @@
             products: [],   
             customers: [], 
             suppliers: [],
+            batches: [],
             transactions: []
         };
         
@@ -1255,6 +1464,8 @@
             if(page === 'dashboard') loadDashboard();
             if(page === 'pos') loadPOS();
             if(page === 'invoices') loadInvoices();
+            if(page === 'purchases') loadBatches();
+            if(page === 'returns') loadReturns();
             if(page === 'reports') runReports('daily');
         }
 
@@ -1330,6 +1541,8 @@
                 name: document.getElementById('pName').value,
                 sku: document.getElementById('pSku').value,
                 category: document.getElementById('pCat').value,
+                batch: document.getElementById('pBatch').value,
+                expiry: document.getElementById('pExpiry').value,
                 cost: parseFloat(document.getElementById('pCost').value),
                 retail: parseFloat(document.getElementById('pRetail').value),
                 wholesale: parseFloat(document.getElementById('pWhole').value) || 0,
@@ -1338,10 +1551,47 @@
             };
             db.products.push(p);
             saveDB();
+            renderProducts();
+            loadDashboard();
             window.closeModal();
         };
 
         function renderProducts() {
+            // AUTO-CLEAN: Remove old stock products with 0 qty if newer stock exists
+            if (!db.products) db.products = [];
+            
+            const productNames = {};
+            db.products.forEach(p => {
+                if (!productNames[p.name]) productNames[p.name] = [];
+                productNames[p.name].push(p);
+            });
+            
+            // For each product name, if we have multiple batches
+            Object.keys(productNames).forEach(name => {
+                const variants = productNames[name];
+                if(variants.length > 1) {
+                    // Sort by expiry date - oldest first (FEFO: First Expire, First Out)
+                    variants.sort((a, b) => {
+                        const expiryA = a.expiry ? new Date(a.expiry) : new Date('2099-12-31');
+                        const expiryB = b.expiry ? new Date(b.expiry) : new Date('2099-12-31');
+                        return expiryA - expiryB;
+                    });
+                    
+                    // Check if we have at least one variant with stock > 0
+                    const hasNewStock = variants.some(v => v.stock > 0);
+                    
+                    // If newer stock exists, delete old items with 0 quantity
+                    if(hasNewStock) {
+                        variants.forEach((v, idx) => {
+                            if(idx > 0 && v.stock === 0) {
+                                // This is an older batch with 0 stock - delete it
+                                db.products = db.products.filter(p => p.id !== v.id);
+                            }
+                        });
+                    }
+                }
+            });
+            
             const tbody = document.getElementById('invBody');
             tbody.innerHTML = '';
             const search = document.getElementById('invSearch').value.toLowerCase();
@@ -1353,9 +1603,20 @@
             .forEach(p => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-white/5 transition";
+                
+                // Batch/Expiry Info
+                let batchInfo = `<div class="text-xs text-gray-500">N/A</div>`;
+                if(p.batch || p.expiry) {
+                    batchInfo = `
+                        <div class="text-xs text-gray-400">Batch: <span class="text-white">${p.batch || '-'}</span></div>
+                        <div class="text-[10px] text-gray-500">Exp: ${p.expiry || '-'}</div>
+                    `;
+                }
+                
                 tr.innerHTML = `
                     <td class="p-3 font-bold text-white">${p.name}</td>
                     <td class="p-3 text-gray-400 font-mono text-xs">${p.sku}</td>
+                    <td class="p-3">${batchInfo}</td>
                     <td class="p-3"><span class="px-2 py-1 bg-gray-800 rounded text-xs">${p.category}</span></td>
                     <td class="p-3 text-right font-bold ${p.stock <= p.reorder ? 'text-red-500' : 'text-green-500'}">${p.stock}</td>
                     <td class="p-3 text-right text-gray-500">${db.config.currency} ${p.cost}</td>
@@ -1778,13 +2039,52 @@
             const prodId = parseInt(document.getElementById('poProd').value);
             const qty = parseInt(document.getElementById('poQty').value);
             const total = parseFloat(document.getElementById('poCost').value);
+            const batch = document.getElementById('poBatch').value;
+            const expiry = document.getElementById('poExpiry').value;
             
-            const prod = db.products.find(p => p.id === prodId);
+            const origProd = db.products.find(p => p.id === prodId);
             const sup = db.suppliers.find(s => s.id === supId);
             
-            if(prod && sup) {
-                prod.stock += qty;
-                prod.cost = total / qty; 
+            if(origProd && sup) {
+                // Create NEW PRODUCT entry for this batch/purchase instead of restocking
+                const newProductId = Date.now();
+                const costPrice = total / qty;
+                
+                db.products.push({
+                    id: newProductId,
+                    name: origProd.name,
+                    sku: origProd.sku + '-' + batch.substring(0, 3).toUpperCase() || origProd.sku + '-' + Date.now().toString().slice(-3),
+                    category: origProd.category,
+                    batch: batch || 'N/A',
+                    expiry: expiry || 'N/A',
+                    cost: costPrice,
+                    retail: origProd.retail,
+                    wholesale: origProd.wholesale,
+                    stock: qty,
+                    reorder: origProd.reorder,
+                    purchaseDate: new Date().toISOString().split('T')[0],
+                    supplierId: supId,
+                    supplierName: sup.name,
+                    ref: document.getElementById('poRef').value
+                });
+                
+                // Also create batch record for tracking
+                if (!db.batches) db.batches = [];
+                
+                db.batches.push({
+                    id: Date.now(),
+                    productId: newProductId,
+                    productName: origProd.name,
+                    batchNumber: batch || 'N/A',
+                    expiryDate: expiry || 'N/A',
+                    quantity: qty,
+                    costPrice: costPrice,
+                    purchaseDate: new Date().toISOString().split('T')[0],
+                    supplierId: supId,
+                    supplierName: sup.name,
+                    ref: document.getElementById('poRef').value
+                });
+                
                 sup.balance += total;
                 
                 db.transactions.push({
@@ -1793,12 +2093,21 @@
                     date: new Date().toISOString(),
                     entityId: supId,
                     entityName: sup.name,
-                    items: [{ name: prod.name, qty, cost: prod.cost }],
+                    items: [{ name: origProd.name, qty, cost: costPrice }],
                     total: total,
+                    batch: batch,
+                    expiry: expiry,
                     ref: document.getElementById('poRef').value
                 });
                 saveDB();
+                
+                // Clear inputs
+                document.getElementById('poBatch').value = '';
+                document.getElementById('poExpiry').value = '';
+                
                 window.closeModal();
+                alert('New product entry created for batch: ' + (batch || 'N/A'));
+                loadInventory();
             }
         };
 
@@ -1818,11 +2127,44 @@
 
         // --- POS Logic ---
         function loadPOS() {
+            // AUTO-CLEAN: Remove old stock products with 0 qty if newer stock exists
+            if (!db.products) db.products = [];
+            
+            const productNames = {};
+            db.products.forEach(p => {
+                if (!productNames[p.name]) productNames[p.name] = [];
+                productNames[p.name].push(p);
+            });
+            
+            // For each product name, if we have multiple batches
+            Object.keys(productNames).forEach(name => {
+                const variants = productNames[name];
+                if(variants.length > 1) {
+                    // Sort by expiry date - oldest first (FEFO: First Expire, First Out)
+                    variants.sort((a, b) => {
+                        const expiryA = a.expiry ? new Date(a.expiry) : new Date('2099-12-31');
+                        const expiryB = b.expiry ? new Date(b.expiry) : new Date('2099-12-31');
+                        return expiryA - expiryB;
+                    });
+                    
+                    // Check if we have at least one variant with stock > 0
+                    const hasNewStock = variants.some(v => v.stock > 0);
+                    
+                    // If newer stock exists, delete old items with 0 quantity
+                    if(hasNewStock) {
+                        variants.forEach((v, idx) => {
+                            if(idx > 0 && v.stock === 0) {
+                                // This is an older batch with 0 stock - delete it
+                                db.products = db.products.filter(p => p.id !== v.id);
+                            }
+                        });
+                    }
+                }
+            });
+            
             const grid = document.getElementById('posGrid');
             grid.innerHTML = '';
             const search = document.getElementById('posSearch').value.toLowerCase();
-            
-            if (!db.products) db.products = [];
 
             db.products.filter(p => p.stock > 0 && (p.name.toLowerCase().includes(search) || p.sku.includes(search)))
             .forEach(p => {
@@ -1836,7 +2178,11 @@
                         <span class="text-xs font-bold text-karta-primary">Qty: ${p.stock}</span>
                     </div>
                     <div class="font-bold text-white text-sm truncate">${p.name}</div>
-                    <div class="text-karta-primary font-bold mt-1">${db.config.currency}${p.retail}</div>
+                    <div class="text-xs text-gray-500 mt-1">
+                        ${p.batch ? `<div>Batch: <span class="text-white">${p.batch}</span></div>` : ''}
+                        ${p.expiry ? `<div>Exp: <span class="text-white">${p.expiry}</span></div>` : ''}
+                    </div>
+                    <div class="text-karta-primary font-bold mt-2">${db.config.currency}${p.retail}</div>
                 `;
                 grid.appendChild(el);
             });
@@ -1884,34 +2230,47 @@
             body.innerHTML = '';
             let sub = 0;
             
+            // Get selected price type
+            const priceType = document.querySelector('input[name="priceType"]:checked')?.value || 'retail';
+            
             // Check VAT Toggle
             const applyVat = document.getElementById('posVatToggle').checked;
+            
+            // Get discount percentage
+            const discountPercent = parseFloat(document.getElementById('posDiscount').value) || 0;
             
             if(cart.length === 0) {
                 body.innerHTML = `<div class="flex h-full items-center justify-center text-gray-600 flex-col py-8 md:py-0"><i class="fa-solid fa-basket-shopping text-4xl mb-2"></i><p>Cart is empty</p></div>`;
             } else {
                 cart.forEach((item, idx) => {
-                    sub += item.retail * item.qty;
+                    // Use selected price type (retail or wholesale)
+                    const price = priceType === 'wholesale' ? (item.wholesale || item.retail) : item.retail;
+                    sub += price * item.qty;
                     const row = document.createElement('div');
                     row.className = "flex justify-between items-center bg-white/5 p-2 rounded text-xs";
                     row.innerHTML = `
                         <div class="flex-1">
                             <div class="text-white font-bold">${item.name}</div>
-                            <div class="text-gray-400">${db.config.currency}${item.retail}</div>
+                            <div class="text-gray-400">${db.config.currency}${price.toFixed(2)} ${priceType === 'wholesale' ? '<span class="text-blue-400">(W)</span>' : ''}</div>
                         </div>
                         <div class="flex items-center gap-2 mx-2">
                             <button onclick="updateCartQty(${idx}, -1)" class="w-6 h-6 bg-gray-700 rounded hover:bg-gray-600">-</button>
                             <span class="font-bold w-4 text-center">${item.qty}</span>
                             <button onclick="updateCartQty(${idx}, 1)" class="w-6 h-6 bg-gray-700 rounded hover:bg-gray-600">+</button>
                         </div>
-                        <div class="font-bold mr-2 w-16 text-right">${db.config.currency}${item.qty * item.retail}</div>
+                        <div class="font-bold mr-2 w-16 text-right">${db.config.currency}${(item.qty * price).toFixed(2)}</div>
                         <button onclick="cart.splice(${idx},1); renderCart()" class="text-red-500"><i class="fa-solid fa-times"></i></button>
                     `;
                     body.appendChild(row);
                 });
             }
 
-            const tax = applyVat ? sub * (db.config.vatRate / 100) : 0;
+            // Calculate discount amount
+            const discountAmount = sub * (discountPercent / 100);
+            const subtotalAfterDiscount = sub - discountAmount;
+            
+            // Calculate tax on discounted amount
+            const tax = applyVat ? subtotalAfterDiscount * (db.config.vatRate / 100) : 0;
             
             document.getElementById('posSubTotal').innerText = `${db.config.currency}${sub.toFixed(2)}`;
             document.getElementById('posVatRate').innerText = db.config.vatRate;
@@ -1919,7 +2278,7 @@
             // If No VAT, strike through or dim the tax text
             document.getElementById('posTax').className = applyVat ? "" : "line-through text-gray-600";
             
-            document.getElementById('posTotal').innerText = `${db.config.currency}${(sub + tax).toFixed(2)}`;
+            document.getElementById('posTotal').innerText = `${db.config.currency}${(subtotalAfterDiscount + tax).toFixed(2)}`;
         }
 
         window.clearCart = function() { cart = []; renderCart(); }
@@ -1932,11 +2291,22 @@
             let custId = custIdMatch ? parseInt(custIdMatch[1]) : null;
             let custName = custInput.split('[')[0].trim() || 'Guest Customer';
 
-            // Recalculate based on current toggle state
+            // Get selected price type
+            const priceType = document.querySelector('input[name="priceType"]:checked')?.value || 'retail';
+
+            // Get discount percentage
+            const discountPercent = parseFloat(document.getElementById('posDiscount').value) || 0;
+
+            // Recalculate based on current price type, discount, and VAT toggle
             const applyVat = document.getElementById('posVatToggle').checked;
-            const sub = cart.reduce((a,c) => a + c.qty * c.retail, 0);
-            const tax = applyVat ? sub * (db.config.vatRate / 100) : 0;
-            const total = sub + tax;
+            const sub = cart.reduce((a, c) => {
+                const price = priceType === 'wholesale' ? (c.wholesale || c.retail) : c.retail;
+                return a + c.qty * price;
+            }, 0);
+            const discount = sub * (discountPercent / 100);
+            const subtotalAfterDiscount = sub - discount;
+            const tax = applyVat ? subtotalAfterDiscount * (db.config.vatRate / 100) : 0;
+            const total = subtotalAfterDiscount + tax;
 
             if(type === 'credit') {
                 if(!custId) return alert("Please select a registered customer for credit sales.");
@@ -1956,7 +2326,10 @@
                 entityId: custId,
                 entityName: custName,
                 items: JSON.parse(JSON.stringify(cart)),
+                priceType: priceType,
                 sub: sub,
+                discount: discount,
+                discountPercent: discountPercent,
                 tax: tax,
                 total: total,
                 payType: type
@@ -1967,8 +2340,346 @@
             if(type === 'cash') printInvoice(txn);
             else alert("Credit Sale Recorded Successfully");
             
+            document.getElementById('posDiscount').value = '0';
             clearCart();
             document.getElementById('posCustomerInput').value = '';
+            // Reset to retail price after checkout
+            document.querySelector('input[name="priceType"][value="retail"]').checked = true;
+        }
+
+        // --- RETURNS & REFUNDS LOGIC ---
+        window.loadReturnProducts = function(mode) {
+            if(mode === 'cust') {
+                const custVal = document.getElementById('retCustSelect').value || '';
+                const isWalkin = custVal.startsWith('walkin:');
+                const walkinName = isWalkin ? custVal.split(':')[1] : null;
+                const custId = isWalkin ? null : (custVal ? parseInt(custVal) : null);
+
+                const custSel = document.getElementById('retCustProd');
+                custSel.innerHTML = '<option value="">Select Product...</option>';
+
+                // Calculate total qty purchased per product for this customer (handles walk-ins)
+                const custTxns = db.transactions.filter(t => t.type === 'sale' && !t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
+                const productQtyMap = {}; // { productId: totalQty }
+
+                custTxns.forEach(t => {
+                    if(t.items) {
+                        t.items.forEach(item => {
+                            const itemId = item.id;
+                            productQtyMap[itemId] = (productQtyMap[itemId] || 0) + (item.qty || 1);
+                        });
+                    }
+                });
+
+                // Calculate qty already returned for each product
+                const returnTxns = db.transactions.filter(t => t.type === 'sale' && t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
+                const productReturnedMap = {}; // { productId: totalReturned }
+
+                returnTxns.forEach(t => {
+                    if(t.items) {
+                        t.items.forEach(item => {
+                            const itemId = item.id;
+                            productReturnedMap[itemId] = (productReturnedMap[itemId] || 0) + (item.qty || 1);
+                        });
+                    }
+                });
+
+                // Show products with remaining balance
+                db.products.forEach(p => {
+                    const totalPurchased = productQtyMap[p.id] || 0;
+                    const totalReturned = productReturnedMap[p.id] || 0;
+                    const remaining = totalPurchased - totalReturned;
+
+                    if(remaining > 0) {
+                        custSel.innerHTML += `<option value="${p.id}" data-max-qty="${remaining}">${p.name} (Can return: ${remaining}/${totalPurchased})</option>`;
+                    }
+                });
+
+                // Reset quantity fields
+                document.getElementById('retCustQty').value = 1;
+                document.getElementById('retCustQty').max = 1;
+                document.getElementById('retCustMaxQty').innerText = '0';
+                document.getElementById('retCustQtyPurchased').innerText = '-';
+                document.getElementById('retCustPrice').innerText = '-';
+            }
+        }
+
+        window.loadSupplierProducts = function() {
+            const supId = parseInt(document.getElementById('retSupSelect').value);
+            const prodSel = document.getElementById('retSupProd');
+            prodSel.innerHTML = '<option value="">Select Product...</option>';
+            
+            // Get products that have stock
+            let supplierProducts = db.products.filter(p => p.stock > 0);
+            
+            // Sort by expiry date - closest expiration first
+            supplierProducts.sort((a, b) => {
+                const expA = a.expiry ? new Date(a.expiry) : new Date('9999-12-31');
+                const expB = b.expiry ? new Date(b.expiry) : new Date('9999-12-31');
+                return expA - expB;
+            });
+            
+            supplierProducts.forEach(p => {
+                const expiryText = p.expiry ? ` | Exp: ${p.expiry}` : ' | No Expiry';
+                const batchText = p.batch ? ` | Batch: ${p.batch}` : '';
+                prodSel.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock}${batchText}${expiryText})</option>`;
+            });
+        }
+
+        window.updateReturnPrice = function(mode) {
+            if(mode === 'cust') {
+                const prodSelect = document.getElementById('retCustProd');
+                const selectedOption = prodSelect.options[prodSelect.selectedIndex] || {};
+                const pid = parseInt(prodSelect.value);
+                const qty = parseInt(document.getElementById('retCustQty').value) || 0;
+                const maxQty = parseInt(selectedOption.getAttribute && selectedOption.getAttribute('data-max-qty')) || 0;
+                const prod = db.products.find(p => p.id === pid);
+
+                // Determine if selected customer is walk-in
+                const custVal = document.getElementById('retCustSelect').value || '';
+                const isWalkin = custVal.startsWith('walkin:');
+                const walkinName = isWalkin ? custVal.split(':')[1] : null;
+                const custId = isWalkin ? null : (custVal ? parseInt(custVal) : null);
+
+                // Calculate total purchased for selected product
+                const custTxns = db.transactions.filter(t => t.type === 'sale' && !t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
+                let totalPurchased = 0;
+                custTxns.forEach(t => {
+                    if(t.items) {
+                        t.items.forEach(item => {
+                            if(item.id === pid) totalPurchased += (item.qty || 1);
+                        });
+                    }
+                });
+
+                if(prod) {
+                    // Update max quantity input
+                    document.getElementById('retCustQty').max = maxQty;
+                    document.getElementById('retCustMaxQty').innerText = maxQty;
+                    document.getElementById('retCustQtyPurchased').innerText = totalPurchased;
+                    document.getElementById('retCustPrice').innerText = `${db.config.currency}${prod.retail}`;
+
+                    // Check if qty exceeds maximum
+                    const warning = document.getElementById('retCustQtyWarning');
+                    if(qty > maxQty) {
+                        document.getElementById('retCustQty').value = maxQty;
+                        warning.innerText = `⚠️ Customer purchased only ${totalPurchased} units. Max return: ${maxQty}`;
+                        warning.classList.remove('hidden');
+                    } else {
+                        warning.classList.add('hidden');
+                    }
+
+                    // Calculate refund
+                    const returnQty = Math.min(qty, maxQty);
+                    const subtotal = prod.retail * returnQty;
+                    const vatAmount = subtotal * (db.config.vatRate / 100);
+                    const totalWithVat = subtotal + vatAmount;
+                    document.getElementById('retCustAmt').innerText = `${db.config.currency}${totalWithVat.toFixed(2)}`;
+                }
+            } else if(mode === 'sup') {
+                const pid = parseInt(document.getElementById('retSupProd').value);
+                const qty = parseInt(document.getElementById('retSupQty').value) || 0;
+                const prod = db.products.find(p => p.id === pid);
+                if(prod) {
+                    const total = prod.cost * qty;
+                    document.getElementById('retSupCost').innerText = `${db.config.currency}${prod.cost}`;
+                    document.getElementById('retSupStock').innerText = prod.stock;
+                    document.getElementById('retSupAmt').innerText = `${db.config.currency}${total.toFixed(2)}`;
+                }
+            }
+        }
+
+        window.processReturn = function(mode, type) {
+            if(mode === 'cust') {
+                const prodVal = document.getElementById('retCustProd').value;
+                const pid = parseInt(prodVal);
+                const qty = parseInt(document.getElementById('retCustQty').value);
+                const custVal = document.getElementById('retCustSelect').value || '';
+                const isWalkin = custVal.startsWith('walkin:');
+                const walkinName = isWalkin ? custVal.split(':')[1] : null;
+                const custId = isWalkin ? null : (custVal ? parseInt(custVal) : null);
+
+                if(!pid || !qty || (!isWalkin && !custId) && !isWalkin) return alert("Please fill all fields!");
+
+                const prod = db.products.find(p => p.id === pid);
+                const cust = isWalkin ? null : db.customers.find(c => c.id === custId);
+
+                if(!prod) return alert("Product not found!");
+                if(!isWalkin && !cust) return alert("Customer not found!");
+
+                // Calculate max returnable quantity for this product for this customer (handle walk-in)
+                const custTxns = db.transactions.filter(t => t.type === 'sale' && !t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
+                let totalPurchased = 0;
+                custTxns.forEach(t => {
+                    if(t.items) {
+                        t.items.forEach(item => {
+                            if(item.id === pid) totalPurchased += (item.qty || 1);
+                        });
+                    }
+                });
+
+                const returnTxns = db.transactions.filter(t => t.type === 'sale' && t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
+                let totalReturned = 0;
+                returnTxns.forEach(t => {
+                    if(t.items) {
+                        t.items.forEach(item => {
+                            if(item.id === pid) totalReturned += (item.qty || 1);
+                        });
+                    }
+                });
+
+                const remaining = totalPurchased - totalReturned;
+
+                // Validation: Cannot return more than purchased
+                if(qty > remaining) {
+                    return alert(`❌ Cannot return ${qty} units!\n\nPurchased: ${totalPurchased}\nAlready Returned: ${totalReturned}\nCan Return: ${remaining}`);
+                }
+
+                if(prod.stock < qty) return alert("Insufficient stock to return!");
+
+                // Calculate refund including VAT
+                const subtotal = prod.retail * qty;
+                const vatRefund = subtotal * (db.config.vatRate / 100);
+                const totalRefund = subtotal + vatRefund;
+
+                if(confirm(`Process return of ${qty}x ${prod.name}?\nRefund: ${db.config.currency}${totalRefund.toFixed(2)}`)) {
+                    // Restore stock
+                    prod.stock += qty;
+
+                    // Update customer balance (reduce their debt) only for registered customers
+                    if(!isWalkin && cust) {
+                        cust.balance -= totalRefund;
+                    }
+
+                    // Record transaction as NEGATIVE sale (reduces turnover & VAT)
+                    db.transactions.push({
+                        id: Date.now(),
+                        type: 'sale',
+                        date: new Date().toISOString(),
+                        entityId: custId,
+                        entityName: isWalkin ? walkinName : (cust ? cust.name : 'Guest Customer'),
+                        items: [{id: pid, name: prod.name, qty: qty, retail: prod.retail}],
+                        sub: -subtotal,
+                        tax: -vatRefund,
+                        total: -totalRefund,
+                        payType: type,
+                        isReturn: true
+                    });
+
+                    saveDB();
+                    alert(`Return Processed!\nRefund: ${db.config.currency}${totalRefund.toFixed(2)}`);
+                    loadDashboard();
+                    runReports(currentReportTitle ? currentReportTitle.toLowerCase().split(' ')[0] : 'daily');
+
+                    // Reset form
+                    document.getElementById('retCustSelect').value = '';
+                    document.getElementById('retCustProd').innerHTML = '<option value="">Select Product...</option>';
+                    document.getElementById('retCustQty').value = 1;
+                    document.getElementById('retCustAmt').innerText = '$0.00';
+                }
+            } else if(mode === 'sup') {
+                const pid = parseInt(document.getElementById('retSupProd').value);
+                const qty = parseInt(document.getElementById('retSupQty').value);
+                const supId = parseInt(document.getElementById('retSupSelect').value);
+                const reason = document.getElementById('retSupReason').value;
+                
+                if(!pid || !qty || !supId) return alert("Please fill all fields!");
+                
+                const prod = db.products.find(p => p.id === pid);
+                const sup = db.suppliers.find(s => s.id === supId);
+                
+                if(!prod || !sup) return alert("Product/Supplier not found!");
+                if(prod.stock < qty) return alert("Cannot return more than current stock!");
+                
+                const totalValue = prod.cost * qty;
+                const returnMethod = type; // 'cash' or 'credit' from button
+                
+                if(confirm(`Return ${qty}x ${prod.name} to ${sup.name}?\nValue: ${db.config.currency}${totalValue.toFixed(2)}\nMethod: ${returnMethod.toUpperCase()}`)) {
+                    // Reduce stock
+                    prod.stock -= qty;
+                    
+                    // Handle accounting based on payment method
+                    if(returnMethod === 'cash') {
+                        // CASH: Record as cash received (increases cash account)
+                        db.transactions.push({
+                            id: Date.now(),
+                            type: 'payment',  // Payment type = cash received
+                            date: new Date().toISOString(),
+                            entityId: supId,
+                            entityName: sup.name,
+                            items: [{id: pid, name: prod.name, qty: qty, cost: prod.cost}],
+                            total: totalValue,  // Positive = cash in
+                            ref: 'Supplier Return - ' + (reason || 'Stock Return'),
+                            isReturn: true
+                        });
+                        // Reduce supplier balance (what we still owe them)
+                        sup.balance -= totalValue;
+                    } else {
+                        // CREDIT: Record as negative purchase (reduces purchase cost & balance)
+                        db.transactions.push({
+                            id: Date.now(),
+                            type: 'purchase',
+                            date: new Date().toISOString(),
+                            entityId: supId,
+                            entityName: sup.name,
+                            items: [{id: pid, name: prod.name, qty: qty, cost: prod.cost}],
+                            total: -totalValue,  // Negative = credit note
+                            ref: reason || 'Stock Return - Credit Note',
+                            payType: 'credit',
+                            isReturn: true
+                        });
+                        // Reduce supplier balance (what we still owe them)
+                        sup.balance -= totalValue;
+                    }
+                    
+                    saveDB();
+                    alert(`Supplier Return Processed!\nMethod: ${returnMethod.toUpperCase()}\nValue: ${db.config.currency}${totalValue.toFixed(2)}`);
+                    loadDashboard();
+                    runReports(currentReportTitle ? currentReportTitle.toLowerCase().split(' ')[0] : 'daily');
+                    
+                    // Reset form
+                    document.getElementById('retSupSelect').value = '';
+                    document.getElementById('retSupProd').innerHTML = '<option value="">Select Product...</option>';
+                    document.getElementById('retSupQty').value = 1;
+                    document.getElementById('retSupReason').value = '';
+                    document.getElementById('retSupAmt').innerText = '$0.00';
+                }
+            }
+        }
+
+        // --- Returns Page Loader ---
+        window.loadReturns = function() {
+            // Populate customer select for returns
+            const custSel = document.getElementById('retCustSelect');
+            custSel.innerHTML = '<option value="">Select Customer...</option>';
+            
+            // Add registered customers
+            db.customers.forEach(c => {
+                custSel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+            
+            // Add walk-in customers (anyone with transactions but no customer ID)
+            const walkInNames = new Set();
+            db.transactions.forEach(t => {
+                if(t.type === 'sale' && !t.entityId && t.entityName && t.entityName !== 'Guest Customer') {
+                    walkInNames.add(t.entityName);
+                }
+            });
+            
+            // Add a separator and walk-in customers
+            if(walkInNames.size > 0) {
+                custSel.innerHTML += `<option value="" disabled>── Walk-in Customers ──</option>`;
+                walkInNames.forEach(name => {
+                    custSel.innerHTML += `<option value="walkin:${name}">${name} (Walk-in)</option>`;
+                });
+            }
+            
+            // Populate supplier select for returns
+            const supSel = document.getElementById('retSupSelect');
+            supSel.innerHTML = '<option value="">Select Supplier...</option>';
+            db.suppliers.forEach(s => {
+                supSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+            });
         }
 
         // --- Invoice List Logic ---
@@ -1976,25 +2687,42 @@
             const tbody = document.getElementById('invoiceListBody');
             tbody.innerHTML = '';
             const search = document.getElementById('invoiceSearch').value.toLowerCase();
+            const filterDate = document.getElementById('invoiceDateFilter').value;
 
             db.transactions.slice().reverse().filter(t => t.type === 'sale').forEach(t => {
-                if(t.id.toString().includes(search) || t.entityName.toLowerCase().includes(search)) {
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-white/5 border-b border-gray-800";
-                    tr.innerHTML = `
-                        <td class="p-3 text-gray-400 text-xs">${new Date(t.date).toLocaleDateString()}</td>
-                        <td class="p-3 font-mono">#${t.id.toString().slice(-6)}</td>
-                        <td class="p-3 font-bold text-white">${t.entityName}</td>
-                        <td class="p-3 text-right text-green-400">${db.config.currency}${t.total.toFixed(2)}</td>
-                        <td class="p-3 text-center"><span class="px-2 py-1 rounded text-xs ${t.payType==='credit' ? 'bg-yellow-900 text-yellow-300' : 'bg-green-900 text-green-300'} uppercase">${t.payType || 'cash'}</span></td>
-                        <td class="p-3 text-center">
-                            <button onclick="editInvoice(${t.id})" class="text-gray-400 hover:text-white mx-1"><i class="fa-solid fa-pen"></i></button>
-                            <button onclick='printInvoiceStr(${JSON.stringify(t)})' class="text-blue-400 hover:text-blue-300 mx-1"><i class="fa-solid fa-print"></i></button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
+                // Check search term
+                if(search && !t.id.toString().includes(search) && !t.entityName.toLowerCase().includes(search)) {
+                    return;
                 }
+                
+                // Check exact date match
+                const txnDate = t.date.substring(0, 10); // Extract YYYY-MM-DD
+                if(filterDate && txnDate !== filterDate) {
+                    return;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-white/5 border-b border-gray-800";
+                tr.innerHTML = `
+                    <td class="p-3 text-gray-400 text-xs">${new Date(t.date).toLocaleDateString()}</td>
+                    <td class="p-3 font-mono">#${t.id.toString().slice(-6)}</td>
+                    <td class="p-3 font-bold text-white">${t.entityName}</td>
+                    <td class="p-3 text-right text-green-400">${db.config.currency}${t.total.toFixed(2)}</td>
+                    <td class="p-3 text-center"><span class="px-2 py-1 rounded text-xs ${t.payType==='credit' ? 'bg-yellow-900 text-yellow-300' : 'bg-green-900 text-green-300'} uppercase">${t.payType || 'cash'}</span></td>
+                    <td class="p-3 text-center">
+                        <button onclick="editInvoice(${t.id})" class="text-gray-400 hover:text-white mx-1"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick='printInvoiceStr(${JSON.stringify(t)})' class="text-blue-400 hover:text-blue-300 mx-1"><i class="fa-solid fa-print"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
             });
+        }
+        
+        // Clear all filters
+        window.clearInvoiceFilters = function() {
+            document.getElementById('invoiceSearch').value = '';
+            document.getElementById('invoiceDateFilter').value = '';
+            loadInvoices();
         }
         
         // Helper to pass object in HTML string onclick
@@ -2125,6 +2853,98 @@
             loadInvoices();
         }
 
+        // Load and display batches in the Stock Batches table
+        window.loadBatches = function() {
+            const tbody = document.getElementById('batchBody');
+            if(!tbody) return; // Element doesn't exist if not on purchases page
+            
+            tbody.innerHTML = '';
+            
+            // Ensure batches array exists
+            if(!db.batches) db.batches = [];
+            
+            // AUTO-CLEAN: Remove old stock products with 0 qty if newer stock exists
+            const productNames = {};
+            db.products.forEach(p => {
+                if (!productNames[p.name]) productNames[p.name] = [];
+                productNames[p.name].push(p);
+            });
+            
+            // For each product name, if we have multiple batches
+            Object.keys(productNames).forEach(name => {
+                const variants = productNames[name];
+                if(variants.length > 1) {
+                    // Sort by expiry date - oldest first (FEFO: First Expire, First Out)
+                    variants.sort((a, b) => {
+                        const expiryA = a.expiry ? new Date(a.expiry) : new Date('2099-12-31');
+                        const expiryB = b.expiry ? new Date(b.expiry) : new Date('2099-12-31');
+                        return expiryA - expiryB;
+                    });
+                    
+                    // Check if we have at least one variant with stock > 0
+                    const hasNewStock = variants.some(v => v.stock > 0);
+                    
+                    // If newer stock exists, delete old items with 0 quantity
+                    if(hasNewStock) {
+                        variants.forEach((v, idx) => {
+                            if(idx > 0 && v.stock === 0) {
+                                // This is an older batch with 0 stock - delete from products
+                                db.products = db.products.filter(p => p.id !== v.id);
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // Save cleanup changes to database
+            saveDB();
+            
+            // Sort batches by purchase date (newest first)
+            const sortedBatches = db.batches.slice().reverse();
+            
+            if(sortedBatches.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No stock batches recorded yet</td></tr>`;
+                return;
+            }
+            
+            sortedBatches.forEach(batch => {
+                // Determine expiry status for color coding
+                let expiryClass = 'text-gray-400';
+                let expiryText = batch.expiryDate || 'N/A';
+                
+                if(batch.expiryDate && batch.expiryDate !== 'N/A') {
+                    const expireDate = new Date(batch.expiryDate);
+                    const today = new Date();
+                    const daysUntilExpiry = Math.floor((expireDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    if(daysUntilExpiry <= 0) {
+                        expiryClass = 'text-red-500 font-bold';
+                    } else if(daysUntilExpiry <= 7) {
+                        expiryClass = 'text-red-500 font-bold';
+                    } else if(daysUntilExpiry <= 30) {
+                        expiryClass = 'text-orange-500';
+                    } else if(daysUntilExpiry <= 90) {
+                        expiryClass = 'text-yellow-500';
+                    }
+                }
+                
+                const purchaseDate = batch.purchaseDate ? new Date(batch.purchaseDate).toLocaleDateString() : 'N/A';
+                
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-white/5 border-b border-gray-800";
+                tr.innerHTML = `
+                    <td class="p-3 text-white">${batch.productName || '-'}</td>
+                    <td class="p-3 text-gray-400">${batch.batchNumber || '-'}</td>
+                    <td class="p-3 ${expiryClass}">${expiryText}</td>
+                    <td class="p-3 text-right text-gray-300">${batch.quantity}</td>
+                    <td class="p-3 text-right text-gray-400">${db.config.currency}${(batch.costPrice || 0).toFixed(2)}</td>
+                    <td class="p-3 text-gray-400 text-sm">${purchaseDate}</td>
+                    <td class="p-3 text-gray-400">${batch.supplierName || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
         // --- Dashboard & Charts ---
         let mainChart;
         let catChart;
@@ -2140,11 +2960,22 @@
             const stockVal = db.products.reduce((a,c) => a + (c.stock * c.cost), 0);
             const receivables = db.customers.reduce((a,c) => a + c.balance, 0);
             const lowStock = db.products.filter(p => p.stock <= p.reorder);
+            
+            // Get expired/expiring products (90 days from today)
+            const today = new Date().toISOString().split('T')[0];
+            const ninetyDaysLater = new Date();
+            ninetyDaysLater.setDate(ninetyDaysLater.getDate() + 90);
+            const expireThresholdDate = ninetyDaysLater.toISOString().split('T')[0];
+            
+            const expiredProducts = db.products.filter(p => {
+                return p.expiry && p.expiry.trim() !== '' && p.expiry <= expireThresholdDate && p.stock > 0;
+            });
 
             document.getElementById('kpiRevenue').innerText = `${db.config.currency}${revenue.toFixed(2)}`;
             document.getElementById('kpiStockVal').innerText = `${db.config.currency}${stockVal.toFixed(2)}`;
             document.getElementById('kpiReceivables').innerText = `${db.config.currency}${receivables.toFixed(2)}`;
             document.getElementById('kpiLowStock').innerText = lowStock.length;
+            document.getElementById('kpiExpired').innerText = expiredProducts.length;
 
             const lsBody = document.getElementById('lowStockBody');
             if (lsBody) {
@@ -2160,6 +2991,54 @@
                         </tr>
                     `;
                 });
+            }
+
+            // Populate expired products table
+            const expBody = document.getElementById('expiredBody');
+            if (expBody) {
+                expBody.innerHTML = '';
+                if (expiredProducts.length === 0) {
+                    expBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">No expired products with stock</td></tr>`;
+                } else {
+                    expiredProducts.forEach(p => {
+                        const daysExpired = Math.floor((new Date() - new Date(p.expiry)) / (1000 * 60 * 60 * 24));
+                        let statusClass, statusText, rowClass;
+                        
+                        if (daysExpired > 0) {
+                            // Already expired
+                            statusClass = daysExpired > 30 ? 'text-red-600 font-bold' : 'text-red-500';
+                            statusText = daysExpired > 30 ? `${daysExpired} days overdue` : `${daysExpired} day(s) ago`;
+                            rowClass = 'bg-red-950/20 border-l-4 border-red-600';
+                        } else {
+                            // Expiring soon
+                            const daysUntilExpiry = Math.abs(daysExpired);
+                            if (daysUntilExpiry <= 7) {
+                                statusClass = 'text-red-500 font-bold';
+                                statusText = `Expires in ${daysUntilExpiry} day(s)`;
+                                rowClass = 'bg-red-950/10 border-l-4 border-red-500';
+                            } else if (daysUntilExpiry <= 30) {
+                                statusClass = 'text-orange-500 font-bold';
+                                statusText = `Expires in ${daysUntilExpiry} day(s)`;
+                                rowClass = 'bg-orange-950/10 border-l-4 border-orange-500';
+                            } else {
+                                statusClass = 'text-yellow-500';
+                                statusText = `Expires in ${daysUntilExpiry} day(s)`;
+                                rowClass = 'bg-yellow-950/10 border-l-4 border-yellow-500';
+                            }
+                        }
+                        
+                        expBody.innerHTML += `
+                            <tr class="hover:bg-white/5 ${rowClass}">
+                                <td class="p-3 text-white font-bold">${p.name}</td>
+                                <td class="p-3 text-gray-500">${p.sku}</td>
+                                <td class="p-3 text-gray-500">${p.batch || '-'}</td>
+                                <td class="p-3 text-center text-gray-300">${p.expiry}</td>
+                                <td class="p-3 text-right font-bold text-white">${p.stock}</td>
+                                <td class="p-3 text-center ${statusClass}">${statusText}</td>
+                            </tr>
+                        `;
+                    });
+                }
             }
 
             // Charts
@@ -2249,6 +3128,17 @@
             });
             
             document.getElementById('invSub').innerText = (txn.sub || 0).toFixed(2);
+            
+            // Show discount if applicable
+            const discountRow = document.getElementById('invDiscountRow');
+            if(txn.discountPercent && txn.discountPercent > 0) {
+                discountRow.style.display = 'flex';
+                document.getElementById('invDiscountPercent').innerText = txn.discountPercent.toFixed(1);
+                document.getElementById('invDiscount').innerText = (txn.discount || 0).toFixed(2);
+            } else {
+                discountRow.style.display = 'none';
+            }
+            
             document.getElementById('invTax').innerText = (txn.tax || 0).toFixed(2);
             document.getElementById('invTotal').innerText = (txn.total || 0).toFixed(2);
             
@@ -2279,70 +3169,115 @@
                 </div>
             `;
 
-            // Table Construction
-            html += `<table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                <thead>
-                    <tr style="background: #f0f0f0; border-bottom: 2px solid black;">`;
-            
-            // Derive headers from currentReportData logic (simplified based on known columns in currentReportData)
-            
-            if(currentReportTitle.includes("VAT")) {
-                html += `<th style="padding:5px; text-align:left;">Date</th>
-                         <th style="padding:5px; text-align:left;">Invoice #</th>
-                         <th style="padding:5px; text-align:right;">Taxable Amt</th>
-                         <th style="padding:5px; text-align:right;">VAT</th>
-                         <th style="padding:5px; text-align:right;">Total</th></tr></thead><tbody>`;
-                currentReportData.forEach(t => {
-                   html += `<tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding:5px;">${new Date(t.date).toLocaleDateString()}</td>
-                        <td style="padding:5px;">#${t.id.toString().slice(-6)}</td>
-                        <td style="padding:5px; text-align:right;">${db.config.currency}${(t.sub||0).toFixed(2)}</td>
-                        <td style="padding:5px; text-align:right;">${db.config.currency}${(t.tax||0).toFixed(2)}</td>
-                        <td style="padding:5px; text-align:right;">${db.config.currency}${t.total.toFixed(2)}</td>
-                   </tr>`; 
-                });
-            } else {
-                // Generic (Daily, Sales, etc)
-                html += `<th style="padding:5px; text-align:left;">Date</th>
-                         <th style="padding:5px; text-align:left;">Type</th>
-                         <th style="padding:5px; text-align:left;">Entity/Ref</th>
-                         <th style="padding:5px; text-align:right;">Amount</th></tr></thead><tbody>`;
-                currentReportData.forEach(t => {
-                   html += `<tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding:5px;">${new Date(t.date).toLocaleDateString()}</td>
-                        <td style="padding:5px; text-transform:uppercase;">${t.type}</td>
-                        <td style="padding:5px;">${t.entityName || '-'}</td>
-                        <td style="padding:5px; text-align:right;">${db.config.currency}${t.total.toFixed(2)}</td>
-                   </tr>`; 
-                });
-            }
-            
-            html += `</tbody></table>`;
-            
-            // Add Summary Footer
-            const total = currentReportData.reduce((a,c) => a + c.total, 0);
-
-            let footerHtml = '';
-            
-            if (currentReportTitle.includes("VAT")) {
-                // SPECIFIC VAT FOOTER
-                const totalVat = currentReportData.reduce((a,c) => a + (c.tax || 0), 0);
-                const totalTaxable = currentReportData.reduce((a,c) => a + (c.sub || 0), 0);
+            // Table Construction - Handle Balance Sheet specially
+            if(currentReportTitle.includes("Balance Sheet")) {
+                const stockVal = db.products.reduce((a,c) => a + (c.stock * c.cost), 0);
+                const receivables = db.customers.reduce((a,c) => a + c.balance, 0);
+                const payables = db.suppliers.reduce((a,c) => a + c.balance, 0);
                 
-                footerHtml = `
-                <div style="text-align:right; margin-top: 10px; font-size: 14px; border-top: 2px solid black; padding-top: 5px;">
-                    <p style="margin: 2px 0;">Total Taxable: ${db.config.currency}${totalTaxable.toFixed(2)}</p>
-                    <p style="margin: 2px 0;">Total VAT Collected: ${db.config.currency}${totalVat.toFixed(2)}</p>
-                    <p style="margin: 5px 0; font-weight: bold; font-size: 16px;">Grand Total: ${db.config.currency}${total.toFixed(2)}</p>
+                // Cash In: Sales (cash only) + Customer Payments + Supplier Returns (cash)
+                const salesCash = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a,c) => a + c.total, 0);
+                const custPayments = db.transactions.filter(t => t.type === 'payment' && !t.isReturn).reduce((a,c) => a + c.total, 0);
+                const supReturnsCash = db.transactions.filter(t => t.type === 'payment' && t.isReturn).reduce((a,c) => a + c.total, 0);
+                const cashIn = salesCash + custPayments + supReturnsCash;
+                
+                // Cash Out: Expenses + Cash Purchases + Supplier Payments
+                const cashOut = db.transactions.filter(t => (t.type === 'expense') || (t.type === 'purchase' && t.payType === 'cash') || (t.type === 'supplier_payment')).reduce((a,c) => a + c.total, 0);
+                
+                const cashHand = cashIn - cashOut;
+                const assets = stockVal + receivables + cashHand;
+                const equity = assets - payables;
+
+                html += `<table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead><tr style="background: #f0f0f0; border-bottom: 2px solid black;">
+                        <th style="padding:8px; text-align:left; border-right: 1px solid #ddd;">Category</th>
+                        <th style="padding:8px; text-align:right;">Amount</th>
+                    </tr></thead>
+                    <tbody>
+                        <tr style="background: #e0e0e0; font-weight: bold;"><td style="padding:8px; border-right: 1px solid #ddd;">ASSETS</td><td style="padding:8px; text-align:right;"></td></tr>
+                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px;">Current Stock</td><td style="padding:8px; text-align:right;">${db.config.currency}${stockVal.toFixed(2)}</td></tr>
+                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px;">Accounts Receivable</td><td style="padding:8px; text-align:right;">${db.config.currency}${receivables.toFixed(2)}</td></tr>
+                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px; padding-left: 24px; font-size: 11px; color: #666;">  Sales (Cash)</td><td style="padding:8px; text-align:right; font-size: 11px; color: #666;">${db.config.currency}${salesCash.toFixed(2)}</td></tr>
+                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px; padding-left: 24px; font-size: 11px; color: #666;">  Customer Payments</td><td style="padding:8px; text-align:right; font-size: 11px; color: #666;">${db.config.currency}${custPayments.toFixed(2)}</td></tr>
+                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px; padding-left: 24px; font-size: 11px; color: #666;">  Supplier Returns (Cash)</td><td style="padding:8px; text-align:right; font-size: 11px; color: #666;">${db.config.currency}${supReturnsCash.toFixed(2)}</td></tr>
+                        <tr style="border-bottom: 2px solid black; font-weight: bold;"><td style="padding:8px;">Cash/Bank (Est.)</td><td style="padding:8px; text-align:right;">${db.config.currency}${cashHand.toFixed(2)}</td></tr>
+                        <tr style="background: #f0f0f0; font-weight: bold; border-bottom: 1px solid #ddd;"><td style="padding:8px; border-right: 1px solid #ddd;">TOTAL ASSETS</td><td style="padding:8px; text-align:right; border-right: 1px solid #ddd;">${db.config.currency}${assets.toFixed(2)}</td></tr>
+                        
+                        <tr style="background: #e0e0e0; font-weight: bold;"><td style="padding:8px; border-right: 1px solid #ddd;">LIABILITIES</td><td style="padding:8px; text-align:right;"></td></tr>
+                        <tr style="border-bottom: 2px solid black; font-weight: bold;"><td style="padding:8px;">Accounts Payable</td><td style="padding:8px; text-align:right;">${db.config.currency}${payables.toFixed(2)}</td></tr>
+                        
+                        <tr style="background: #f0f0f0; font-weight: bold;"><td style="padding:8px; border-right: 1px solid #ddd;">EQUITY</td><td style="padding:8px; text-align:right;">${db.config.currency}${equity.toFixed(2)}</td></tr>
+                    </tbody>
+                </table>`;
+
+                html += `<div style="margin-top: 15px; padding: 10px; border: 1px solid #ddd; background: #f9f9f9;">
+                    <p style="margin: 5px 0; font-size: 11px;"><strong>Accounting Equation:</strong> Assets = Liabilities + Equity</p>
+                    <p style="margin: 5px 0; font-size: 11px;">${db.config.currency}${assets.toFixed(2)} = ${db.config.currency}${payables.toFixed(2)} + ${db.config.currency}${equity.toFixed(2)}</p>
                 </div>`;
             } else {
-                // GENERIC FOOTER
-                footerHtml = `<div style="text-align:right; margin-top: 10px; font-weight:bold; border-top: 2px solid black; padding-top: 5px;">
-                    Total: ${db.config.currency}${total.toFixed(2)}
-                </div>`;
-            }
+                // Standard report format for Daily, Sales, VAT, etc.
+                html += `<table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background: #f0f0f0; border-bottom: 2px solid black;">`;
+                
+                if(currentReportTitle.includes("VAT")) {
+                    html += `<th style="padding:5px; text-align:left;">Date</th>
+                             <th style="padding:5px; text-align:left;">Invoice #</th>
+                             <th style="padding:5px; text-align:right;">Taxable Amt</th>
+                             <th style="padding:5px; text-align:right;">VAT</th>
+                             <th style="padding:5px; text-align:right;">Total</th></tr></thead><tbody>`;
+                    currentReportData.forEach(t => {
+                       html += `<tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding:5px;">${new Date(t.date).toLocaleDateString()}</td>
+                            <td style="padding:5px;">#${t.id.toString().slice(-6)}</td>
+                            <td style="padding:5px; text-align:right;">${db.config.currency}${(t.sub||0).toFixed(2)}</td>
+                            <td style="padding:5px; text-align:right;">${db.config.currency}${(t.tax||0).toFixed(2)}</td>
+                            <td style="padding:5px; text-align:right;">${db.config.currency}${t.total.toFixed(2)}</td>
+                       </tr>`; 
+                    });
+                } else {
+                    // Generic (Daily, Sales, etc)
+                    html += `<th style="padding:5px; text-align:left;">Date</th>
+                             <th style="padding:5px; text-align:left;">Type</th>
+                             <th style="padding:5px; text-align:left;">Entity/Ref</th>
+                             <th style="padding:5px; text-align:right;">Amount</th></tr></thead><tbody>`;
+                    currentReportData.forEach(t => {
+                       html += `<tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding:5px;">${new Date(t.date).toLocaleDateString()}</td>
+                            <td style="padding:5px; text-transform:uppercase;">${t.type}</td>
+                            <td style="padding:5px;">${t.entityName || '-'}</td>
+                            <td style="padding:5px; text-align:right;">${db.config.currency}${t.total.toFixed(2)}</td>
+                       </tr>`; 
+                    });
+                }
+                
+                html += `</tbody></table>`;
+                
+                // Add Summary Footer
+                const total = currentReportData.reduce((a,c) => a + c.total, 0);
 
-            html += footerHtml;
+                let footerHtml = '';
+                
+                if (currentReportTitle.includes("VAT")) {
+                    // SPECIFIC VAT FOOTER
+                    const totalVat = currentReportData.reduce((a,c) => a + (c.tax || 0), 0);
+                    const totalTaxable = currentReportData.reduce((a,c) => a + (c.sub || 0), 0);
+                    
+                    footerHtml = `
+                    <div style="text-align:right; margin-top: 10px; font-size: 14px; border-top: 2px solid black; padding-top: 5px;">
+                        <p style="margin: 2px 0;">Total Taxable: ${db.config.currency}${totalTaxable.toFixed(2)}</p>
+                        <p style="margin: 2px 0;">Total VAT Collected: ${db.config.currency}${totalVat.toFixed(2)}</p>
+                        <p style="margin: 5px 0; font-weight: bold; font-size: 16px;">Grand Total: ${db.config.currency}${total.toFixed(2)}</p>
+                    </div>`;
+                } else {
+                    // GENERIC FOOTER
+                    footerHtml = `<div style="text-align:right; margin-top: 10px; font-weight:bold; border-top: 2px solid black; padding-top: 5px;">
+                        Total: ${db.config.currency}${total.toFixed(2)}
+                    </div>`;
+                }
+
+                html += footerHtml;
+            }
 
             reportView.innerHTML = html;
             setTimeout(() => window.print(), 200);
@@ -2477,38 +3412,54 @@
                 const sales = filteredTxns.filter(t => t.type === 'sale').reduce((a,c)=>a+c.total, 0);
                 const purchases = filteredTxns.filter(t => t.type === 'purchase').reduce((a,c)=>a+c.total, 0);
                 let cogs = 0;
-                filteredTxns.filter(t => t.type === 'sale').forEach(t => {
+                filteredTxns.filter(t => t.type === 'sale' && !t.isReturn).forEach(t => {
                     t.items.forEach(i => { const p = db.products.find(x => x.name === i.name); if(p) cogs += (p.cost * i.qty); });
                 });
                 const grossProfit = sales - cogs;
-                cards.innerHTML += createCard('Total Sales', sales, 'green-400');
-                cards.innerHTML += createCard('COGS', cogs, 'red-400');
+                cards.innerHTML += createCard('Total Sales (Net)', sales, 'green-400');
+                cards.innerHTML += createCard('COGS', Math.abs(cogs), 'red-400');
                 cards.innerHTML += createCard('Gross Profit', grossProfit, 'karta-primary');
                 thead.innerHTML = `<tr><th class="p-3">Metric</th><th class="p-3 text-right">Amount</th></tr>`;
-                tbody.innerHTML += `<tr><td class="p-3">Sales Revenue</td><td class="p-3 text-right">${db.config.currency}${sales.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr><td class="p-3">Less: Cost of Goods Sold</td><td class="p-3 text-right text-red-400">(${db.config.currency}${cogs.toFixed(2)})</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3">Sales Revenue (Net of Returns)</td><td class="p-3 text-right">${db.config.currency}${sales.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3">Less: Cost of Goods Sold</td><td class="p-3 text-right text-red-400">(${db.config.currency}${Math.abs(cogs).toFixed(2)})</td></tr>`;
                 tbody.innerHTML += `<tr class="font-bold border-t border-gray-700"><td class="p-3">Gross Profit</td><td class="p-3 text-right text-karta-primary">${db.config.currency}${grossProfit.toFixed(2)}</td></tr>`;
                 return;
             }
 
             if(type === 'balance') {
                 currentReportData = []; 
+                currentReportTitle = "Balance Sheet";
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+                
                 const stockVal = db.products.reduce((a,c) => a + (c.stock * c.cost), 0);
                 const receivables = db.customers.reduce((a,c) => a + c.balance, 0);
                 const payables = db.suppliers.reduce((a,c) => a + c.balance, 0);
-                const cashIn = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a,c) => a + c.total, 0) + db.transactions.filter(t => t.type === 'payment').reduce((a,c) => a + c.total, 0);
-                const cashOut = db.transactions.filter(t => t.type === 'expense').reduce((a,c) => a + c.total, 0);
+                
+                // Cash In: Sales (cash only) + Customer Payments + Supplier Returns (cash)
+                const salesCash = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a,c) => a + c.total, 0);
+                const custPayments = db.transactions.filter(t => t.type === 'payment' && !t.isReturn).reduce((a,c) => a + c.total, 0);
+                const supReturnsCash = db.transactions.filter(t => t.type === 'payment' && t.isReturn).reduce((a,c) => a + c.total, 0);
+                const cashIn = salesCash + custPayments + supReturnsCash;
+                
+                // Cash Out: Expenses + Cash Purchases + Supplier Payments
+                const cashOut = db.transactions.filter(t => (t.type === 'expense') || (t.type === 'purchase' && t.payType === 'cash') || (t.type === 'supplier_payment')).reduce((a,c) => a + c.total, 0);
+                
                 const cashHand = cashIn - cashOut;
                 const assets = stockVal + receivables + cashHand;
                 const equity = assets - payables;
+                
                 cards.innerHTML += createCard('Total Assets', assets, 'blue-400');
                 cards.innerHTML += createCard('Liabilities', payables, 'red-400');
                 cards.innerHTML += createCard('Equity', equity, 'green-400');
+                
                 thead.innerHTML = `<tr><th class="p-3">Category</th><th class="p-3 text-right">Amount</th></tr>`;
                 tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 font-bold" colspan="2">Assets</td></tr>`;
                 tbody.innerHTML += `<tr><td class="p-3">Current Stock</td><td class="p-3 text-right">${db.config.currency}${stockVal.toFixed(2)}</td></tr>`;
                 tbody.innerHTML += `<tr><td class="p-3">Accounts Receivable</td><td class="p-3 text-right">${db.config.currency}${receivables.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr><td class="p-3">Cash/Bank (Est.)</td><td class="p-3 text-right">${db.config.currency}${cashHand.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 text-xs text-gray-500">  - Sales (Cash)</td><td class="p-3 text-right text-xs text-gray-500">${db.config.currency}${salesCash.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 text-xs text-gray-500">  - Customer Payments</td><td class="p-3 text-right text-xs text-gray-500">${db.config.currency}${custPayments.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 text-xs text-gray-500">  - Supplier Returns (Cash)</td><td class="p-3 text-right text-xs text-gray-500">${db.config.currency}${supReturnsCash.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 font-bold">Cash/Bank (Est.)</td><td class="p-3 text-right font-bold">${db.config.currency}${cashHand.toFixed(2)}</td></tr>`;
                 tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 font-bold" colspan="2">Liabilities</td></tr>`;
                 tbody.innerHTML += `<tr><td class="p-3">Accounts Payable</td><td class="p-3 text-right">${db.config.currency}${payables.toFixed(2)}</td></tr>`;
                 return;
@@ -2525,17 +3476,20 @@
                 cards.innerHTML += createCard('Total VAT Collected', totalVat, 'karta-primary');
                 cards.innerHTML += createCard('Grand Total', totalWithVat, 'green-400');
 
-                thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Invoice #</th><th class="p-3 text-right">Taxable Amt</th><th class="p-3 text-right">VAT</th><th class="p-3 text-right">Total</th></tr>`;
+                thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Invoice #</th><th class="p-3">Type</th><th class="p-3 text-right">Taxable Amt</th><th class="p-3 text-right">VAT</th><th class="p-3 text-right">Total</th></tr>`;
                 
                 sales.forEach(t => {
                     const tr = document.createElement('tr');
-                    tr.className = "border-b border-gray-800 text-gray-300";
+                    const isReturn = t.isReturn ? ' bg-red-900/20' : '';
+                    const typeLabel = t.isReturn ? 'RETURN' : 'SALE';
+                    tr.className = `border-b border-gray-800 text-gray-300${isReturn}`;
                     tr.innerHTML = `
                         <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
                         <td class="p-3 font-mono text-xs">#${t.id.toString().slice(-6)}</td>
+                        <td class="p-3 text-xs font-bold ${t.isReturn ? 'text-red-400' : 'text-green-400'}">${typeLabel}</td>
                         <td class="p-3 text-right">${db.config.currency}${(t.sub||0).toFixed(2)}</td>
                         <td class="p-3 text-right text-karta-primary font-bold">${db.config.currency}${(t.tax||0).toFixed(2)}</td>
-                        <td class="p-3 text-right">${db.config.currency}${t.total.toFixed(2)}</td>
+                        <td class="p-3 text-right ${t.total < 0 ? 'text-red-400' : 'text-green-400'}">${db.config.currency}${t.total.toFixed(2)}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -2557,15 +3511,20 @@
                 thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Type</th><th class="p-3">Details</th><th class="p-3 text-right">Amount</th></tr>`;
                 reportTxns.forEach(t => {
                     const tr = document.createElement('tr');
-                    tr.className = "border-b border-gray-800 text-gray-300";
-                    let color = t.type === 'sale' || t.type === 'payment' ? 'text-green-500' : 'text-red-500';
-                    tr.innerHTML = `<td class="p-3">${new Date(t.date).toLocaleDateString()}</td><td class="p-3 uppercase text-xs font-bold">${t.type}</td><td class="p-3">${t.entityName || t.items[0]?.name || '-'}</td><td class="p-3 text-right ${color}">${db.config.currency}${t.total.toFixed(2)}</td>`;
+                    let bgClass = '';
+                    let color = 'text-green-500';
+                    if(t.type === 'expense') color = 'text-red-500';
+                    if(t.isReturn) { color = 'text-orange-500'; bgClass = ' bg-red-900/20'; }
+                    tr.className = `border-b border-gray-800 text-gray-300${bgClass}`;
+                    let typeLabel = t.type.toUpperCase();
+                    if(t.isReturn) typeLabel += ' (RETURN)';
+                    tr.innerHTML = `<td class="p-3">${new Date(t.date).toLocaleDateString()}</td><td class="p-3 uppercase text-xs font-bold">${typeLabel}</td><td class="p-3">${t.entityName || t.items[0]?.name || '-'}</td><td class="p-3 text-right ${color}">${db.config.currency}${t.total.toFixed(2)}</td>`;
                     tbody.appendChild(tr);
                 });
                 // Summary for daily
                 const dSales = reportTxns.filter(t => t.type === 'sale').reduce((a,c)=>a+c.total,0);
                 const dExp = reportTxns.filter(t => t.type === 'expense').reduce((a,c)=>a+c.total,0);
-                cards.innerHTML += createCard('Sales', dSales, 'green-400');
+                cards.innerHTML += createCard('Sales (Net)', dSales, 'green-400');
                 cards.innerHTML += createCard('Expenses', dExp, 'red-400');
                 cards.innerHTML += createCard('Net', dSales - dExp, 'white');
             } else {
@@ -2646,8 +3605,3 @@
 </body>
 
 </html>
-
-
-
-
-
