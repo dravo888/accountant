@@ -1229,8 +1229,8 @@
         // Import Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-        // IMPORT ONVALUE FOR REALTIME UPDATES + UPDATE FOR ATOMIC SAVES
-        import { getDatabase, ref, set, update, get, child, onValue } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
+        // IMPORT ONVALUE FOR REALTIME UPDATES
+        import { getDatabase, ref, set, get, child, onValue } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -1438,52 +1438,11 @@
 
         // MONEY ROUNDING UTILITY - Fixes Penny Drift
         // Round to 2 decimal places to prevent floating point errors
-        // FIX #1: PRECISE MONEY ROUNDING
         function moneyRound(value) {
             return Math.round(value * 100) / 100;
         }
 
-        // FIX #2: INLINE MONEY HELPER - Wrap any +, -, *, / operation
-        // Usage: money(a + b), money(total * qty), money(price - discount)
-        function money(value) {
-            return moneyRound(parseFloat(value) || 0);
-        }
-
-        // FIX #3: PAGINATION STATE - Tracks current page for each data type
-        const paginationState = {
-            products: 0,
-            customers: 0,
-            suppliers: 0,
-            transactions: 0,
-            invoices: 0,
-            reports: 0
-        };
-        const ITEMS_PER_PAGE = 50; // Show 50 items per page
-
-        // FIX #4: INPUT VALIDATION - Check if qty is valid positive integer
-        function isValidQuantity(qty) {
-            const num = parseInt(qty);
-            if (isNaN(num) || num !== parseFloat(qty)) return false; // Not an integer
-            if (num <= 0) return false; // Not positive
-            return true;
-        }
-
-        // FIX #4: QUANTITY VALIDATOR FOR FORMS
-        function validateQtyInput(inputElement) {
-            let val = parseInt(inputElement.value) || 0;
-            if (val < 1) {
-                inputElement.value = 1;
-                return false;
-            }
-            // Prevent negative or decimal input
-            if (val !== parseFloat(inputElement.value)) {
-                inputElement.value = Math.floor(Math.abs(val));
-                return false;
-            }
-            return true;
-        }
-
-        // MODIFIED AUTO-SAVE FUNCTION - FIX #1: Use update() instead of set()
+        // MODIFIED AUTO-SAVE FUNCTION
         function saveDB() {
             if(!currentUser || !DB_KEY) return;
             
@@ -1493,26 +1452,10 @@
             // 2. Auto-Save to Cloud (If Logged In)
             updateSyncStatus("Saving...", "text-yellow-500");
             const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
-            
-            // CRITICAL FIX: Use update() for atomic operations instead of set()
-            // set() replaces ENTIRE database -> data loss if two users save simultaneously
-            // update() ONLY changes specified fields -> prevents conflicts
-            // Example: User A sells item while User B buys item
-            //   set() would lose User A's transaction when User B saves
-            //   update() preserves both transactions independently
-            const updates = {};
-            updates['products'] = db.products;
-            updates['customers'] = db.customers;
-            updates['suppliers'] = db.suppliers;
-            updates['batches'] = db.batches;
-            updates['transactions'] = db.transactions;
-            updates['config'] = db.config;
-            
-            // Use update() for atomic, conflict-free saves
-            update(userRef, updates)
+            set(userRef, db)
                 .then(() => updateSyncStatus("Synced", "text-green-500"))
                 .catch((err) => {
-                    console.error("Sync error:", err);
+                    console.error(err);
                     updateSyncStatus("Sync Error", "text-red-500");
                 });
             
@@ -1699,7 +1642,14 @@
                 tbody.appendChild(tr);
             });
         }
-        window.delProd = function(id) { if(confirm("Delete Product?")) { const p = db.products.find(x=>x.id===id); if(p) { p.hidden = true; saveDB(); } } }
+        window.delProd = function(id) { 
+            if(confirm("Delete Product? This will remove it permanently from inventory.")) { 
+                db.products = db.products.filter(p => p.id !== id); 
+                saveDB(); 
+                renderProducts();
+                alert("Product deleted successfully!");
+            } 
+        }
 
         // --- Customer Management ---
         document.getElementById('custForm').onsubmit = e => {
@@ -1725,22 +1675,16 @@
             
             const cust = db.customers.find(c => c.id === custId);
             if(cust) {
-                // FIX #5.2: Validate payment doesn't exceed balance due
-                if(amount > cust.balance) {
-                    alert(`Cannot receive ${db.config.currency}${amount.toFixed(2)}. Amount due is only ${db.config.currency}${cust.balance.toFixed(2)}`);
-                    return;
-                }
                 cust.balance -= amount;
                 db.transactions.push({
                     id: Date.now(),
-                    type: 'payment', // payment received from customer
+                    type: 'payment', // payment received
                     date: new Date().toISOString(),
                     entityId: custId,
                     entityName: cust.name,
                     items: [], // no items for payment
                     total: amount,
-                    tax: 0,
-                    ref: 'Payment from Customer'
+                    tax: 0
                 });
                 saveDB();
                 window.closeModal();
@@ -2000,22 +1944,16 @@
             
             const sup = db.suppliers.find(s => s.id === supId);
             if(sup) {
-                // FIX #6.3: Validate payment doesn't exceed balance due
-                if(amount > sup.balance) {
-                    alert(`Cannot pay ${db.config.currency}${amount.toFixed(2)}. Balance due is only ${db.config.currency}${sup.balance.toFixed(2)}`);
-                    return;
-                }
                 sup.balance -= amount; // Reduce debt
                 db.transactions.push({
                     id: Date.now(),
-                    type: 'payment_out', // Payment Outflow to Supplier
+                    type: 'payment_out', // Payment Outflow
                     date: new Date().toISOString(),
                     entityId: supId,
                     entityName: sup.name,
                     items: [], 
                     total: amount,
-                    tax: 0,
-                    ref: 'Payment to Supplier'
+                    tax: 0
                 });
                 saveDB();
                 window.closeModal();
@@ -2273,18 +2211,7 @@
 
         function addToCart(p) {
             const qtyInput = document.getElementById('posQtyInput');
-            
-            // FIX #4: VALIDATE QTY - Prevent negative numbers and non-integers
-            validateQtyInput(qtyInput);
             let manualQty = parseInt(qtyInput.value) || 1;
-            
-            // Additional security check - reject if qty is invalid
-            if (!isValidQuantity(manualQty)) {
-                alert("Quantity must be a positive number");
-                qtyInput.value = 1;
-                return;
-            }
-            
             if(manualQty < 1) manualQty = 1;
 
             const exist = cart.find(i => i.id === p.id);
@@ -2311,12 +2238,6 @@
             const product = db.products.find(p => p.id === item.id);
             const newQty = item.qty + change;
             
-            // FIX #4: PREVENT NEGATIVE QUANTITIES - Ensure qty stays positive
-            if (newQty < 1) {
-                alert("Quantity must be at least 1");
-                return;
-            }
-            
             if(newQty > 0 && newQty <= product.stock) {
                 item.qty = newQty;
                 renderCart();
@@ -2328,7 +2249,7 @@
         window.renderCart = function() {
             const body = document.getElementById('posCartBody');
             body.innerHTML = '';
-            let sub = money(0); // FIX #2: Use money() for precise initialization
+            let sub = 0;
             
             // Get selected price type
             const priceType = document.querySelector('input[name="priceType"]:checked')?.value || 'retail';
@@ -2345,8 +2266,7 @@
                 cart.forEach((item, idx) => {
                     // Use selected price type (retail or wholesale)
                     const price = priceType === 'wholesale' ? (item.wholesale || item.retail) : item.retail;
-                    // FIX #2: Use money() helper for inline arithmetic operations
-                    sub = money(sub + money(price * item.qty));
+                    sub = moneyRound(sub + moneyRound(price * item.qty));
                     const row = document.createElement('div');
                     row.className = "flex justify-between items-center bg-white/5 p-2 rounded text-xs";
                     row.innerHTML = `
@@ -2359,7 +2279,7 @@
                             <span class="font-bold w-4 text-center">${item.qty}</span>
                             <button onclick="updateCartQty(${idx}, 1)" class="w-6 h-6 bg-gray-700 rounded hover:bg-gray-600">+</button>
                         </div>
-                        <div class="font-bold mr-2 w-16 text-right">${db.config.currency}${money(item.qty * price).toFixed(2)}</div>
+                        <div class="font-bold mr-2 w-16 text-right">${db.config.currency}${moneyRound(item.qty * price).toFixed(2)}</div>
                         <button onclick="cart.splice(${idx},1); renderCart()" class="text-red-500"><i class="fa-solid fa-times"></i></button>
                     `;
                     body.appendChild(row);
@@ -2367,12 +2287,11 @@
             }
 
             // Calculate discount amount
-            // FIX #2: Use money() for all arithmetic to prevent floating-point errors
-            const discountAmount = money(sub * (discountPercent / 100));
-            const subtotalAfterDiscount = money(sub - discountAmount);
+            const discountAmount = moneyRound(sub * (discountPercent / 100));
+            const subtotalAfterDiscount = moneyRound(sub - discountAmount);
             
             // Calculate tax on discounted amount
-            const tax = applyVat ? money(subtotalAfterDiscount * (db.config.vatRate / 100)) : 0;
+            const tax = applyVat ? moneyRound(subtotalAfterDiscount * (db.config.vatRate / 100)) : 0;
             
             document.getElementById('posSubTotal').innerText = `${db.config.currency}${sub.toFixed(2)}`;
             document.getElementById('posVatRate').innerText = db.config.vatRate;
@@ -2380,21 +2299,12 @@
             // If No VAT, strike through or dim the tax text
             document.getElementById('posTax').className = applyVat ? "" : "line-through text-gray-600";
             
-            // FIX #2: Use money() for final total calculation
-            document.getElementById('posTotal').innerText = `${db.config.currency}${money(subtotalAfterDiscount + tax).toFixed(2)}`;
+            document.getElementById('posTotal').innerText = `${db.config.currency}${moneyRound(subtotalAfterDiscount + tax).toFixed(2)}`;
         }
 
         window.clearCart = function() { cart = []; renderCart(); }
 
         window.checkout = function(type) {
-            // FIX #4: VALIDATE ALL CART ITEMS - Block checkout if any qty is invalid
-            for (let item of cart) {
-                if (!isValidQuantity(item.qty)) {
-                    alert(`Invalid quantity for ${item.name}: must be a positive whole number`);
-                    return;
-                }
-            }
-            
             if(cart.length === 0) return alert("Empty Cart");
             
             const custInput = document.getElementById('posCustomerInput').value;
@@ -2410,16 +2320,14 @@
 
             // Recalculate based on current price type, discount, and VAT toggle
             const applyVat = document.getElementById('posVatToggle').checked;
-            const sub = money(cart.reduce((a, c) => {
+            const sub = moneyRound(cart.reduce((a, c) => {
                 const price = priceType === 'wholesale' ? (c.wholesale || c.retail) : c.retail;
-                // FIX #2: Use money() for addition
-                return money(a + money(c.qty * price));
+                return a + c.qty * price;
             }, 0));
-            // FIX #2: Use money() for all calculations
-            const discount = money(sub * (discountPercent / 100));
-            const subtotalAfterDiscount = money(sub - discount);
-            const tax = applyVat ? money(subtotalAfterDiscount * (db.config.vatRate / 100)) : 0;
-            const total = money(subtotalAfterDiscount + tax);
+            const discount = moneyRound(sub * (discountPercent / 100));
+            const subtotalAfterDiscount = moneyRound(sub - discount);
+            const tax = applyVat ? moneyRound(subtotalAfterDiscount * (db.config.vatRate / 100)) : 0;
+            const total = moneyRound(subtotalAfterDiscount + tax);
 
             if(type === 'credit') {
                 if(!custId) return alert("Please select a registered customer for credit sales.");
@@ -2437,13 +2345,9 @@
                 const prod = db.products.find(p => p.id === item.id);
                 return {
                     ...item,
-                    cost: prod ? money(prod.cost) : 0,  // Store actual cost of this unit
-                    retail: prod ? money(priceType === 'wholesale' ? (prod.wholesale || prod.retail) : prod.retail) : 0  // Store actual selling price
+                    cost: prod ? moneyRound(prod.cost) : 0  // Store actual cost of this unit
                 };
             });
-            // Calculate COGS for this transaction
-            // FIX #2: Use money() helper for COGS calculation
-            const transactionCOGS = money(itemsWithCost.reduce((a, item) => money(a + money(item.cost * item.qty)), 0));
 
             const txn = {
                 id: Date.now(),
@@ -2458,8 +2362,7 @@
                 discountPercent: discountPercent,
                 tax: tax,
                 total: total,
-                payType: type,
-                cogs: transactionCOGS  // FIX #6: Store COGS for accurate reporting
+                payType: type
             };
             db.transactions.push(txn);
             saveDB();
@@ -2664,10 +2567,9 @@
 
                 if(prod.stock < qty) return alert("Insufficient stock to return!");
 
-                // FIX #2: INFLATION LOOPHOLE - Look up original invoice price & COST
-                // Find the original sale transaction to get the price and cost actually paid
+                // FIX #2: INFLATION LOOPHOLE - Look up original invoice price instead of current product price
+                // Find the original sale transaction to get the price actually paid
                 let originalPricePerItem = prod.retail;
-                let originalCostPerItem = prod.cost;
                 let foundOriginalPrice = false;
                 
                 for(let txn of custTxns) {
@@ -2675,7 +2577,6 @@
                         for(let item of txn.items) {
                             if(item.id === pid && item.retail) {
                                 originalPricePerItem = item.retail;
-                                originalCostPerItem = item.cost || prod.cost;
                                 foundOriginalPrice = true;
                                 break;
                             }
@@ -2688,8 +2589,6 @@
                 const subtotal = moneyRound(originalPricePerItem * qty);
                 const vatRefund = moneyRound(subtotal * (db.config.vatRate / 100));
                 const totalRefund = moneyRound(subtotal + vatRefund);
-                // FIX #6.1: Track original cost in return for accurate COGS reversal
-                const returnCOGS = moneyRound(originalCostPerItem * qty);
 
                 if(confirm(`Process return of ${qty}x ${prod.name}?\nOriginal Price: ${db.config.currency}${originalPricePerItem.toFixed(2)}\nRefund: ${db.config.currency}${totalRefund.toFixed(2)}`)) {
                     // Restore stock
@@ -2700,20 +2599,19 @@
                         cust.balance -= totalRefund;
                     }
 
-                    // Record transaction as NEGATIVE sale (reduces turnover, VAT, and COGS)
+                    // Record transaction as NEGATIVE sale (reduces turnover & VAT)
                     db.transactions.push({
                         id: Date.now(),
                         type: 'sale',
                         date: new Date().toISOString(),
                         entityId: custId,
                         entityName: isWalkin ? walkinName : (cust ? cust.name : 'Guest Customer'),
-                        items: [{id: pid, name: prod.name, qty: qty, retail: originalPricePerItem, cost: originalCostPerItem}],
+                        items: [{id: pid, name: prod.name, qty: qty, retail: prod.retail}],
                         sub: -subtotal,
                         tax: -vatRefund,
                         total: -totalRefund,
                         payType: type,
-                        isReturn: true,
-                        cogs: -returnCOGS  // FIX #6.1: Store COGS reversal for accurate accounting
+                        isReturn: true
                     });
 
                     saveDB();
@@ -2750,20 +2648,22 @@
                     
                     // Handle accounting based on payment method
                     if(returnMethod === 'cash') {
-                        // CASH: Record supplier payment outflow (cash received back)
+                        // CASH: Record as cash received (increases cash account)
                         db.transactions.push({
                             id: Date.now(),
-                            type: 'payment_out',  // Payment outflow to supplier
+                            type: 'payment',  // Payment type = cash received
                             date: new Date().toISOString(),
                             entityId: supId,
                             entityName: sup.name,
                             items: [{id: pid, name: prod.name, qty: qty, cost: prod.cost}],
-                            total: totalValue,
-                            ref: 'Supplier Return (Cash) - ' + (reason || 'Stock Return'),
+                            total: totalValue,  // Positive = cash in
+                            ref: 'Supplier Return - ' + (reason || 'Stock Return'),
                             isReturn: true
                         });
+                        // Reduce supplier balance (what we still owe them)
+                        sup.balance -= totalValue;
                     } else {
-                        // CREDIT: Record as negative purchase (credit note)
+                        // CREDIT: Record as negative purchase (reduces purchase cost & balance)
                         db.transactions.push({
                             id: Date.now(),
                             type: 'purchase',
@@ -2772,13 +2672,13 @@
                             entityName: sup.name,
                             items: [{id: pid, name: prod.name, qty: qty, cost: prod.cost}],
                             total: -totalValue,  // Negative = credit note
-                            ref: reason || 'Supplier Return - Credit Note',
+                            ref: reason || 'Stock Return - Credit Note',
                             payType: 'credit',
                             isReturn: true
                         });
+                        // Reduce supplier balance (what we still owe them)
+                        sup.balance -= totalValue;
                     }
-                    // FIX #6.2: Always reduce supplier balance by the return amount
-                    sup.balance -= totalValue;
                     
                     saveDB();
                     alert(`Supplier Return Processed!\nMethod: ${returnMethod.toUpperCase()}\nValue: ${db.config.currency}${totalValue.toFixed(2)}`);
@@ -2931,8 +2831,6 @@
                 const c = db.customers.find(x => x.id === oldTxn.entityId);
                 if(c) c.balance -= oldTxn.total;
             }
-            // FIX #6.4: Log reversal for audit trail
-            console.log(`Invoice ${editTxnId} reverted for editing. Previous COGS: ${oldTxn.cogs}`);
 
             // BUILD NEW TXN DATA
             const rows = document.querySelectorAll('#editInvItems > div');
@@ -2970,12 +2868,6 @@
                 if(c) c.balance += total;
             }
 
-            // FIX #6.4: Calculate new COGS for updated items
-            const newCOGS = moneyRound(newItems.reduce((a, item) => {
-                const p = item.id ? db.products.find(x => x.id === item.id) : db.products.find(x => x.name === item.name);
-                return a + moneyRound((p?.cost || item.cost || 0) * item.qty);
-            }, 0));
-
             // Update Record
             oldTxn.items = newItems;
             oldTxn.sub = sub;
@@ -2984,7 +2876,6 @@
             oldTxn.payType = payType;
             oldTxn.entityId = custId;
             oldTxn.entityName = custName;
-            oldTxn.cogs = newCOGS;  // FIX #6.4: Update COGS with new items
 
             saveDB();
             window.closeModal();
@@ -2993,7 +2884,7 @@
         }
 
         window.deleteInvoice = function() {
-            if(!editTxnId || !confirm("Delete this invoice permanently? This will reverse stock changes and COGS.")) return;
+            if(!editTxnId || !confirm("Delete this invoice permanently? This will reverse stock changes.")) return;
             
             const oldTxn = db.transactions.find(t => t.id === editTxnId);
             // Revert stock
@@ -3006,8 +2897,6 @@
                 const c = db.customers.find(x => x.id === oldTxn.entityId);
                 if(c) c.balance -= oldTxn.total;
             }
-            // FIX #6.5: Log deletion for audit trail
-            console.log(`Invoice ${editTxnId} deleted. COGS reversed: ${oldTxn.cogs}`);
 
             db.transactions = db.transactions.filter(t => t.id !== editTxnId);
             saveDB();
@@ -3340,7 +3229,7 @@
                 // Cash In: Sales (cash only) + Customer Payments + Supplier Returns (cash)
                 const salesCash = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a,c) => a + c.total, 0);
                 const custPayments = db.transactions.filter(t => t.type === 'payment' && !t.isReturn).reduce((a,c) => a + c.total, 0);
-                const supReturnsCash = db.transactions.filter(t => t.type === 'payment_out' && t.isReturn).reduce((a,c) => a + c.total, 0);
+                const supReturnsCash = db.transactions.filter(t => t.type === 'payment' && t.isReturn).reduce((a,c) => a + c.total, 0);
                 const cashIn = salesCash + custPayments + supReturnsCash;
                 
                 // Cash Out: Expenses + Cash Purchases + Supplier Payments (payment_out)
@@ -3580,20 +3469,14 @@
                 const sales = filteredTxns.filter(t => t.type === 'sale').reduce((a,c)=>a+c.total, 0);
                 const purchases = filteredTxns.filter(t => t.type === 'purchase').reduce((a,c)=>a+c.total, 0);
                 
-                // FIX #6: Use STORED cost from transaction items AND return COGS reversals
+                // FIX #6: Use STORED cost from transaction items, not current product cost
                 let cogs = 0;
-                filteredTxns.filter(t => t.type === 'sale').forEach(t => {
-                    // Add stored COGS from transaction if available (handles returns too)
-                    if(t.cogs !== undefined) {
-                        cogs += t.cogs;
-                    } else {
-                        // Fallback: calculate from items
-                        const multiplier = t.isReturn ? -1 : 1;
-                        t.items.forEach(i => {
-                            const itemCost = i.cost !== undefined ? i.cost : (db.products.find(x => x.name === i.name)?.cost || 0);
-                            cogs += moneyRound(itemCost * (i.qty || 1)) * multiplier;
-                        });
-                    }
+                filteredTxns.filter(t => t.type === 'sale' && !t.isReturn).forEach(t => {
+                    t.items.forEach(i => {
+                        // Use stored cost if available, otherwise fallback to current product cost
+                        const itemCost = i.cost !== undefined ? i.cost : (db.products.find(x => x.name === i.name)?.cost || 0);
+                        cogs += moneyRound(itemCost * (i.qty || 1));
+                    });
                 });
                 const grossProfit = moneyRound(sales - cogs);
                 cards.innerHTML += createCard('Total Sales (Net)', sales, 'green-400');
@@ -3618,7 +3501,7 @@
                 // Cash In: Sales (cash only) + Customer Payments + Supplier Returns (cash)
                 const salesCash = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a,c) => a + c.total, 0);
                 const custPayments = db.transactions.filter(t => t.type === 'payment' && !t.isReturn).reduce((a,c) => a + c.total, 0);
-                const supReturnsCash = db.transactions.filter(t => t.type === 'payment_out' && t.isReturn).reduce((a,c) => a + c.total, 0);
+                const supReturnsCash = db.transactions.filter(t => t.type === 'payment' && t.isReturn).reduce((a,c) => a + c.total, 0);
                 const cashIn = salesCash + custPayments + supReturnsCash;
                 
                 // Cash Out: Expenses + Cash Purchases + Supplier Payments (payment_out)
@@ -3627,8 +3510,8 @@
                 // FIX #5: EMPTY REGISTER - Include opening balance in calculation
                 const openingBalance = db.config.initialCash || 0;
                 const cashHand = moneyRound(openingBalance + cashIn - cashOut);
-                const assets = moneyRound(stockVal + receivables + cashHand);
-                const equity = moneyRound(assets - payables);
+                const assets = stockVal + receivables + cashHand;
+                const equity = assets - payables;
                 
                 cards.innerHTML += createCard('Total Assets', assets, 'blue-400');
                 cards.innerHTML += createCard('Liabilities', payables, 'red-400');
