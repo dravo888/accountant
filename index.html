@@ -585,9 +585,14 @@
                         <div class="flex gap-2 w-full md:w-auto">
                             <input type="text" id="invSearch" placeholder="Search Inventory..." class="input-field w-full md:w-64">
                         </div>
-                        <button onclick="openModal('prodModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-plus"></i> New Product
-                        </button>
+                        <div class="flex gap-2 flex-col md:flex-row w-full md:w-auto">
+                            <button onclick="openModal('priceManagerModal')" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold flex items-center justify-center gap-2 text-sm">
+                                <i class="fa-solid fa-percent"></i> Bulk Price Adjust
+                            </button>
+                            <button onclick="openModal('prodModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-plus"></i> New Product
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
@@ -1141,6 +1146,119 @@
                     <button type="submit" class="px-4 py-2 bg-red-600 text-white font-bold rounded">Save</button>
                 </div>
             </form>
+        </div>
+
+        <!-- PRICE MANAGER MODAL - NEW FEATURE -->
+        <div id="priceManagerModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-4 text-karta-primary"><i class="fa-solid fa-percent mr-2"></i>Bulk Price Adjustment</h3>
+            
+            <div class="space-y-6">
+                <!-- TAB 1: ADJUST ALL PRODUCTS -->
+                <div class="border border-karta-border rounded-lg p-4">
+                    <h4 class="font-bold text-white mb-3"><i class="fa-solid fa-list"></i> Adjust All Products</h4>
+                    <p class="text-xs text-gray-400 mb-3">Apply percentage change to ALL product prices</p>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-400">Adjustment Type</label>
+                            <select id="priceAdjustType" class="input-field">
+                                <option value="retail">Retail Price Only</option>
+                                <option value="both">Both Retail & Wholesale</option>
+                                <option value="cost">Cost Price (affects profit margin)</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-400">Percentage Change (%)</label>
+                                <input type="number" id="pricePercentage" class="input-field" placeholder="e.g. 10 or -5" step="0.1">
+                            </div>
+                            <div class="bg-white/5 p-3 rounded border border-gray-700 flex items-end">
+                                <div>
+                                    <div class="text-xs text-gray-500">Preview:</div>
+                                    <div class="text-sm font-bold text-karta-primary" id="pricePreview">₹100 → ₹100</div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" onclick="applyBulkPriceChange()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold text-sm">
+                            <i class="fa-solid fa-check mr-2"></i>Apply to All Products
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 2: ADJUST BY CATEGORY -->
+                <div class="border border-karta-border rounded-lg p-4">
+                    <h4 class="font-bold text-white mb-3"><i class="fa-solid fa-filter"></i> Adjust by Category</h4>
+                    <p class="text-xs text-gray-400 mb-3">Apply price change to specific category only</p>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-400">Select Category</label>
+                            <select id="priceCategoryFilter" class="input-field">
+                                <option value="">-- Select Category --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Adjustment Type</label>
+                            <select id="priceCategoryAdjustType" class="input-field">
+                                <option value="retail">Retail Price Only</option>
+                                <option value="both">Both Retail & Wholesale</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-400">Percentage Change (%)</label>
+                                <input type="number" id="priceCategoryPercentage" class="input-field" placeholder="e.g. 10 or -5" step="0.1">
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                Products to update: <span class="font-bold text-white" id="categoryProductCount">0</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="applyBulkPriceChangeByCategory()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold text-sm">
+                            <i class="fa-solid fa-check mr-2"></i>Apply to Category
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 3: INDIVIDUAL PRODUCT -->
+                <div class="border border-karta-border rounded-lg p-4">
+                    <h4 class="font-bold text-white mb-3"><i class="fa-solid fa-pen"></i> Edit Individual Product</h4>
+                    <p class="text-xs text-gray-400 mb-3">Update price for a single product</p>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-400">Select Product</label>
+                            <select id="priceProductSelect" class="input-field" onchange="loadProductPriceFields()">
+                                <option value="">-- Select Product --</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-400">Cost Price</label>
+                                <input type="number" id="priceProductCost" class="input-field" step="0.01" placeholder="Cost">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Retail Price</label>
+                                <input type="number" id="priceProductRetail" class="input-field" step="0.01" placeholder="Retail">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Wholesale Price</label>
+                                <input type="number" id="priceProductWholesale" class="input-field" step="0.01" placeholder="Wholesale">
+                            </div>
+                        </div>
+                        <div class="bg-blue-900/20 p-3 rounded border border-blue-800 text-xs text-blue-300">
+                            <i class="fa-solid fa-info-circle mr-2"></i>
+                            Profit Margin: <span id="profitMarginDisplay" class="font-bold">--</span>
+                        </div>
+                        <button type="button" onclick="updateIndividualProductPrice()" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded font-bold text-sm">
+                            <i class="fa-solid fa-save mr-2"></i>Save Individual Price
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-6 border-t border-gray-700 pt-4">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Close</button>
+            </div>
         </div>
     </div>
 
@@ -2246,6 +2364,13 @@
             }
         }
 
+        window.removeFromCart = function(idx) {
+            if(idx >= 0 && idx < cart.length) {
+                cart.splice(idx, 1);
+                renderCart();
+            }
+        }
+
         window.renderCart = function() {
             const body = document.getElementById('posCartBody');
             body.innerHTML = '';
@@ -2280,7 +2405,7 @@
                             <button onclick="updateCartQty(${idx}, 1)" class="w-6 h-6 bg-gray-700 rounded hover:bg-gray-600">+</button>
                         </div>
                         <div class="font-bold mr-2 w-16 text-right">${db.config.currency}${moneyRound(item.qty * price).toFixed(2)}</div>
-                        <button onclick="cart.splice(${idx},1); renderCart()" class="text-red-500"><i class="fa-solid fa-times"></i></button>
+                        <button onclick="removeFromCart(${idx})" class="text-red-500 hover:text-red-400 transition p-1"><i class="fa-solid fa-trash"></i></button>
                     `;
                     body.appendChild(row);
                 });
@@ -2648,22 +2773,23 @@
                     
                     // Handle accounting based on payment method
                     if(returnMethod === 'cash') {
-                        // CASH: Record as cash received (increases cash account)
+                        // CASH RETURN: Money comes IN from supplier (cash received)
+                        // This increases our cash account and decreases what we owe supplier
                         db.transactions.push({
                             id: Date.now(),
-                            type: 'payment',  // Payment type = cash received
+                            type: 'return_cash_in',  // ✅ Fixed: Specific type for supplier cash returns
                             date: new Date().toISOString(),
                             entityId: supId,
                             entityName: sup.name,
                             items: [{id: pid, name: prod.name, qty: qty, cost: prod.cost}],
-                            total: totalValue,  // Positive = cash in
-                            ref: 'Supplier Return - ' + (reason || 'Stock Return'),
+                            total: totalValue,  // Positive = cash IN from supplier
+                            ref: 'Supplier Return (Cash) - ' + (reason || 'Stock Return'),
                             isReturn: true
                         });
                         // Reduce supplier balance (what we still owe them)
                         sup.balance -= totalValue;
                     } else {
-                        // CREDIT: Record as negative purchase (reduces purchase cost & balance)
+                        // CREDIT RETURN: Reduces what we owe supplier (credit note)
                         db.transactions.push({
                             id: Date.now(),
                             type: 'purchase',
@@ -3229,7 +3355,7 @@
                 // Cash In: Sales (cash only) + Customer Payments + Supplier Returns (cash)
                 const salesCash = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a,c) => a + c.total, 0);
                 const custPayments = db.transactions.filter(t => t.type === 'payment' && !t.isReturn).reduce((a,c) => a + c.total, 0);
-                const supReturnsCash = db.transactions.filter(t => t.type === 'payment' && t.isReturn).reduce((a,c) => a + c.total, 0);
+                const supReturnsCash = db.transactions.filter(t => (t.type === 'payment' || t.type === 'return_cash_in') && t.isReturn).reduce((a,c) => a + c.total, 0);
                 const cashIn = salesCash + custPayments + supReturnsCash;
                 
                 // Cash Out: Expenses + Cash Purchases + Supplier Payments (payment_out)
@@ -3501,7 +3627,7 @@
                 // Cash In: Sales (cash only) + Customer Payments + Supplier Returns (cash)
                 const salesCash = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a,c) => a + c.total, 0);
                 const custPayments = db.transactions.filter(t => t.type === 'payment' && !t.isReturn).reduce((a,c) => a + c.total, 0);
-                const supReturnsCash = db.transactions.filter(t => t.type === 'payment' && t.isReturn).reduce((a,c) => a + c.total, 0);
+                const supReturnsCash = db.transactions.filter(t => (t.type === 'payment' || t.type === 'return_cash_in') && t.isReturn).reduce((a,c) => a + c.total, 0);
                 const cashIn = salesCash + custPayments + supReturnsCash;
                 
                 // Cash Out: Expenses + Cash Purchases + Supplier Payments (payment_out)
@@ -3649,6 +3775,186 @@
                 eh.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white">${t.items[0].name}</div><div class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString()}</div></div><div class="text-red-400 font-bold">-${t.total.toFixed(2)}</div></div>`;
             });
         }
+        
+        // --- PRICE MANAGEMENT FUNCTIONS ---
+        
+        // Initialize price manager modal when opened
+        window.openModal = function(id) {
+            document.getElementById('modalBackdrop').classList.remove('hidden');
+            document.getElementById(id).classList.remove('hidden');
+            if(id === 'purchModal') loadPurchSelects();
+            if(id === 'priceManagerModal') loadPriceManagerData();
+        }
+        
+        function loadPriceManagerData() {
+            // Populate product list
+            const prodSel = document.getElementById('priceProductSelect');
+            prodSel.innerHTML = '<option value="">-- Select Product --</option>';
+            if(db.products) {
+                db.products.forEach(p => {
+                    prodSel.innerHTML += `<option value="${p.id}" data-name="${p.name}|${p.cost}|${p.retail}|${p.wholesale}">${p.name} (${p.sku})</option>`;
+                });
+            }
+            
+            // Populate category list
+            const catSel = document.getElementById('priceCategoryFilter');
+            catSel.innerHTML = '<option value="">-- Select Category --</option>';
+            const categories = new Set();
+            if(db.products) {
+                db.products.forEach(p => {
+                    if(p.category) categories.add(p.category);
+                });
+            }
+            categories.forEach(cat => {
+                catSel.innerHTML += `<option value="${cat}">${cat}</option>`;
+            });
+            
+            // Setup percentage change preview
+            document.getElementById('pricePercentage').addEventListener('input', updatePricePreview);
+        }
+        
+        function updatePricePreview() {
+            const percent = parseFloat(document.getElementById('pricePercentage').value) || 0;
+            const original = 100;
+            const newPrice = moneyRound(original * (1 + percent / 100));
+            document.getElementById('pricePreview').innerText = `${db.config.currency}${original.toFixed(2)} → ${db.config.currency}${newPrice.toFixed(2)}`;
+        }
+        
+        window.loadProductPriceFields = function() {
+            const prodSel = document.getElementById('priceProductSelect');
+            const selectedOption = prodSel.options[prodSel.selectedIndex];
+            
+            if(!selectedOption.value) {
+                document.getElementById('priceProductCost').value = '';
+                document.getElementById('priceProductRetail').value = '';
+                document.getElementById('priceProductWholesale').value = '';
+                document.getElementById('profitMarginDisplay').innerText = '--';
+                return;
+            }
+            
+            const prod = db.products.find(p => p.id === parseInt(prodSel.value));
+            if(prod) {
+                document.getElementById('priceProductCost').value = prod.cost.toFixed(2);
+                document.getElementById('priceProductRetail').value = prod.retail.toFixed(2);
+                document.getElementById('priceProductWholesale').value = (prod.wholesale || 0).toFixed(2);
+                
+                // Calculate margin
+                const margin = moneyRound((prod.retail - prod.cost) / prod.retail * 100);
+                document.getElementById('profitMarginDisplay').innerText = margin.toFixed(1) + '%';
+                
+                // Setup real-time margin calculation
+                document.getElementById('priceProductRetail').addEventListener('input', function() {
+                    const cost = parseFloat(document.getElementById('priceProductCost').value) || 0;
+                    const retail = parseFloat(this.value) || 0;
+                    const m = retail > 0 ? ((retail - cost) / retail * 100) : 0;
+                    document.getElementById('profitMarginDisplay').innerText = m.toFixed(1) + '%';
+                });
+            }
+        }
+        
+        window.updateIndividualProductPrice = function() {
+            const prodId = parseInt(document.getElementById('priceProductSelect').value);
+            const cost = moneyRound(parseFloat(document.getElementById('priceProductCost').value));
+            const retail = moneyRound(parseFloat(document.getElementById('priceProductRetail').value));
+            const wholesale = moneyRound(parseFloat(document.getElementById('priceProductWholesale').value) || 0);
+            
+            if(!prodId || !retail) return alert("Please select product and enter retail price");
+            
+            const prod = db.products.find(p => p.id === prodId);
+            if(prod) {
+                const oldRetail = prod.retail;
+                const oldCost = prod.cost;
+                
+                prod.cost = cost;
+                prod.retail = retail;
+                prod.wholesale = wholesale;
+                
+                saveDB();
+                renderProducts();
+                
+                alert(`✅ Price Updated!\n${prod.name}\n\nCost: ${db.config.currency}${oldCost.toFixed(2)} → ${db.config.currency}${cost.toFixed(2)}\nRetail: ${db.config.currency}${oldRetail.toFixed(2)} → ${db.config.currency}${retail.toFixed(2)}`);
+                
+                // Reload fields
+                loadProductPriceFields();
+            }
+        }
+        
+        window.applyBulkPriceChange = function() {
+            const percent = parseFloat(document.getElementById('pricePercentage').value);
+            const adjustType = document.getElementById('priceAdjustType').value;
+            
+            if(isNaN(percent)) return alert("Please enter a percentage");
+            if(!db.products) return;
+            
+            const affectedCount = db.products.length;
+            if(affectedCount === 0) return alert("No products to update");
+            
+            if(!confirm(`Apply ${percent > 0 ? '+' : ''}${percent}% to ${adjustType} prices for ${affectedCount} product(s)?\n\nThis cannot be undone!`)) return;
+            
+            let updateCount = 0;
+            db.products.forEach(p => {
+                if(adjustType === 'retail') {
+                    p.retail = moneyRound(p.retail * (1 + percent / 100));
+                    updateCount++;
+                } else if(adjustType === 'both') {
+                    p.retail = moneyRound(p.retail * (1 + percent / 100));
+                    if(p.wholesale) p.wholesale = moneyRound(p.wholesale * (1 + percent / 100));
+                    updateCount++;
+                } else if(adjustType === 'cost') {
+                    p.cost = moneyRound(p.cost * (1 + percent / 100));
+                    updateCount++;
+                }
+            });
+            
+            saveDB();
+            renderProducts();
+            
+            alert(`✅ Price Updated!\n${updateCount} product(s) updated with ${percent > 0 ? '+' : ''}${percent}% change`);
+            document.getElementById('pricePercentage').value = '';
+            updatePricePreview();
+        }
+        
+        window.applyBulkPriceChangeByCategory = function() {
+            const category = document.getElementById('priceCategoryFilter').value;
+            const percent = parseFloat(document.getElementById('priceCategoryPercentage').value);
+            const adjustType = document.getElementById('priceCategoryAdjustType').value;
+            
+            if(!category) return alert("Please select a category");
+            if(isNaN(percent)) return alert("Please enter a percentage");
+            if(!db.products) return;
+            
+            const categoryProducts = db.products.filter(p => p.category === category);
+            if(categoryProducts.length === 0) return alert("No products in this category");
+            
+            if(!confirm(`Apply ${percent > 0 ? '+' : ''}${percent}% to ${adjustType} prices for ${categoryProducts.length} product(s) in "${category}"?\n\nThis cannot be undone!`)) return;
+            
+            categoryProducts.forEach(p => {
+                if(adjustType === 'retail') {
+                    p.retail = moneyRound(p.retail * (1 + percent / 100));
+                } else if(adjustType === 'both') {
+                    p.retail = moneyRound(p.retail * (1 + percent / 100));
+                    if(p.wholesale) p.wholesale = moneyRound(p.wholesale * (1 + percent / 100));
+                }
+            });
+            
+            saveDB();
+            renderProducts();
+            
+            alert(`✅ Prices Updated!\n${categoryProducts.length} product(s) in "${category}" updated with ${percent > 0 ? '+' : ''}${percent}% change`);
+            document.getElementById('priceCategoryFilter').value = '';
+            document.getElementById('priceCategoryPercentage').value = '';
+            document.getElementById('categoryProductCount').innerText = '0';
+        }
+        
+        // Update product count when category selected
+        document.addEventListener('change', function(e) {
+            if(e.target.id === 'priceCategoryFilter') {
+                const category = e.target.value;
+                if(!db.products) return;
+                const count = db.products.filter(p => p.category === category).length;
+                document.getElementById('categoryProductCount').innerText = count;
+            }
+        });
         
         // --- Init ---
         document.getElementById('invSearch').addEventListener('input', renderProducts);
