@@ -620,7 +620,7 @@
                 <section id="customers" class="hidden space-y-6 pb-20 md:pb-0">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <input type="text" id="custSearch" placeholder="Search Customers..." class="input-field w-full md:w-80">
-                        <button onclick="openModal('custModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition">
+                        <button onclick="document.getElementById('custId').value=''; document.getElementById('custForm').reset(); openModal('custModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition">
                             <i class="fa-solid fa-user-plus"></i> Add Customer
                         </button>
                     </div>
@@ -633,7 +633,7 @@
                 <section id="suppliers" class="hidden space-y-6 pb-20 md:pb-0">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <input type="text" id="supSearch" placeholder="Search Suppliers..." class="input-field w-full md:w-64">
-                        <button onclick="openModal('supModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition">
+                        <button onclick="document.getElementById('supId').value=''; document.getElementById('supForm').reset(); openModal('supModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition">
                             <i class="fa-solid fa-truck"></i> Add Supplier
                         </button>
                     </div>
@@ -1772,17 +1772,38 @@
         // --- Customer Management ---
         document.getElementById('custForm').onsubmit = e => {
             e.preventDefault();
-            db.customers.push({
-                id: Date.now(),
-                name: document.getElementById('cName').value,
-                phone: document.getElementById('cPhone').value,
-                address: document.getElementById('cAddr').value,
-                taxId: document.getElementById('cTax').value,
-                limit: parseFloat(document.getElementById('cLimit').value) || 0,
-                balance: 0
-            });
+            const custId = document.getElementById('custId').value;
+            const name = document.getElementById('cName').value;
+            const phone = document.getElementById('cPhone').value;
+            const address = document.getElementById('cAddr').value;
+            const taxId = document.getElementById('cTax').value;
+            const limit = parseFloat(document.getElementById('cLimit').value) || 0;
+            
+            if(custId) {
+                // Edit existing customer
+                const cust = db.customers.find(c => c.id === parseInt(custId));
+                if(cust) {
+                    cust.name = name;
+                    cust.phone = phone;
+                    cust.address = address;
+                    cust.taxId = taxId;
+                    cust.limit = limit;
+                }
+            } else {
+                // Add new customer
+                db.customers.push({
+                    id: Date.now(),
+                    name: name,
+                    phone: phone,
+                    address: address,
+                    taxId: taxId,
+                    limit: limit,
+                    balance: 0
+                });
+            }
             saveDB();
             window.closeModal();
+            renderCustomers();
         };
 
         // Payment Settlement
@@ -1808,6 +1829,21 @@
                 window.closeModal();
                 alert("Payment Recorded");
             }
+        };
+
+        // Edit Customer Function
+        window.editCustomer = function(id) {
+            const cust = db.customers.find(c => c.id === id);
+            if(!cust) return;
+            
+            document.getElementById('custId').value = id;
+            document.getElementById('cName').value = cust.name;
+            document.getElementById('cPhone').value = cust.phone;
+            document.getElementById('cAddr').value = cust.address || '';
+            document.getElementById('cTax').value = cust.taxId || '';
+            document.getElementById('cLimit').value = cust.limit || 0;
+            
+            window.openModal('custModal');
         };
 
         function renderCustomers() {
@@ -1841,6 +1877,9 @@
                     <div class="mt-auto pt-3 border-t border-gray-800 flex gap-2">
                          <button onclick="viewCustomerHistory(${c.id})" class="flex-1 bg-white/10 hover:bg-white/20 text-white text-xs py-2 rounded transition flex items-center justify-center gap-2">
                             <i class="fa-solid fa-list-ul"></i> History
+                         </button>
+                         <button onclick="editCustomer(${c.id})" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-xs py-2 rounded transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-edit"></i> Edit
                          </button>
                          ${c.balance > 0 ? `<button onclick="openPaymentModal(${c.id}, '${c.name}')" class="flex-1 text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-2 rounded font-bold">Settle Due</button>` : ''}
                     </div>
@@ -1981,16 +2020,35 @@
         // --- Supplier Management ---
         document.getElementById('supForm').onsubmit = e => {
             e.preventDefault();
-            db.suppliers.push({
-                id: Date.now(),
-                name: document.getElementById('sName').value,
-                contact: document.getElementById('sContact').value,
-                phone: document.getElementById('sPhone').value,
-                taxId: document.getElementById('sTax').value,
-                balance: 0
-            });
+            const supId = document.getElementById('supId').value;
+            const name = document.getElementById('sName').value;
+            const contact = document.getElementById('sContact').value;
+            const phone = document.getElementById('sPhone').value;
+            const taxId = document.getElementById('sTax').value;
+            
+            if(supId) {
+                // Edit existing supplier
+                const sup = db.suppliers.find(s => s.id === parseInt(supId));
+                if(sup) {
+                    sup.name = name;
+                    sup.contact = contact;
+                    sup.phone = phone;
+                    sup.taxId = taxId;
+                }
+            } else {
+                // Add new supplier
+                db.suppliers.push({
+                    id: Date.now(),
+                    name: name,
+                    contact: contact,
+                    phone: phone,
+                    taxId: taxId,
+                    balance: 0
+                });
+            }
             saveDB();
             window.closeModal();
+            renderSuppliers();
         };
         
         // NEW: Supplier History & Logic
@@ -2153,6 +2211,7 @@
                     <td class="p-3 text-right text-red-400 font-bold">${db.config.currency}${s.balance.toFixed(2)}</td>
                     <td class="p-3 text-center flex justify-center gap-2">
                          <button onclick="viewSupplierHistory(${s.id})" class="text-gray-400 hover:text-white" title="History"><i class="fa-solid fa-list-ul"></i></button>
+                         <button onclick="editSupplier(${s.id})" class="text-blue-400 hover:text-blue-300" title="Edit"><i class="fa-solid fa-edit"></i></button>
                          <button onclick="openSupPayModal(${s.id}, '${s.name}')" class="text-green-500 hover:text-green-400" title="Settle Balance"><i class="fa-solid fa-money-bill-wave"></i></button>
                          <button onclick="delSup(${s.id})" class="text-red-500 hover:text-red-400" title="Delete"><i class="fa-solid fa-trash"></i></button>
                     </td>
@@ -2160,7 +2219,21 @@
                 tbody.appendChild(tr);
             });
         }
-        window.delSup = function(id) { if(confirm("Delete Supplier?")) { db.suppliers = db.suppliers.filter(s=>s.id!==id); saveDB(); } }
+        // Edit Supplier Function
+        window.editSupplier = function(id) {
+            const sup = db.suppliers.find(s => s.id === id);
+            if(!sup) return;
+            
+            document.getElementById('supId').value = id;
+            document.getElementById('sName').value = sup.name;
+            document.getElementById('sContact').value = sup.contact || '';
+            document.getElementById('sPhone').value = sup.phone || '';
+            document.getElementById('sTax').value = sup.taxId || '';
+            
+            window.openModal('supModal');
+        };
+        
+        window.delSup = function(id) { if(confirm("Delete Supplier?")) { db.suppliers = db.suppliers.filter(s=>s.id!==id); saveDB(); renderSuppliers(); } }
 
         // --- Transactions (Purchase & Expense) ---
         function loadPurchSelects() {
