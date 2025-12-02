@@ -1265,42 +1265,62 @@
     <!-- Hidden Printable Invoice Area -->
     <div id="printable-area">
         <!-- INVOICE VIEW -->
+        <!-- TOAST NOTIFICATION -->
+        <div id="toast-notification" style="position: fixed; bottom: 20px; right: 20px; background: #00c853; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,200,83,0.3); display: none; z-index: 9999; font-size: 14px; font-weight: 500; max-width: 300px; animation: slideIn 0.3s ease-out;"></div>
+        
+        <!-- PRINT PREVIEW MODAL -->
+        <div id="print-preview-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; z-index: 9998; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out;">
+            <div style="background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 90%; max-height: 85vh; overflow: auto; animation: slideUp 0.3s ease-out;">
+                <div style="padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: white; z-index: 10000;">
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #222;">Print Preview</h2>
+                    <button onclick="closePreviewModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">&times;</button>
+                </div>
+                <div id="preview-content" style="padding: 30px; min-height: 300px; background: white;"></div>
+                <div style="padding: 20px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; position: sticky; bottom: 0; background: white;">
+                    <button onclick="closePreviewModal()" style="padding: 10px 20px; border: 1px solid #ddd; border-radius: 6px; background: white; color: #333; cursor: pointer; font-weight: 500; transition: all 0.2s;">Cancel</button>
+                    <button id="preview-confirm-btn" onclick="confirmPrint()" style="padding: 10px 24px; background: #00c853; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s;">Confirm & Print</button>
+                </div>
+            </div>
+        </div>
+        
+        <style>
+            @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+            @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        </style>
+        
         <div id="invoice-print-view">
-            <!-- Header -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-                <div style="display: flex; gap: 15px;">
-                     <!-- Logo Container -->
-                     <img id="printInvLogo" src="" style="width: 60px; height: 60px; object-fit: contain; display: none;">
-                    <div>
-                        <h1 style="font-size: 24px; font-weight: bold; margin: 0; color: #000;" id="invCompName">KARTA PHARMACY</h1>
-                        <p style="margin: 2px 0; font-size: 14px;" id="invCompAddr">123 Green Street</p>
-                        <p style="margin: 2px 0; font-size: 14px;" id="invCompPhone">Tel: 9800000000</p>
-                        <p style="margin: 2px 0; font-size: 14px;" id="invCompTax">VAT Reg: 123456789</p>
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <h2 style="font-size: 20px; color: #333; margin: 0;">INVOICE</h2>
-                    <p style="margin: 2px 0;">#<span id="invNo">INV-001</span></p>
-                    <p style="margin: 2px 0;">Date: <span id="invDate">2025-01-01</span></p>
-                </div>
+            <!-- Header - CENTERED LOGO DESIGN -->
+            <div style="text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
+                <img id="printInvLogo" src="" style="width: 80px; height: 80px; object-fit: contain; margin: 0 auto 15px; display: none;">
+                <h1 style="font-size: 22px; font-weight: 700; margin: 0; color: #222;" id="invCompName">KARTA PHARMACY</h1>
+                <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;" id="invCompAddr">123 Green Street</p>
+                <p style="margin: 2px 0; font-size: 11px; color: #999;" id="invCompPhone">Tel: 9800000000</p>
+                <p style="margin: 2px 0 0 0; font-size: 10px; color: #bbb;">VAT ID: <span id="invCompTax">123456789</span></p>
+            </div>
+            
+            <!-- Invoice Number and Date -->
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 12px;">
+                <div><strong>Invoice #:</strong> <span id="invNo">INV-001</span></div>
+                <div><strong>Date:</strong> <span id="invDate">2025-01-01</span></div>
             </div>
 
             <!-- Customer Info -->
-            <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                <p style="margin: 0; font-weight: bold;">Bill To:</p>
-                <p style="margin: 2px 0;" id="invCustName">Guest Customer</p>
-                <p style="margin: 2px 0;" id="invCustContact"></p>
+            <div style="margin-bottom: 15px; padding: 10px 0; border-bottom: 1px solid #eee;">
+                <p style="margin: 0; font-weight: 600; font-size: 12px; color: #666;">BILL TO:</p>
+                <p style="margin: 3px 0 0 0; font-size: 12px;" id="invCustName">Guest Customer</p>
+                <p style="margin: 2px 0 0 0; font-size: 11px; color: #999;" id="invCustContact"></p>
             </div>
 
             <!-- Items Table -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px;">
                 <thead>
-                    <tr style="background: #f0f0f0; border-bottom: 2px solid #000;">
-                        <th style="padding: 8px; text-align: left;">SN</th>
-                        <th style="padding: 8px; text-align: left;">Description</th>
-                        <th style="padding: 8px; text-align: right;">Qty</th>
-                        <th style="padding: 8px; text-align: right;">Unit Price</th>
-                        <th style="padding: 8px; text-align: right;">Total</th>
+                    <tr style="border-bottom: 1px solid #ddd;">
+                        <th style="padding: 8px; text-align: left; font-weight: 600; color: #666;">SN</th>
+                        <th style="padding: 8px; text-align: left; font-weight: 600; color: #666;">Description</th>
+                        <th style="padding: 8px; text-align: right; font-weight: 600; color: #666;">Qty</th>
+                        <th style="padding: 8px; text-align: right; font-weight: 600; color: #666;">Unit Price</th>
+                        <th style="padding: 8px; text-align: right; font-weight: 600; color: #666;">Total</th>
                     </tr>
                 </thead>
                 <tbody id="invItemsBody">
@@ -1309,21 +1329,21 @@
             </table>
 
             <!-- Totals -->
-            <div style="display: flex; justify-content: flex-end;">
-                <div style="width: 250px;">
-                    <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                <div style="width: 200px;">
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 11px;">
                         <span>Subtotal:</span>
                         <span id="invSub">0.00</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; padding: 4px 0; color: #e74c3c;" id="invDiscountRow" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0; color: #e74c3c; font-size: 11px;" id="invDiscountRow" style="display: none;">
                         <span>Discount (<span id="invDiscountPercent">0</span>%):</span>
                         <span id="invDiscount">0.00</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid #ddd; margin-top: 6px; font-size: 11px;">
                         <span>VAT:</span>
                         <span id="invTax">0.00</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 2px solid #000; font-weight: bold; font-size: 16px;">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid #000; margin-top: 6px; font-weight: 600; font-size: 12px;">
                         <span>Grand Total:</span>
                         <span id="invTotal">0.00</span>
                     </div>
@@ -1331,9 +1351,9 @@
             </div>
 
             <!-- Footer -->
-            <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 10px;">
-                <p>Thank you for your business. Get well soon!</p>
-                <p>Generated by KARTA System</p>
+            <div style="margin-top: 20px; text-align: center; font-size: 9px; color: #bbb; border-top: 1px solid #eee; padding-top: 10px;">
+                <p style="margin: 3px 0;">Thank you for your business!</p>
+                <p style="margin: 3px 0;">Generated by KARTA System</p>
             </div>
         </div>
 
@@ -3303,6 +3323,10 @@
         }
 
         // --- Invoice Printing ---
+        // Global variable to store transaction for printing
+        let globalTxnForPrint = null;
+        let printPreviewMode = 'invoice'; // 'invoice' or 'report'
+        
         function printInvoice(txn) {
             // SHOW INVOICE VIEW, HIDE REPORT VIEW
             document.getElementById('invoice-print-view').classList.remove('hidden');
@@ -3335,12 +3359,12 @@
                 const vatStatus = item.vatExempt ? ' <span style="color: #e74c3c; font-size: 11px;">[No VAT]</span>' : '';
                 
                 tbody.innerHTML += `
-                    <tr>
-                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${idx+1}</td>
-                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}${vatStatus}</td>
-                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${item.qty}</td>
-                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${itemPrice.toFixed(2)}</td>
-                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${itemTotal.toFixed(2)}</td>
+                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                        <td style="padding: 8px;">${idx+1}</td>
+                        <td style="padding: 8px;">${item.name}${vatStatus}</td>
+                        <td style="padding: 8px; text-align: right;">${item.qty}</td>
+                        <td style="padding: 8px; text-align: right;">${itemPrice.toFixed(2)}</td>
+                        <td style="padding: 8px; text-align: right;">${itemTotal.toFixed(2)}</td>
                     </tr>
                 `;
             });
@@ -3360,16 +3384,55 @@
             document.getElementById('invTax').innerText = (txn.tax || 0).toFixed(2);
             document.getElementById('invTotal').innerText = (txn.total || 0).toFixed(2);
             
-            // Try print, fallback to PDF for mobile apps
-            setTimeout(() => {
+            // Store for preview/print
+            globalTxnForPrint = txn;
+            printPreviewMode = 'invoice';
+            
+            // Show preview modal
+            showInvoicePreview();
+        }
+
+        // Show invoice preview
+        function showInvoicePreview() {
+            const previewContent = document.getElementById('preview-content');
+            previewContent.innerHTML = document.getElementById('invoice-print-view').innerHTML;
+            document.getElementById('print-preview-modal').style.display = 'flex';
+        }
+        
+        // Close preview modal
+        function closePreviewModal() {
+            document.getElementById('print-preview-modal').style.display = 'none';
+        }
+        
+        // Confirm and proceed with printing
+        function confirmPrint() {
+            closePreviewModal();
+            
+            if(printPreviewMode === 'invoice' && globalTxnForPrint) {
                 if(navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
-                    generateInvoicePDF(txn);
+                    generateInvoicePDF(globalTxnForPrint);
                 } else {
                     window.print();
                 }
-            }, 200);
+            } else if(printPreviewMode === 'report') {
+                if(navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
+                    generateReportPDF(globalReportHtml);
+                } else {
+                    window.print();
+                }
+            }
         }
-
+        
+        // Show toast notification
+        function showNotification(message, duration = 3000) {
+            const toast = document.getElementById('toast-notification');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, duration);
+        }
+        
         // Generate Invoice as PDF (Mobile-friendly)
         function generateInvoicePDF(txn) {
             try {
@@ -3455,7 +3518,7 @@
                 // Save or Open
                 const filename = `Invoice_${txn.id.toString().slice(-6)}_${new Date().toISOString().split('T')[0]}.pdf`;
                 doc.save(filename);
-                alert(`Invoice saved: ${filename}`);
+                showNotification(`✓ Invoice saved: ${filename}`);
             } catch(err) {
                 console.error('PDF generation failed:', err);
                 alert('PDF generation failed. Please try again.');
@@ -3580,14 +3643,25 @@
 
             reportView.innerHTML = html;
             
-            // Try print, fallback to PDF for mobile apps
-            setTimeout(() => {
-                if(navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
-                    generateReportPDF(html);
-                } else {
-                    window.print();
-                }
-            }, 200);
+            // Store for preview/print
+            globalReportHtml = html;
+            printPreviewMode = 'report';
+            
+            // Show preview modal
+            showReportPreview(html);
+        }
+        
+        // Show report preview
+        let globalReportHtml = '';
+        function showReportPreview(htmlContent) {
+            const previewContent = document.getElementById('preview-content');
+            previewContent.innerHTML = htmlContent;
+            document.getElementById('print-preview-modal').style.display = 'flex';
+        }
+        
+        // Generate Report as PDF (no params - uses global HTML)
+        function generateReportPDFWithNotification() {
+            generateReportPDF(globalReportHtml);
         }
 
         // Generate Report as PDF (Mobile-friendly)
@@ -3685,7 +3759,7 @@
                 // Save
                 const filename = `Report_${currentReportTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
                 doc.save(filename);
-                alert(`Report saved: ${filename}`);
+                showNotification(`✓ Report saved: ${filename}`);
             } catch(err) {
                 console.error('PDF generation failed:', err);
                 // Fallback: try to print anyway
