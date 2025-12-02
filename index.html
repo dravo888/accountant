@@ -618,6 +618,20 @@
 
                 <!-- CUSTOMERS -->
                 <section id="customers" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1 flex items-center gap-2"><i class="fa-solid fa-users"></i> Total Customers</div>
+                            <div class="text-3xl font-bold text-karta-primary" id="custCount">0</div>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1 flex items-center gap-2"><i class="fa-solid fa-credit-card"></i> Total Due</div>
+                            <div class="text-3xl font-bold text-red-500" id="custTotalDue">$0</div>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1 flex items-center gap-2"><i class="fa-solid fa-handshake"></i> Active Customers</div>
+                            <div class="text-3xl font-bold text-green-500" id="custActive">0</div>
+                        </div>
+                    </div>
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <input type="text" id="custSearch" placeholder="Search Customers..." class="input-field w-full md:w-80">
                         <button onclick="document.getElementById('custId').value=''; document.getElementById('custForm').reset(); openModal('custModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition">
@@ -631,6 +645,20 @@
 
                 <!-- SUPPLIERS -->
                 <section id="suppliers" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Total Suppliers</div>
+                            <div class="text-3xl font-bold text-karta-primary" id="supCount">0</div>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1 flex items-center gap-2"><i class="fa-solid fa-money-check"></i> Total Payable</div>
+                            <div class="text-3xl font-bold text-orange-500" id="supTotalDue">$0</div>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1 flex items-center gap-2"><i class="fa-solid fa-inbox"></i> Total Purchased</div>
+                            <div class="text-3xl font-bold text-blue-500" id="supTotalPurchased">$0</div>
+                        </div>
+                    </div>
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <input type="text" id="supSearch" placeholder="Search Suppliers..." class="input-field w-full md:w-64">
                         <button onclick="document.getElementById('supId').value=''; document.getElementById('supForm').reset(); openModal('supModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition">
@@ -1852,6 +1880,19 @@
             const search = document.getElementById('custSearch').value.toLowerCase();
             
             if (!db.customers) db.customers = [];
+            
+            // Calculate summary stats
+            let totalDue = 0;
+            let activeCount = 0;
+            db.customers.forEach(c => {
+                totalDue += c.balance;
+                if(c.balance > 0) activeCount++;
+            });
+            
+            // Update summary cards
+            document.getElementById('custCount').innerText = db.customers.length;
+            document.getElementById('custTotalDue').innerText = db.config.currency + totalDue.toFixed(2);
+            document.getElementById('custActive').innerText = activeCount;
 
             db.customers.filter(c => c.name.toLowerCase().includes(search) || (c.address && c.address.toLowerCase().includes(search))).forEach(c => {
                 const el = document.createElement('div');
@@ -2199,6 +2240,20 @@
             const search = document.getElementById('supSearch').value.toLowerCase();
             
             if (!db.suppliers) db.suppliers = [];
+            
+            // Calculate summary stats
+            let totalDue = 0;
+            let totalPurchased = 0;
+            db.suppliers.forEach(s => {
+                totalDue += s.balance;
+                const purchases = (db.transactions || []).filter(t => t.entityId === s.id && t.type === 'purchase');
+                totalPurchased += purchases.reduce((a, x) => a + x.total, 0);
+            });
+            
+            // Update summary cards
+            document.getElementById('supCount').innerText = db.suppliers.length;
+            document.getElementById('supTotalDue').innerText = db.config.currency + totalDue.toFixed(2);
+            document.getElementById('supTotalPurchased').innerText = db.config.currency + totalPurchased.toFixed(2);
 
             db.suppliers.filter(s => s.name.toLowerCase().includes(search)).forEach(s => {
                 const tr = document.createElement('tr');
