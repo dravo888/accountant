@@ -76,6 +76,22 @@
             border-color: #00c853;
         }
 
+        /* Modal Content Fixes */
+        .modal-content {
+            pointer-events: auto !important;
+            z-index: 51 !important;
+            position: relative !important;
+        }
+
+        #modalBackdrop {
+            z-index: 50 !important;
+            pointer-events: auto;
+        }
+        
+        #modalBackdrop.hidden {
+            pointer-events: none;
+        }
+
         /* Responsive Table Wrapper */
         .table-container {
             overflow-x: auto;
@@ -214,6 +230,9 @@
                 </button>
                 <button onclick="nav('suppliers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
                     <i class="fa-solid fa-truck-field w-5 text-center"></i> Suppliers
+                </button>
+                <button onclick="nav('productSuppliers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
+                    <i class="fa-solid fa-link w-5 text-center"></i> Product-Supplier
                 </button>
 
                 <div class="text-xs font-bold text-karta-muted uppercase px-3 py-2 mt-4">Finance</div>
@@ -589,7 +608,7 @@
                             <button onclick="openModal('priceManagerModal')" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold flex items-center justify-center gap-2 text-sm">
                                 <i class="fa-solid fa-percent"></i> Bulk Price Adjust
                             </button>
-                            <button onclick="openModal('prodModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition flex items-center justify-center gap-2">
+                            <button onclick="document.getElementById('prodId').value=''; document.getElementById('prodForm').reset(); openModal('prodModal')" class="w-full md:w-auto bg-karta-primary text-black px-4 py-2 rounded font-bold hover:bg-karta-primaryDark transition flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-plus"></i> New Product
                             </button>
                         </div>
@@ -684,6 +703,66 @@
                     </div>
                 </section>
 
+                <!-- PRODUCT SUPPLIER ASSIGNMENT -->
+                <section id="productSuppliers" class="hidden space-y-6 pb-20 md:pb-0">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-white">Product Supplier Management</h2>
+                        <p class="text-xs text-gray-400">Assign products to specific suppliers</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex flex-col md:flex-row gap-4">
+                            <input type="text" id="psmSearch" placeholder="Search products..." class="input-field flex-1" oninput="renderProductSupplierAssignment()">
+                            <select id="psmSupplierFilter" class="input-field md:w-64" onchange="renderProductSupplierAssignment()">
+                                <option value="">-- All Suppliers --</option>
+                            </select>
+                        </div>
+                        
+                        <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                            <div class="table-container">
+                                <table class="w-full text-left text-sm min-w-[800px]">
+                                    <thead class="bg-white/5 text-gray-400 border-b border-karta-border">
+                                        <tr>
+                                            <th class="p-3">Product Name</th>
+                                            <th class="p-3">SKU</th>
+                                            <th class="p-3">Current Supplier</th>
+                                            <th class="p-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="psmBody" class="divide-y divide-gray-800"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SUPPLIER ASSIGNMENT MODAL -->
+                <div id="assignSupplierModal" class="hidden modal-content bg-karta-surface border border-karta-border p-8 rounded-lg w-full max-w-md">
+                    <h3 class="text-xl font-bold mb-6 text-white">Assign Supplier to Product</h3>
+                    <div id="assignProdInfo" class="bg-white/5 p-4 rounded mb-6 border border-gray-700">
+                        <div class="text-base text-gray-400">Product: <span id="assignProdName" class="text-white font-bold text-lg">-</span></div>
+                        <div class="text-sm text-gray-500 mt-2">SKU: <span id="assignProdSKU" class="text-gray-300 font-mono">-</span></div>
+                        <div id="assignCurrentSupplier" class="text-sm text-gray-400 mt-3 pt-3 border-t border-gray-600">
+                            Current: <span id="assignCurrentSupplierName" class="text-yellow-400 font-bold">Unassigned</span>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <label class="text-sm text-gray-400 block mb-3">Select Supplier</label>
+                        <select id="assignSupplierSelect" class="input-field w-full text-base">
+                            <option value="">-- No Supplier (Unassign) --</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" onclick="unassignProductSupplier()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white text-sm font-bold transition" title="Remove supplier assignment">
+                            <i class="fa-solid fa-unlink mr-1"></i> Unassign
+                        </button>
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm transition">Cancel</button>
+                        <button type="button" onclick="saveProductSupplierAssignment()" class="px-4 py-2 bg-karta-primary hover:bg-green-600 text-black font-bold rounded text-sm transition">
+                            <i class="fa-solid fa-check mr-1"></i> Assign
+                        </button>
+                    </div>
+                </div>
+
                 <!-- PURCHASES & EXPENSES -->
                 <section id="purchases" class="hidden space-y-6 pb-20 md:pb-0">
                     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -697,7 +776,6 @@
                             </button>
                         </div>
                     </div>
-                    
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div class="bg-karta-surface border border-karta-border rounded-lg p-4 h-96 overflow-y-auto">
                             <h4 class="font-bold mb-3 text-karta-primary">Purchase History (GRN)</h4>
@@ -760,6 +838,11 @@
                             <button onclick="runReports('purchase')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Purchase Report</button>
                             <button onclick="runReports('expense')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Expense Report</button>
                             <button onclick="runReports('balance')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Balance Sheet</button>
+                            <button onclick="runReports('debtors')" class="bg-red-700 hover:bg-red-600 text-white py-2 rounded text-xs">Debtors Report</button>
+                        </div>
+                        <div id="debtorFilterContainer" class="hidden">
+                            <label class="text-xs text-gray-400">Search by Location</label>
+                            <input type="text" id="debtorLocationSearch" placeholder="e.g., Bharatpur" class="input-field" onkeyup="filterDebtorsReport()">
                         </div>
                     </div>
 
@@ -868,7 +951,7 @@
     </div>
 
     <!-- MODALS -->
-    <div id="modalBackdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div id="modalBackdrop" onclick="if(event.target === this) closeModal();" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         
         <!-- Product Modal -->
         <div id="prodModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -915,6 +998,12 @@
                 <div>
                     <label class="text-xs text-gray-400">Reorder Level</label>
                     <input type="number" id="pReorder" class="input-field" value="10">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-xs text-gray-400">Supplier (Optional - Assign to specific supplier)</label>
+                    <select id="pSupplier" class="input-field">
+                        <option value="">-- No specific supplier --</option>
+                    </select>
                 </div>
                 <div class="md:col-span-2 flex justify-end gap-2 mt-4">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
@@ -1127,44 +1216,78 @@
         </div>
 
          <!-- Purchase Modal -->
-         <div id="purchModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h3 class="text-xl font-bold mb-4 text-white">New Purchase (Stock In)</h3>
-            <form id="purchForm" class="space-y-4">
+         <div id="purchModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-karta-border">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-2"><i class="fa-solid fa-cart-shopping text-karta-primary"></i>Purchase Order</h3>
+                <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-white text-xl"><i class="fa-solid fa-times"></i></button>
+            </div>
+            
+            <form id="purchForm" class="space-y-6">
+                <!-- Supplier Selection -->
                 <div>
-                    <label class="text-xs text-gray-400">Supplier</label>
-                    <select id="poSup" class="input-field"></select>
+                    <label class="text-xs font-bold text-gray-400 mb-2 block uppercase tracking-wide">🏢 Select Supplier</label>
+                    <select id="poSup" onchange="loadSupplierProducts()" class="input-field w-full" required>
+                        <option value="">-- Choose Supplier --</option>
+                    </select>
                 </div>
+
+                <!-- Purchase Items -->
                 <div>
-                    <label class="text-xs text-gray-400">Product</label>
-                    <select id="poProd" class="input-field"></select>
-                </div>
-                <div class="flex gap-4">
-                    <div class="flex-1">
-                        <label class="text-xs text-gray-400">Qty</label>
-                        <input type="number" id="poQty" required class="input-field">
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">📦 Purchase Items</label>
+                        <button type="button" onclick="addPurchaseItem()" class="bg-karta-primary hover:bg-karta-primaryDark text-black px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Add Item
+                        </button>
                     </div>
-                    <div class="flex-1">
-                        <label class="text-xs text-gray-400">Total Cost</label>
-                        <input type="number" step="0.01" id="poCost" required class="input-field">
+                    <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                        <div class="table-container">
+                            <table class="w-full text-xs min-w-[1000px]">
+                                <thead class="bg-white/5 text-gray-400 border-b border-karta-border">
+                                    <tr>
+                                        <th class="p-3 text-left font-bold">Product</th>
+                                        <th class="p-3 text-center font-bold w-20">Qty</th>
+                                        <th class="p-3 text-right font-bold w-24">Unit Price</th> 
+                                        <th class="p-3 text-right font-bold w-24">Total</th>
+                                        <th class="p-3 text-center font-bold w-24">Batch #</th>
+                                        <th class="p-3 text-center font-bold w-28">Expiry</th>
+                                        <th class="p-3 text-center font-bold w-12">✕</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="purchItemsBody" class="divide-y divide-gray-800">
+                                    <tr><td colspan="7" class="p-6 text-center text-gray-500 text-sm">Click "Add Item" to start adding products</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-                <div class="flex gap-4">
-                    <div class="flex-1">
-                        <label class="text-xs text-gray-400">Batch Number</label>
-                        <input type="text" id="poBatch" placeholder="e.g. BATCH-001" class="input-field">
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                        <p class="text-xs text-gray-400 mb-1">Items</p>
+                        <p class="text-2xl font-bold text-karta-primary" id="purchTotalItems">0</p>
                     </div>
-                    <div class="flex-1">
-                        <label class="text-xs text-gray-400">Expiry Date</label>
-                        <input type="date" id="poExpiry" class="input-field">
+                    <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                        <p class="text-xs text-gray-400 mb-1">Total Qty</p>
+                        <p class="text-2xl font-bold text-white" id="purchTotalQty">0</p>
+                    </div>
+                    <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                        <p class="text-xs text-gray-400 mb-1">Grand Total</p>
+                        <p class="text-2xl font-bold text-green-400" id="purchGrandTotal">$0.00</p>
+                    </div>
+                    <div class="bg-karta-surface border border-karta-border p-4 rounded-lg">
+                        <label class="text-xs text-gray-400 mb-1 block">Ref No</label>
+                        <input type="text" id="poRef" placeholder="Auto-gen" class="input-field text-sm" style="background-color: #0b0b0b; border: none;">
                     </div>
                 </div>
-                <div>
-                    <label class="text-xs text-gray-400">Ref / Invoice No</label>
-                    <input type="text" id="poRef" class="input-field">
-                </div>
-                <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white font-bold rounded">Confirm Purchase</button>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end gap-2 pt-4 border-t border-karta-border">
+                    <button type="button" onclick="clearPurchaseForm()" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-sm font-bold transition">Clear All</button>
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-sm font-bold transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2.5 bg-karta-primary hover:bg-karta-primaryDark text-black rounded text-sm font-bold transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Confirm Purchase
+                    </button>
                 </div>
             </form>
         </div>
@@ -1298,76 +1421,150 @@
 
     <!-- Hidden Printable Invoice Area -->
     <div id="printable-area">
-        <!-- INVOICE VIEW -->
-        <div id="invoice-print-view">
-            <!-- Header -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-                <div style="display: flex; gap: 15px;">
-                     <!-- Logo Container -->
-                     <img id="printInvLogo" src="" style="width: 60px; height: 60px; object-fit: contain; display: none;">
-                    <div>
-                        <h1 style="font-size: 24px; font-weight: bold; margin: 0; color: #000;" id="invCompName">KARTA PHARMACY</h1>
-                        <p style="margin: 2px 0; font-size: 14px;" id="invCompAddr">123 Green Street</p>
-                        <p style="margin: 2px 0; font-size: 14px;" id="invCompPhone">Tel: 9800000000</p>
-                        <p style="margin: 2px 0; font-size: 14px;" id="invCompTax">VAT Reg: 123456789</p>
+        <!-- INVOICE VIEW - Nepali VAT Format -->
+        <div id="invoice-print-view" style="font-family: Arial, sans-serif; color: #000; background: white; padding: 0;">
+            <!-- Main Border Container -->
+            <div style="border: 2px solid #000; padding: 20px; width: 100%; box-sizing: border-box;">
+                
+                <!-- Header Section with Border -->
+                <div style="border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <!-- Company Logo & Info -->
+                        <div style="display: flex; gap: 12px; flex: 1;">
+                            <img id="printInvLogo" src="" style="width: 70px; height: 70px; object-fit: contain; display: none; border: 1px solid #000; padding: 2px;">
+                            <div>
+                                <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #000;" id="invCompName">KARTA PHARMACY</h1>
+                                <p style="margin: 3px 0; font-size: 12px; font-weight: bold;">VAT Registration Number: <span id="invCompTax" style="font-weight: normal;">123456789</span></p>
+                                <p style="margin: 2px 0; font-size: 11px;" id="invCompAddr">Address: 123 Green Street</p>
+                                <p style="margin: 2px 0; font-size: 11px;" id="invCompPhone">Phone: 9800000000</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Invoice Title & Number -->
+                        <div style="text-align: center; border-left: 2px solid #000; padding-left: 15px;">
+                            <h2 style="font-size: 24px; font-weight: bold; color: #000; margin: 0;">TAX INVOICE</h2>
+                            <p style="margin: 5px 0; font-size: 13px; font-weight: bold;">Invoice No: <span id="invNo">INV-001</span></p>
+                            <p style="margin: 2px 0; font-size: 11px;">Date: <span id="invDate">2025-01-01</span></p>
+                        </div>
                     </div>
                 </div>
-                <div style="text-align: right;">
-                    <h2 style="font-size: 20px; color: #333; margin: 0;">INVOICE</h2>
-                    <p style="margin: 2px 0;">#<span id="invNo">INV-001</span></p>
-                    <p style="margin: 2px 0;">Date: <span id="invDate">2025-01-01</span></p>
-                </div>
-            </div>
 
-            <!-- Customer Info -->
-            <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                <p style="margin: 0; font-weight: bold;">Bill To:</p>
-                <p style="margin: 2px 0;" id="invCustName">Guest Customer</p>
-                <p style="margin: 2px 0;" id="invCustContact"></p>
-            </div>
-
-            <!-- Items Table -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
-                <thead>
-                    <tr style="background: #f0f0f0; border-bottom: 2px solid #000;">
-                        <th style="padding: 8px; text-align: left;">SN</th>
-                        <th style="padding: 8px; text-align: left;">Description</th>
-                        <th style="padding: 8px; text-align: right;">Qty</th>
-                        <th style="padding: 8px; text-align: right;">Unit Price</th>
-                        <th style="padding: 8px; text-align: right;">Total</th>
-                    </tr>
-                </thead>
-                <tbody id="invItemsBody">
-                    <!-- Items -->
-                </tbody>
-            </table>
-
-            <!-- Totals -->
-            <div style="display: flex; justify-content: flex-end;">
-                <div style="width: 250px;">
-                    <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-                        <span>Subtotal:</span>
-                        <span id="invSub">0.00</span>
+                <!-- Customer Info Box with Borders -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <!-- Bill To -->
+                    <div style="border: 1px solid #000; padding: 10px;">
+                        <p style="margin: 0; font-weight: bold; font-size: 12px; border-bottom: 1px solid #000; padding-bottom: 5px;">BILL TO:</p>
+                        <p style="margin: 5px 0; font-size: 12px; font-weight: bold;" id="invCustName">Guest Customer</p>
+                        <p style="margin: 2px 0; font-size: 11px;" id="invCustContact"></p>
+                        <p style="margin: 2px 0; font-size: 11px;" id="invCustTaxId"></p>
                     </div>
-                    <div style="display: flex; justify-content: space-between; padding: 4px 0; color: #e74c3c;" id="invDiscountRow" style="display: none;">
-                        <span>Discount (<span id="invDiscountPercent">0</span>%):</span>
-                        <span id="invDiscount">0.00</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-                        <span>VAT:</span>
-                        <span id="invTax">0.00</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 2px solid #000; font-weight: bold; font-size: 16px;">
-                        <span>Grand Total:</span>
-                        <span id="invTotal">0.00</span>
+                    
+                    <!-- Barcode Section -->
+                    <div style="border: 1px solid #000; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <p style="margin: 0 0 8px 0; font-size: 10px; font-weight: bold;">BARCODE / SKU</p>
+                        <svg id="invBarcode" style="width: 100px; height: 50px;"></svg>
+                        <p style="margin: 5px 0 0 0; font-size: 10px;" id="invBarcodeText">N/A</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- Footer -->
-            <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 10px;">
-                <p>Thank you for your business. Get well soon!</p>
-                <p>Generated by KARTA System</p>
+                <!-- Items Table with Full Borders -->
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; border: 1px solid #000;">
+                    <thead>
+                        <tr style="background: #e8e8e8; border-bottom: 2px solid #000;">
+                            <th style="padding: 8px; text-align: center; border-right: 1px solid #000; width: 5%;">S.N.</th>
+                            <th style="padding: 8px; text-align: left; border-right: 1px solid #000; flex: 1;">Description / Item Details</th>
+                            <th style="padding: 8px; text-align: center; border-right: 1px solid #000; width: 10%;">Unit</th>
+                            <th style="padding: 8px; text-align: right; border-right: 1px solid #000; width: 12%;">Qty</th>
+                            <th style="padding: 8px; text-align: right; border-right: 1px solid #000; width: 12%;">Unit Price</th>
+                            <th style="padding: 8px; text-align: right; border-right: 1px solid #000; width: 12%;">Amount</th>
+                            <th style="padding: 8px; text-align: center; border-right: 1px solid #000; width: 8%;">VAT%</th>
+                            <th style="padding: 8px; text-align: right; width: 12%;">VAT Amt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invItemsBody" style="border-bottom: 2px solid #000;">
+                        <!-- Items with individual VAT columns -->
+                    </tbody>
+                </table>
+
+                <!-- Summary Section with Borders -->
+                <div style="border: 1px solid #000; margin-bottom: 15px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <tr>
+                            <td style="padding: 8px; text-align: right; border-right: 1px solid #000; width: 70%;">
+                                <strong>Taxable Amount (Subtotal):</strong>
+                            </td>
+                            <td style="padding: 8px; text-align: right; border-right: 1px solid #000; width: 15%;">
+                                <span id="invSub">0.00</span>
+                            </td>
+                            <td style="padding: 8px; width: 15%;"></td>
+                        </tr>
+                        <tr style="background: #f5f5f5; border-top: 1px solid #000;">
+                            <td style="padding: 8px; text-align: right; border-right: 1px solid #000;">
+                                <strong>Total VAT (13%):</strong>
+                            </td>
+                            <td style="padding: 8px; text-align: right; border-right: 1px solid #000;">
+                                <span id="invTax">0.00</span>
+                            </td>
+                            <td style="padding: 8px;"></td>
+                        </tr>
+                        <tr id="invDiscountRow" style="display: none; border-top: 1px solid #000;">
+                            <td style="padding: 8px; text-align: right; border-right: 1px solid #000;">
+                                <strong>Discount (<span id="invDiscountPercent">0</span>%):</strong>
+                            </td>
+                            <td style="padding: 8px; text-align: right; border-right: 1px solid #000;">
+                                <span id="invDiscount">0.00</span>
+                            </td>
+                            <td style="padding: 8px;"></td>
+                        </tr>
+                        <tr style="background: #ffeb99; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+                            <td style="padding: 10px; text-align: right; border-right: 1px solid #000; font-weight: bold; font-size: 13px;">
+                                GRAND TOTAL (INCL. VAT):
+                            </td>
+                            <td style="padding: 10px; text-align: right; border-right: 1px solid #000; font-weight: bold; font-size: 14px;">
+                                <span id="invTotal">0.00</span>
+                            </td>
+                            <td style="padding: 10px; font-weight: bold; font-size: 11px;" id="invTotalWords">Zero</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Payment & Notes Section -->
+                <div style="border: 1px solid #000; padding: 10px; margin-bottom: 15px; font-size: 11px;">
+                    <p style="margin: 0 0 5px 0;"><strong>Payment Method:</strong> <span id="invPayMethod">Cash</span></p>
+                    <p style="margin: 0;"><strong>Notes:</strong> <span id="invNotes">Thank you for your business. Get well soon!</span></p>
+                </div>
+
+                <!-- Signature Section with Boxes -->
+                <div style="border: 1px solid #000; padding: 15px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; font-size: 11px;">
+                        <!-- Checked By -->
+                        <div style="text-align: center; border-top: 1px solid #000; padding-top: 40px;">
+                            <p style="margin: 0; font-weight: bold;">Checked By</p>
+                            <p style="margin: 3px 0 0 0; font-size: 10px;">(Authorized Signatory)</p>
+                            <p style="margin: 3px 0 0 0; font-size: 9px;">Signature & Seal</p>
+                        </div>
+                        
+                        <!-- Company Representative -->
+                        <div style="text-align: center; border-top: 1px solid #000; padding-top: 40px;">
+                            <p style="margin: 0; font-weight: bold;">Issued By</p>
+                            <p style="margin: 3px 0 0 0; font-size: 10px;">(<span id="invCompRepName">Company Name</span>)</p>
+                            <p style="margin: 3px 0 0 0; font-size: 9px;">Name & Signature</p>
+                        </div>
+                        
+                        <!-- Buyer Signature -->
+                        <div style="text-align: center; border-top: 1px solid #000; padding-top: 40px;">
+                            <p style="margin: 0; font-weight: bold;">Buyer/Customer</p>
+                            <p style="margin: 3px 0 0 0; font-size: 10px;" id="invCustSignature">Signature</p>
+                            <p style="margin: 3px 0 0 0; font-size: 9px;">Date: <span id="invSignDate"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="margin-top: 15px; text-align: center; font-size: 10px; border-top: 1px solid #000; padding-top: 10px;">
+                    <p style="margin: 3px 0;">This is a Computer Generated Tax Invoice. Authorized signatory is not required.</p>
+                    <p style="margin: 3px 0;">Generated by KARTA Pharmacy Management System</p>
+                </div>
             </div>
         </div>
 
@@ -1614,6 +1811,22 @@
             refreshUI();
         }
 
+        // Data Migration: Fix products with decimal IDs
+        function migrateProductIds() {
+            if (!db.products) return;
+            let hasDecimalIds = false;
+            db.products.forEach(p => {
+                if (p.id && !Number.isInteger(p.id)) {
+                    p.id = Math.floor(p.id);
+                    hasDecimalIds = true;
+                }
+            });
+            if (hasDecimalIds) {
+                console.log('✓ Fixed product IDs with decimal values');
+                saveDB();
+            }
+        }
+
         // Attach global functions to window so HTML onclick works
         window.nav = function(page) {
             document.querySelectorAll('main section').forEach(el => el.classList.add('hidden'));
@@ -1633,21 +1846,70 @@
             if(page === 'purchases') loadBatches();
             if(page === 'returns') loadReturns();
             if(page === 'reports') runReports('daily');
+            if(page === 'productSuppliers') loadProductSupplierPage();
         }
 
+        let isModalOpen = false;
+        
         window.openModal = function(id) {
-            document.getElementById('modalBackdrop').classList.remove('hidden');
-            document.getElementById(id).classList.remove('hidden');
-            if(id === 'purchModal') loadPurchSelects();
+            // Prevent rapid repeated calls
+            if (isModalOpen) return;
+            isModalOpen = true;
+            
+            try {
+                const backdrop = document.getElementById('modalBackdrop');
+                const modal = document.getElementById(id);
+                
+                if (!backdrop || !modal) {
+                    console.error('Modal or backdrop not found', id);
+                    isModalOpen = false;
+                    return;
+                }
+                
+                console.log('Opening modal:', id);
+                
+                // Show backdrop and modal
+                backdrop.classList.remove('hidden');
+                backdrop.style.display = 'flex';
+                modal.classList.remove('hidden');
+                modal.style.display = 'block';
+                
+                // Load data immediately
+                if(id === 'purchModal') {
+                    console.log('Loading purchase data');
+                    loadPurchSelects();
+                }
+                else if(id === 'prodModal') {
+                    console.log('Loading supplier select for product');
+                    loadSupplierSelectForProduct();
+                }
+                else if(id === 'assignSupplierModal') {
+                    console.log('Loading suppliers for assignment');
+                    loadSuppliersForAssignment();
+                    console.log('Suppliers for assignment loaded');
+                }
+                
+                console.log('Modal should now be visible');
+                isModalOpen = false;
+            } catch(e) {
+                console.error('Error opening modal:', e);
+                isModalOpen = false;
+            }
         }
 
         window.closeModal = function() {
-            document.getElementById('modalBackdrop').classList.add('hidden');
-            document.querySelectorAll('.modal-content').forEach(el => el.classList.add('hidden'));
+            const backdrop = document.getElementById('modalBackdrop');
+            backdrop.classList.add('hidden');
+            backdrop.style.display = 'none';
+            document.querySelectorAll('.modal-content').forEach(el => {
+                el.classList.add('hidden');
+                el.style.display = 'none';
+            });
             document.querySelectorAll('form').forEach(f => f.reset());
             editTxnId = null;
             activeCustomerReportId = null;
             activeSupplierReportId = null;
+            isModalOpen = false; // Reset flag
         }
         
         window.openPaymentModal = function(custId, custName) {
@@ -1702,6 +1964,9 @@
         // --- Product Management ---
         document.getElementById('prodForm').onsubmit = e => {
             e.preventDefault();
+            const supplierId = document.getElementById('pSupplier').value || null;
+            const supplierName = supplierId ? (db.suppliers.find(s => s.id === parseInt(supplierId))?.name || '') : null;
+            
             const p = {
                 id: Date.now(),
                 name: document.getElementById('pName').value,
@@ -1713,7 +1978,9 @@
                 retail: parseFloat(document.getElementById('pRetail').value),
                 wholesale: parseFloat(document.getElementById('pWhole').value) || 0,
                 stock: parseInt(document.getElementById('pStock').value),
-                reorder: parseInt(document.getElementById('pReorder').value)
+                reorder: parseInt(document.getElementById('pReorder').value),
+                supplierId: supplierId ? parseInt(supplierId) : null,
+                supplierName: supplierName
             };
             db.products.push(p);
             saveDB();
@@ -1725,6 +1992,9 @@
         function renderProducts() {
             // AUTO-CLEAN: Remove old stock products with 0 qty if newer stock exists
             if (!db.products) db.products = [];
+            
+            // Also pre-load suppliers for the product form
+            loadSupplierSelectForProduct();
             
             const productNames = {};
             db.products.forEach(p => {
@@ -1803,6 +2073,223 @@
             } 
         }
 
+        // --- PRODUCT SUPPLIER ASSIGNMENT ---
+        window.loadSupplierSelectForProduct = function() {
+            const supSelect = document.getElementById('pSupplier');
+            if (!supSelect) {
+                console.warn('Supplier select element not found');
+                return;
+            }
+            supSelect.innerHTML = '<option value="">-- No specific supplier --</option>';
+            if (!db.suppliers) db.suppliers = [];
+            
+            if (db.suppliers.length === 0) {
+                supSelect.innerHTML += '<option value="" disabled style="color: gray;">No suppliers created yet - go to Suppliers page to add one</option>';
+            } else {
+                db.suppliers.forEach(s => {
+                    supSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
+            }
+        }
+
+        window.renderProductSupplierAssignment = function() {
+            const tbody = document.getElementById('psmBody');
+            tbody.innerHTML = '';
+            const search = document.getElementById('psmSearch').value.toLowerCase();
+            const supplierFilter = document.getElementById('psmSupplierFilter').value;
+            
+            if (!db.products) db.products = [];
+            
+            // Get unique products (by name) and their latest supplier assignment
+            const productMap = {};
+            db.products.forEach(p => {
+                const key = p.name.toLowerCase();
+                if (!productMap[key] || p.id > productMap[key].id) {
+                    productMap[key] = p;
+                }
+            });
+            
+            const filteredProducts = Object.values(productMap)
+                .filter(p => (p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search)))
+                .filter(p => !supplierFilter || (p.supplierId && p.supplierId === parseInt(supplierFilter)))
+                .sort((a, b) => a.name.localeCompare(b.name));
+            
+            if (filteredProducts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No products found</td></tr>';
+                return;
+            }
+            
+            filteredProducts.forEach(p => {
+                const supplier = p.supplierId ? db.suppliers.find(s => s.id === p.supplierId) : null;
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-white/5 border-b border-gray-800 ${supplier ? 'bg-green-950/10' : ''}`;
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-white">${p.name}</td>
+                    <td class="p-3 text-gray-400 text-xs font-mono">${p.sku}</td>
+                    <td class="p-3">
+                        ${supplier ? `<span class="px-3 py-1 bg-green-900/40 text-green-300 rounded text-xs font-bold border border-green-700"><i class="fa-solid fa-check-circle mr-1"></i>${supplier.name}</span>` : '<span class="px-3 py-1 bg-gray-800/50 text-gray-500 text-xs rounded border border-gray-700"><i class="fa-solid fa-circle-xmark mr-1\"></i>Unassigned</span>'}
+                    </td>
+                    <td class="p-3 text-center flex gap-1 justify-center">
+                        <button onclick="openProductAssignModal(${p.id})" class="text-blue-400 hover:text-blue-300 text-xs font-bold px-3 py-1.5 bg-blue-900/30 hover:bg-blue-900/50 rounded transition border border-blue-800" title="Assign supplier">
+                            <i class="fa-solid fa-link"></i>
+                        </button>
+                        ${supplier ? `<button onclick="quickUnassignProduct(${p.id})" class="text-red-400 hover:text-red-300 text-xs font-bold px-3 py-1.5 bg-red-900/30 hover:bg-red-900/50 rounded transition border border-red-800" title="Remove supplier"><i class="fa-solid fa-unlink"></i></button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        let currentAssignProductId = null;
+        window.openProductAssignModal = function(productId) {
+            // Handle both integer and decimal product IDs for backwards compatibility
+            const numProductId = Math.floor(parseInt(productId) || productId);
+            const product = db.products.find(p => Math.floor(p.id) === numProductId);
+            if (!product) {
+                console.error('Product not found with ID:', productId);
+                return;
+            }
+            
+            currentAssignProductId = Math.floor(product.id);
+            document.getElementById('assignProdName').innerText = product.name;
+            document.getElementById('assignProdSKU').innerText = product.sku;
+            
+            // Show current supplier
+            const currentSupplier = product.supplierId ? db.suppliers.find(s => s.id === product.supplierId) : null;
+            const supplierDisplay = document.getElementById('assignCurrentSupplierName');
+            if (currentSupplier) {
+                supplierDisplay.innerHTML = `<i class="fa-solid fa-check-circle text-green-400 mr-1"></i>${currentSupplier.name}`;
+                supplierDisplay.className = 'text-green-400 font-bold';
+            } else {
+                supplierDisplay.innerHTML = '<i class="fa-solid fa-circle-xmark text-gray-500 mr-1"></i>Unassigned';
+                supplierDisplay.className = 'text-gray-500 font-bold';
+            }
+            
+            window.openModal('assignSupplierModal');
+        }
+
+        window.loadSuppliersForAssignment = function() {
+            try {
+                const supSelect = document.getElementById('assignSupplierSelect');
+                if (!supSelect) {
+                    console.error('Supplier select element not found');
+                    return;
+                }
+                
+                if (!db.suppliers) db.suppliers = [];
+                
+                console.log('Loading suppliers. Count:', db.suppliers.length);
+                
+                // Build HTML efficiently
+                let html = '<option value="">-- Remove Supplier Assignment --</option>';
+                if (db.suppliers.length === 0) {
+                    html += '<option value="" disabled>No suppliers available</option>';
+                } else {
+                    db.suppliers.forEach(s => {
+                        html += `<option value="${s.id}">${s.name}</option>`;
+                    });
+                }
+                supSelect.innerHTML = html;
+                
+                console.log('Suppliers loaded successfully');
+                
+                // Pre-select current supplier if assigned
+                if (currentAssignProductId) {
+                    const product = db.products.find(p => Math.floor(p.id) === Math.floor(currentAssignProductId));
+                    if (product && product.supplierId) {
+                        supSelect.value = product.supplierId;
+                        console.log('Pre-selected supplier:', product.supplierId);
+                    }
+                }
+            } catch(e) {
+                console.error('Error loading suppliers:', e);
+            }
+        }
+
+        window.saveProductSupplierAssignment = function() {
+            if (!currentAssignProductId) {
+                console.error('No product selected for assignment');
+                alert('Error: No product selected');
+                return;
+            }
+            
+            // Handle both integer and decimal product IDs
+            const product = db.products.find(p => Math.floor(p.id) === Math.floor(currentAssignProductId));
+            if (!product) {
+                console.error('Product not found with ID:', currentAssignProductId);
+                alert('Error: Product not found');
+                return;
+            }
+            
+            const supplierId = document.getElementById('assignSupplierSelect').value;
+            
+            if (supplierId) {
+                const supplier = db.suppliers.find(s => s.id === parseInt(supplierId));
+                if (supplier) {
+                    product.supplierId = parseInt(supplierId);
+                    product.supplierName = supplier.name;
+                    saveDB();
+                    renderProductSupplierAssignment();
+                    window.closeModal();
+                    alert('✓ Supplier assigned successfully!');
+                } else {
+                    alert('Error: Supplier not found');
+                    return;
+                }
+            } else {
+                alert('Please select a supplier to assign');
+                return;
+            }
+        }
+
+        window.unassignProductSupplier = function() {
+            if (!currentAssignProductId) {
+                alert('Error: No product selected');
+                return;
+            }
+            
+            const product = db.products.find(p => Math.floor(p.id) === Math.floor(currentAssignProductId));
+            if (!product) {
+                alert('Error: Product not found');
+                return;
+            }
+            
+            if (confirm(`Remove supplier assignment for "${product.name}"?`)) {
+                product.supplierId = null;
+                product.supplierName = null;
+                saveDB();
+                renderProductSupplierAssignment();
+                window.closeModal();
+                alert('✓ Supplier removed! Product is now unassigned.');
+            }
+        }
+
+        window.quickUnassignProduct = function(productId) {
+            // Handle both integer and decimal product IDs
+            const numProductId = Math.floor(parseInt(productId) || productId);
+            const product = db.products.find(p => Math.floor(p.id) === numProductId);
+            if (!product) return;
+            
+            if (confirm(`Unassign "${product.name}" from its supplier?`)) {
+                product.supplierId = null;
+                product.supplierName = null;
+                saveDB();
+                renderProductSupplierAssignment();
+                alert('✓ Product unassigned!');
+            }
+        }
+
+        // Load supplier filter dropdown for product suppliers page
+        window.loadProductSupplierPage = function() {
+            const filter = document.getElementById('psmSupplierFilter');
+            filter.innerHTML = '<option value="">-- All Suppliers --</option>';
+            if (!db.suppliers) db.suppliers = [];
+            db.suppliers.forEach(s => {
+                filter.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+            });
+            renderProductSupplierAssignment();
+        }
+
         // --- Customer Management ---
         document.getElementById('custForm').onsubmit = e => {
             e.preventDefault();
@@ -1842,7 +2329,7 @@
             renderCustomers();
         };
 
-        // Payment Settlement
+        // --- Customer Payment Form Handler ---
         document.getElementById('payForm').onsubmit = e => {
             e.preventDefault();
             const custId = parseInt(document.getElementById('payCustId').value);
@@ -1864,6 +2351,24 @@
                 saveDB();
                 window.closeModal();
                 alert("Payment Recorded");
+            }
+        };
+
+        // --- Debtors Report Filter ---
+        window.filterDebtorsReport = function() {
+            const searchLocation = document.getElementById('debtorLocationSearch').value.toLowerCase();
+            const tbody = document.getElementById('repTable');
+            const rows = tbody.getElementsByTagName('tr');
+            
+            for (let row of rows) {
+                const locationCell = row.cells[1];
+                const location = locationCell ? locationCell.textContent.toLowerCase() : '';
+                
+                if (searchLocation === '' || location.includes(searchLocation)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
             }
         };
 
@@ -2101,6 +2606,7 @@
             saveDB();
             window.closeModal();
             renderSuppliers();
+            loadSupplierSelectForProduct();
         };
         
         // NEW: Supplier History & Logic
@@ -2303,91 +2809,242 @@
         window.delSup = function(id) { if(confirm("Delete Supplier?")) { db.suppliers = db.suppliers.filter(s=>s.id!==id); saveDB(); renderSuppliers(); } }
 
         // --- Transactions (Purchase & Expense) ---
+        // BULK PURCHASE SYSTEM
+        let purchaseCart = [];
+
         function loadPurchSelects() {
             const sSel = document.getElementById('poSup');
-            const pSel = document.getElementById('poProd');
-            sSel.innerHTML = ''; pSel.innerHTML = '';
+            sSel.innerHTML = '<option value="">-- Choose Supplier --</option>';
             
+            if (!db.suppliers) db.suppliers = [];
             db.suppliers.forEach(s => sSel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
-            db.products.forEach(p => pSel.innerHTML += `<option value="${p.id}">${p.name} (Cur: ${p.stock})</option>`);
+            
+            purchaseCart = [];
+            renderPurchaseItems();
         }
+
+        window.loadSupplierProducts = function() {
+            const supId = parseInt(document.getElementById('poSup').value);
+            if (!supId) {
+                purchaseCart = [];
+                renderPurchaseItems();
+                return;
+            }
+            // Clear cart when supplier changes
+            purchaseCart = [];
+            renderPurchaseItems();
+        };
+
+        window.addPurchaseItem = function() {
+            const supId = parseInt(document.getElementById('poSup').value);
+            if (!supId) {
+                alert('Please select a supplier first');
+                return;
+            }
+            
+            purchaseCart.push({
+                id: Date.now(),
+                productId: null,
+                productName: '',
+                qty: 1,
+                unitPrice: 0,
+                batch: '',
+                expiry: ''
+            });
+            renderPurchaseItems();
+        };
+
+        window.updatePurchaseItem = function(itemId, field, value) {
+            const item = purchaseCart.find(i => i.id === itemId);
+            if (!item) return;
+            
+            if (field === 'product') {
+                const prod = db.products.find(p => p.id === parseInt(value));
+                if (prod) {
+                    item.productId = prod.id;
+                    item.productName = prod.name;
+                    item.unitPrice = prod.cost || 0;
+                }
+            } else if (field === 'qty') {
+                item.qty = Math.max(0, parseInt(value) || 0);
+            } else if (field === 'unitPrice') {
+                item.unitPrice = moneyRound(parseFloat(value) || 0);
+            } else if (field === 'batch') {
+                item.batch = value;
+            } else if (field === 'expiry') {
+                item.expiry = value;
+            }
+            
+            renderPurchaseItems();
+        };
+
+        window.removePurchaseItem = function(itemId) {
+            purchaseCart = purchaseCart.filter(i => i.id !== itemId);
+            renderPurchaseItems();
+        };
+
+        function renderPurchaseItems() {
+            const tbody = document.getElementById('purchItemsBody');
+            tbody.innerHTML = '';
+            
+            // Get selected supplier
+            const supId = parseInt(document.getElementById('poSup').value);
+            
+            let totalItems = 0;
+            let totalQty = 0;
+            let grandTotal = 0;
+            
+            if (purchaseCart.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="7" class="p-8 text-center text-gray-500 text-sm">Click "Add Item" to start adding products</td>';
+                tbody.appendChild(tr);
+            } else {
+                purchaseCart.forEach(item => {
+                    const itemTotal = moneyRound(item.qty * item.unitPrice);
+                    totalItems++;
+                    totalQty += item.qty;
+                    grandTotal = moneyRound(grandTotal + itemTotal);
+                    
+                    // Get supplier's products only
+                    const supplierProducts = db.products.filter(p => !p.supplierId || p.supplierId === supId);
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-white/5 border-b border-gray-800 text-gray-300';
+                    tr.innerHTML = `
+                        <td class="p-3">
+                            <select onchange="updatePurchaseItem(${item.id}, 'product', this.value)" class="input-field text-xs py-1.5" style="background-color: #0b0b0b;">
+                                <option value="">Product</option>
+                                ${supplierProducts.map(p => `<option value="${p.id}" ${item.productId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td class="p-3 text-center">
+                            <input type="number" min="0" value="${item.qty}" onchange="updatePurchaseItem(${item.id}, 'qty', this.value)" class="input-field text-xs text-center py-1.5 w-16" style="background-color: #0b0b0b;">
+                        </td>
+                        <td class="p-3 text-right">
+                            <input type="number" step="0.01" value="${item.unitPrice.toFixed(2)}" onchange="updatePurchaseItem(${item.id}, 'unitPrice', this.value)" class="input-field text-xs text-right py-1.5 w-20" style="background-color: #0b0b0b;">
+                        </td>
+                        <td class="p-3 text-right font-bold text-karta-primary">${db.config.currency}${itemTotal.toFixed(2)}</td>
+                        <td class="p-3 text-center">
+                            <input type="text" placeholder="Batch" value="${item.batch}" onchange="updatePurchaseItem(${item.id}, 'batch', this.value)" class="input-field text-xs py-1.5 w-20" style="background-color: #0b0b0b;">
+                        </td>
+                        <td class="p-3 text-center">
+                            <input type="date" value="${item.expiry}" onchange="updatePurchaseItem(${item.id}, 'expiry', this.value)" class="input-field text-xs py-1.5 w-24" style="background-color: #0b0b0b;">
+                        </td>
+                        <td class="p-3 text-center">
+                            <button type="button" onclick="removePurchaseItem(${item.id})" class="text-gray-400 hover:text-red-400 transition">
+                                <i class="fa-solid fa-trash-alt text-sm"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            document.getElementById('purchTotalItems').innerText = totalItems;
+            document.getElementById('purchTotalQty').innerText = totalQty;
+            document.getElementById('purchGrandTotal').innerText = db.config.currency + grandTotal.toFixed(2);
+        }
+
+        window.clearPurchaseForm = function() {
+            if (confirm('Clear all items from purchase order?')) {
+                purchaseCart = [];
+                renderPurchaseItems();
+            }
+        };
 
         document.getElementById('purchForm').onsubmit = e => {
             e.preventDefault();
             const supId = parseInt(document.getElementById('poSup').value);
-            const prodId = parseInt(document.getElementById('poProd').value);
-            const qty = parseInt(document.getElementById('poQty').value);
-            const total = moneyRound(parseFloat(document.getElementById('poCost').value));
-            const batch = document.getElementById('poBatch').value;
-            const expiry = document.getElementById('poExpiry').value;
+            const ref = document.getElementById('poRef').value || 'PO-' + Date.now().toString().slice(-6);
             
-            const origProd = db.products.find(p => p.id === prodId);
+            if (!supId) {
+                alert('Please select a supplier');
+                return;
+            }
+            
+            if (purchaseCart.length === 0) {
+                alert('Add at least one item to the purchase order');
+                return;
+            }
+            
             const sup = db.suppliers.find(s => s.id === supId);
+            if (!sup) return;
             
-            if(origProd && sup) {
-                // Create NEW PRODUCT entry for this batch/purchase instead of restocking
-                const newProductId = Date.now();
-                const costPrice = moneyRound(total / qty);
+            let totalAmount = 0;
+            const txnItems = [];
+            
+            purchaseCart.forEach(item => {
+                if (!item.productId) {
+                    alert('Please select a product for all items');
+                    return;
+                }
                 
+                const origProd = db.products.find(p => p.id === item.productId);
+                if (!origProd) return;
+                
+                const newProductId = Math.floor(Date.now() + Math.random() * 10000);
+                const itemTotal = moneyRound(item.qty * item.unitPrice);
+                totalAmount = moneyRound(totalAmount + itemTotal);
+                
+                // Create new batch entry
                 db.products.push({
                     id: newProductId,
                     name: origProd.name,
-                    sku: origProd.sku + '-' + batch.substring(0, 3).toUpperCase() || origProd.sku + '-' + Date.now().toString().slice(-3),
+                    sku: origProd.sku + '-' + (item.batch ? item.batch.substring(0, 3).toUpperCase() : Date.now().toString().slice(-3)),
                     category: origProd.category,
-                    batch: batch || 'N/A',
-                    expiry: expiry || 'N/A',
-                    cost: costPrice,
+                    batch: item.batch || 'N/A',
+                    expiry: item.expiry || 'N/A',
+                    cost: item.unitPrice,
                     retail: origProd.retail,
                     wholesale: origProd.wholesale,
-                    stock: qty,
+                    stock: item.qty,
                     reorder: origProd.reorder,
                     purchaseDate: new Date().toISOString().split('T')[0],
                     supplierId: supId,
                     supplierName: sup.name,
-                    ref: document.getElementById('poRef').value
+                    ref: ref
                 });
                 
-                // Also create batch record for tracking
                 if (!db.batches) db.batches = [];
-                
                 db.batches.push({
-                    id: Date.now(),
+                    id: Math.floor(Date.now() + Math.random() * 10000),
                     productId: newProductId,
                     productName: origProd.name,
-                    batchNumber: batch || 'N/A',
-                    expiryDate: expiry || 'N/A',
-                    quantity: qty,
-                    costPrice: costPrice,
+                    batchNumber: item.batch || 'N/A',
+                    expiryDate: item.expiry || 'N/A',
+                    quantity: item.qty,
+                    costPrice: item.unitPrice,
                     purchaseDate: new Date().toISOString().split('T')[0],
                     supplierId: supId,
                     supplierName: sup.name,
-                    ref: document.getElementById('poRef').value
+                    ref: ref
                 });
                 
-                sup.balance += total;
-                
-                db.transactions.push({
-                    id: Date.now(),
-                    type: 'purchase',
-                    date: new Date().toISOString(),
-                    entityId: supId,
-                    entityName: sup.name,
-                    items: [{ id: newProductId, name: origProd.name, qty, cost: costPrice }],
-                    total: total,
-                    batch: batch,
-                    expiry: expiry,
-                    ref: document.getElementById('poRef').value
+                txnItems.push({
+                    id: newProductId,
+                    name: origProd.name,
+                    qty: item.qty,
+                    cost: item.unitPrice
                 });
-                saveDB();
-                
-                // Clear inputs
-                document.getElementById('poBatch').value = '';
-                document.getElementById('poExpiry').value = '';
-                
-                window.closeModal();
-                alert('New product entry created for batch: ' + (batch || 'N/A'));
-                loadInventory();
-            }
+            });
+            
+            sup.balance = moneyRound(sup.balance + totalAmount);
+            
+            db.transactions.push({
+                id: Date.now(),
+                type: 'purchase',
+                date: new Date().toISOString(),
+                entityId: supId,
+                entityName: sup.name,
+                items: txnItems,
+                total: totalAmount,
+                ref: ref
+            });
+            
+            saveDB();
+            window.closeModal();
+            alert(`Purchase order saved! ${purchaseCart.length} items added.`);
+            loadInventory();
         };
 
         document.getElementById('expForm').onsubmit = e => {
@@ -3443,12 +4100,52 @@
         }
 
         // --- Invoice Printing ---
+        // Number to Nepali Words Converter
+        function numberToWords(num) {
+            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+            const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            const scales = ['', 'Thousand', 'Million', 'Billion', 'Trillion'];
+            
+            if (num === 0) return 'Zero';
+            if (num < 0) return 'Negative ' + numberToWords(-num);
+            
+            let words = '';
+            let scaleIndex = 0;
+            
+            while (num > 0) {
+                if (num % 1000 !== 0) {
+                    words = convertHundreds(num % 1000) + (scales[scaleIndex] ? ' ' + scales[scaleIndex] + ' ' : '') + words;
+                }
+                num = Math.floor(num / 1000);
+                scaleIndex++;
+            }
+            
+            function convertHundreds(num) {
+                let result = '';
+                if (Math.floor(num / 100) > 0) {
+                    result += ones[Math.floor(num / 100)] + ' Hundred ';
+                }
+                num %= 100;
+                if (num >= 20) {
+                    result += tens[Math.floor(num / 10)] + ' ';
+                    if (num % 10 > 0) result += ones[num % 10];
+                } else if (num >= 10) {
+                    result += teens[num - 10];
+                } else if (num > 0) {
+                    result += ones[num];
+                }
+                return result.trim();
+            }
+            
+            return words.trim();
+        }
+
         function printInvoice(txn) {
             // SHOW INVOICE VIEW, HIDE REPORT VIEW
             document.getElementById('invoice-print-view').classList.remove('hidden');
             document.getElementById('report-print-view').classList.add('hidden');
 
-            // Populate print area directly
             // Show logo if exists
             const logoImg = document.getElementById('printInvLogo');
             if(db.config.logo) {
@@ -3458,47 +4155,82 @@
                 logoImg.style.display = 'none';
             }
 
+            // Company Info
             document.getElementById('invCompName').innerText = db.config.name;
-            document.getElementById('invCompAddr').innerText = db.config.address;
-            document.getElementById('invCompPhone').innerText = db.config.phone;
-            document.getElementById('invCompTax').innerText = db.config.taxId;
+            document.getElementById('invCompAddr').innerText = 'Address: ' + (db.config.address || '-');
+            document.getElementById('invCompPhone').innerText = 'Phone: ' + (db.config.phone || '-');
+            document.getElementById('invCompTax').innerText = db.config.taxId || '123456789';
+            document.getElementById('invCompRepName').innerText = db.config.name || 'Company';
             
+            // Invoice Details
             document.getElementById('invNo').innerText = txn.id.toString().slice(-6);
             document.getElementById('invDate').innerText = new Date(txn.date).toLocaleDateString();
-            document.getElementById('invCustName').innerText = txn.entityName || 'Guest';
+            document.getElementById('invSignDate').innerText = new Date(txn.date).toLocaleDateString();
             
+            // Customer Info
+            document.getElementById('invCustName').innerText = txn.entityName || 'Guest Customer';
+            document.getElementById('invCustContact').innerText = txn.entityPhone ? 'Phone: ' + txn.entityPhone : '';
+            document.getElementById('invCustTaxId').innerText = txn.entityTaxId ? 'Tax ID: ' + txn.entityTaxId : '';
+            document.getElementById('invCustSignature').innerText = (txn.entityName || 'Customer') + ' - Signature';
+            
+            // Payment method
+            document.getElementById('invPayMethod').innerText = txn.payType || 'Cash';
+            
+            // Items with VAT columns
             const tbody = document.getElementById('invItemsBody');
             tbody.innerHTML = '';
+            const vatRate = db.config.vatRate || 13;
+            let totalVatAmount = 0;
+            
             txn.items.forEach((item, idx) => {
                 const itemPrice = item.retail || 0;
-                const itemTotal = item.qty * itemPrice;
-                const vatStatus = item.vatExempt ? ' <span style="color: #e74c3c; font-size: 11px;">[No VAT]</span>' : '';
+                const itemQty = item.qty || 0;
+                const itemTotal = itemQty * itemPrice;
+                const vatStatus = item.vatExempt ? 'No' : 'Yes';
+                const itemVat = item.vatExempt ? 0 : (itemTotal * vatRate / 100);
+                totalVatAmount += itemVat;
                 
                 tbody.innerHTML += `
-                    <tr>
-                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${idx+1}</td>
-                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}${vatStatus}</td>
-                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${item.qty}</td>
-                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${itemPrice.toFixed(2)}</td>
-                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${itemTotal.toFixed(2)}</td>
+                    <tr style="border-right: 1px solid #000; border-bottom: 1px solid #000;">
+                        <td style="padding: 8px; text-align: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">${idx+1}</td>
+                        <td style="padding: 8px; border-right: 1px solid #000; border-bottom: 1px solid #000;">
+                            <strong>${item.name}</strong><br>
+                            <span style="font-size: 10px; color: #666;">SKU: ${item.sku || 'N/A'}</span>
+                        </td>
+                        <td style="padding: 8px; text-align: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">Pcs</td>
+                        <td style="padding: 8px; text-align: right; border-right: 1px solid #000; border-bottom: 1px solid #000;">${itemQty}</td>
+                        <td style="padding: 8px; text-align: right; border-right: 1px solid #000; border-bottom: 1px solid #000;">${itemPrice.toFixed(2)}</td>
+                        <td style="padding: 8px; text-align: right; border-right: 1px solid #000; border-bottom: 1px solid #000;">${itemTotal.toFixed(2)}</td>
+                        <td style="padding: 8px; text-align: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">${vatStatus === 'Yes' ? vatRate : 0}%</td>
+                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #000;">${itemVat.toFixed(2)}</td>
                     </tr>
                 `;
             });
             
+            // Update summary
             document.getElementById('invSub').innerText = (txn.sub || 0).toFixed(2);
+            document.getElementById('invTax').innerText = (txn.tax || 0).toFixed(2);
+            document.getElementById('invTotal').innerText = (txn.total || 0).toFixed(2);
+            document.getElementById('invTotalWords').innerText = numberToWords(Math.floor(txn.total || 0)) + ' Only';
             
             // Show discount if applicable
             const discountRow = document.getElementById('invDiscountRow');
             if(txn.discountPercent && txn.discountPercent > 0) {
-                discountRow.style.display = 'flex';
+                discountRow.style.display = 'table-row';
                 document.getElementById('invDiscountPercent').innerText = txn.discountPercent.toFixed(1);
                 document.getElementById('invDiscount').innerText = (txn.discount || 0).toFixed(2);
             } else {
                 discountRow.style.display = 'none';
             }
             
-            document.getElementById('invTax').innerText = (txn.tax || 0).toFixed(2);
-            document.getElementById('invTotal').innerText = (txn.total || 0).toFixed(2);
+            // Generate barcode (using first item's SKU)
+            if(txn.items && txn.items.length > 0) {
+                const barcodeText = txn.items[0].sku || txn.id.toString().slice(-8);
+                document.getElementById('invBarcodeText').innerText = barcodeText;
+                // Simple barcode visualization
+                const barcodeSvg = document.getElementById('invBarcode');
+                barcodeSvg.innerHTML = generateBarcodeDisplay(barcodeText);
+            }
             
             // Try print, fallback to PDF for mobile apps
             setTimeout(() => {
@@ -3508,6 +4240,33 @@
                     window.print();
                 }
             }, 200);
+        }
+
+        // Simple barcode display generator
+        function generateBarcodeDisplay(text) {
+            let svg = '<svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">';
+            svg += '<rect width="200" height="60" fill="white" stroke="black" stroke-width="1"/>';
+            
+            // Create pattern based on text
+            let barPattern = '';
+            for (let i = 0; i < text.length; i++) {
+                const code = text.charCodeAt(i);
+                barPattern += (code % 2 ? '█' : '░');
+            }
+            
+            // Draw bars
+            let x = 5;
+            for (let i = 0; i < barPattern.length; i++) {
+                const width = barPattern[i] === '█' ? 2.5 : 1.5;
+                if (barPattern[i] === '█') {
+                    svg += `<rect x="${x}" y="5" width="${width}" height="35" fill="black"/>`;
+                }
+                x += width + 0.5;
+            }
+            
+            svg += `<text x="100" y="55" text-anchor="middle" font-size="10" font-family="Arial">${text}</text>`;
+            svg += '</svg>';
+            return svg;
         }
 
         // Generate Invoice as PDF (Mobile-friendly)
@@ -3602,6 +4361,24 @@
             }
         }
 
+        // --- Debtors Report Filter ---
+        window.filterDebtorsReport = function() {
+            const searchLocation = document.getElementById('debtorLocationSearch').value.toLowerCase();
+            const tbody = document.getElementById('repTable');
+            const rows = tbody.getElementsByTagName('tr');
+            
+            for (let row of rows) {
+                const locationCell = row.cells[1];
+                const location = locationCell ? locationCell.textContent.toLowerCase() : '';
+                
+                if (searchLocation === '' || location.includes(searchLocation)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        };
+
         // --- Report Printing ---
         window.printReport = function() {
             // HIDE INVOICE VIEW, SHOW REPORT VIEW
@@ -3676,25 +4453,67 @@
                             <td style="padding: 8px; text-align: right;">${db.config.currency}${t.total.toFixed(2)}</td>
                        </tr>`; 
                     });
-                } else {
-                    html += `<th style="padding: 8px; text-align: left;">Date</th>
-                             <th style="padding: 8px; text-align: left;">Type</th>
-                             <th style="padding: 8px; text-align: left;">Reference</th>
-                             <th style="padding: 8px; text-align: right;">Amount</th></tr></thead><tbody>`;
-                    currentReportData.forEach(t => {
+                } else if (currentReportTitle.includes("DEBTOR")) {
+                    // DEBTORS REPORT - Different table structure
+                    // Filter debtors by location (area) if search field has value
+                    const searchLocation = document.getElementById('debtorLocationSearch')?.value.toLowerCase() || '';
+                    let filteredDebtors = currentReportData;
+                    
+                    if (searchLocation) {
+                        filteredDebtors = currentReportData.filter(d => 
+                            (d.address || '').toLowerCase().includes(searchLocation)
+                        );
+                    }
+                    
+                    html += `<th style="padding: 8px; text-align: left;">Customer Name</th>
+                             <th style="padding: 8px; text-align: left;">Location</th>
+                             <th style="padding: 8px; text-align: left;">Phone</th>
+                             <th style="padding: 8px; text-align: right;">Amount Due</th></tr></thead><tbody>`;
+                    
+                    filteredDebtors.forEach(debtor => {
+                       const balance = (debtor && debtor.balance !== undefined) ? debtor.balance : 0;
                        html += `<tr style="border-bottom: 1px solid #f0f0f0;">
-                            <td style="padding: 8px;">${new Date(t.date).toLocaleDateString()}</td>
-                            <td style="padding: 8px; text-transform: uppercase; font-weight: 500; font-size: 10px;">${t.type}</td>
-                            <td style="padding: 8px; color: #666;">${t.entityName || '-'}</td>
-                            <td style="padding: 8px; text-align: right; font-weight: 500;">${db.config.currency}${t.total.toFixed(2)}</td>
+                            <td style="padding: 8px; font-weight: 500;">${debtor.name}</td>
+                            <td style="padding: 8px; color: #666;">${debtor.address || 'N/A'}</td>
+                            <td style="padding: 8px; color: #666;">${debtor.phone}</td>
+                            <td style="padding: 8px; text-align: right; font-weight: 500; color: #d32f2f;">${db.config.currency}${balance.toFixed(2)}</td>
                        </tr>`; 
                     });
+                    
+                    // Update total to only include filtered debtors
+                    currentReportData = filteredDebtors;
+                } else {
+                    // GENERIC TRANSACTION REPORTS (Daily, Sales, Purchase, Expense)
+                    html += `<th style="padding: 8px; text-align: left;">Date</th>
+                             <th style="padding: 8px; text-align: left;">Type</th>
+                             <th style="padding: 8px; text-align: left;">Description</th>
+                             <th style="padding: 8px; text-align: right;">Amount</th></tr></thead><tbody>`;
+                    
+                    if(currentReportData && currentReportData.length > 0) {
+                        currentReportData.forEach(t => {
+                           const typeColor = t.type === 'sale' ? '#0066cc' : (t.type === 'purchase' ? '#ff6600' : (t.type === 'expense' ? '#cc0000' : '#666666'));
+                           const description = t.entityName || t.items?.[0]?.name || '-';
+                           html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                                <td style="padding: 8px;">${new Date(t.date).toLocaleDateString()}</td>
+                                <td style="padding: 8px; text-transform: uppercase; font-weight: 500; font-size: 10px; color: ${typeColor};">${t.type}</td>
+                                <td style="padding: 8px; color: #666;">${description}</td>
+                                <td style="padding: 8px; text-align: right; font-weight: 500;">${db.config.currency}${t.total.toFixed(2)}</td>
+                           </tr>`; 
+                        });
+                    } else {
+                        html += `<tr><td colspan="4" style="padding: 15px; text-align: center; color: #999;">No records found for the selected date range</td></tr>`;
+                    }
                 }
                 
                 html += `</tbody></table>`;
                 
                 // Summary Footer - Minimal
-                const total = currentReportData.reduce((a,c) => a + c.total, 0);
+                let total = 0;
+                if (currentReportTitle.includes("DEBTOR")) {
+                    total = currentReportData.reduce((a,c) => a + c.balance, 0);
+                } else {
+                    total = currentReportData.reduce((a,c) => a + c.total, 0);
+                }
                 let footerHtml = '';
                 
                 if (currentReportTitle.includes("VAT")) {
@@ -3945,6 +4764,12 @@
             const cards = document.getElementById('reportCards');
             tbody.innerHTML = ''; cards.innerHTML = '';
             
+            // Hide location search filter by default (only show for debtors)
+            const debtorFilterContainer = document.getElementById('debtorFilterContainer');
+            if (type !== 'debtors') {
+                debtorFilterContainer.classList.add('hidden');
+            }
+            
             const fromDate = document.getElementById('repFrom').value;
             const toDate = document.getElementById('repTo').value;
 
@@ -4028,6 +4853,42 @@
                 tbody.innerHTML += `<tr><td class="p-3 font-bold">Cash/Bank (Est.)</td><td class="p-3 text-right font-bold">${db.config.currency}${cashHand.toFixed(2)}</td></tr>`;
                 tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 font-bold" colspan="2">Liabilities</td></tr>`;
                 tbody.innerHTML += `<tr><td class="p-3">Accounts Payable</td><td class="p-3 text-right">${db.config.currency}${payables.toFixed(2)}</td></tr>`;
+                return;
+            }
+
+            // --- DEBTORS REPORT ---
+            if(type === 'debtors') {
+                const debtorFilterContainer = document.getElementById('debtorFilterContainer');
+                debtorFilterContainer.classList.remove('hidden');
+                
+                const allDebtors = db.customers.filter(c => c.balance > 0);
+                currentReportData = allDebtors;
+                
+                let totalDebtAmount = 0;
+                allDebtors.forEach(d => totalDebtAmount += d.balance);
+                
+                // Create custom card for count (doesn't need currency prefix)
+                cards.innerHTML += `<div class="bg-karta-surface border border-karta-border p-6 rounded-lg"><h4 class="text-gray-400 text-xs uppercase">Total Debtors</h4><h2 class="text-2xl font-bold text-white mt-2">${allDebtors.length}</h2></div>`;
+                cards.innerHTML += createCard('Total Amount Due', totalDebtAmount, 'red-400');
+                cards.innerHTML += createCard('Average Debt', (totalDebtAmount / (allDebtors.length || 1)), 'yellow-400');
+                
+                thead.innerHTML = `<tr>
+                    <th class="p-3">Customer Name</th>
+                    <th class="p-3">Location</th>
+                    <th class="p-3">Phone</th>
+                    <th class="p-3 text-right">Amount Due</th>
+                    <th class="p-3 text-right">Credit Limit</th>
+                </tr>`;
+                
+                allDebtors.forEach(debtor => {
+                    tbody.innerHTML += `<tr class="hover:bg-white/5">
+                        <td class="p-3 font-bold text-white">${debtor.name}</td>
+                        <td class="p-3 text-gray-400">${debtor.address || 'N/A'}</td>
+                        <td class="p-3 text-gray-400">${debtor.phone}</td>
+                        <td class="p-3 text-right font-bold text-red-400">${db.config.currency}${debtor.balance.toFixed(2)}</td>
+                        <td class="p-3 text-right text-gray-400">${db.config.currency}${(debtor.limit || 0).toFixed(2)}</td>
+                    </tr>`;
+                });
                 return;
             }
 
@@ -4193,6 +5054,9 @@
 
         // --- Global Refresh ---
         function refreshUI() {
+            // Run data migration on load
+            migrateProductIds();
+            
             renderProducts();
             renderCustomers();
             renderSuppliers();
@@ -4219,13 +5083,6 @@
         // --- PRICE MANAGEMENT FUNCTIONS ---
         
         // Initialize price manager modal when opened
-        window.openModal = function(id) {
-            document.getElementById('modalBackdrop').classList.remove('hidden');
-            document.getElementById(id).classList.remove('hidden');
-            if(id === 'purchModal') loadPurchSelects();
-            if(id === 'priceManagerModal') loadPriceManagerData();
-        }
-        
         function loadPriceManagerData() {
             // Populate product list
             const prodSel = document.getElementById('priceProductSelect');
