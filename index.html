@@ -971,6 +971,9 @@
                     <input type="text" id="cTax" placeholder="VAT/Tax ID" class="input-field">
                     <input type="number" id="cLimit" placeholder="Credit Limit" class="input-field">
                 </div>
+                <div class="flex gap-4">
+                    <input type="number" id="cBalance" placeholder="Initial Balance Due" step="0.01" class="input-field" title="Amount customer owes (if existing business)">
+                </div>
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save</button>
@@ -1113,6 +1116,9 @@
                 <input type="text" id="sContact" placeholder="Contact Person" class="input-field">
                 <input type="text" id="sPhone" placeholder="Phone" class="input-field">
                 <input type="text" id="sTax" placeholder="VAT Reg No" class="input-field">
+                <div class="flex gap-4">
+                    <input type="number" id="sBalance" placeholder="Amount You Owe" step="0.01" class="input-field" title="Outstanding balance payable to supplier">
+                </div>
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save</button>
@@ -1806,6 +1812,7 @@
             const address = document.getElementById('cAddr').value;
             const taxId = document.getElementById('cTax').value;
             const limit = parseFloat(document.getElementById('cLimit').value) || 0;
+            const balance = parseFloat(document.getElementById('cBalance').value) || 0;
             
             if(custId) {
                 // Edit existing customer
@@ -1816,6 +1823,7 @@
                     cust.address = address;
                     cust.taxId = taxId;
                     cust.limit = limit;
+                    cust.balance = balance;
                 }
             } else {
                 // Add new customer
@@ -1826,7 +1834,7 @@
                     address: address,
                     taxId: taxId,
                     limit: limit,
-                    balance: 0
+                    balance: balance
                 });
             }
             saveDB();
@@ -1870,6 +1878,7 @@
             document.getElementById('cAddr').value = cust.address || '';
             document.getElementById('cTax').value = cust.taxId || '';
             document.getElementById('cLimit').value = cust.limit || 0;
+            document.getElementById('cBalance').value = cust.balance || 0;
             
             window.openModal('custModal');
         };
@@ -2066,6 +2075,7 @@
             const contact = document.getElementById('sContact').value;
             const phone = document.getElementById('sPhone').value;
             const taxId = document.getElementById('sTax').value;
+            const balance = parseFloat(document.getElementById('sBalance').value) || 0;
             
             if(supId) {
                 // Edit existing supplier
@@ -2075,6 +2085,7 @@
                     sup.contact = contact;
                     sup.phone = phone;
                     sup.taxId = taxId;
+                    sup.balance = balance;
                 }
             } else {
                 // Add new supplier
@@ -2084,7 +2095,7 @@
                     contact: contact,
                     phone: phone,
                     taxId: taxId,
-                    balance: 0
+                    balance: balance
                 });
             }
             saveDB();
@@ -2284,6 +2295,7 @@
             document.getElementById('sContact').value = sup.contact || '';
             document.getElementById('sPhone').value = sup.phone || '';
             document.getElementById('sTax').value = sup.taxId || '';
+            document.getElementById('sBalance').value = sup.balance || 0;
             
             window.openModal('supModal');
         };
