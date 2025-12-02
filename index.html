@@ -2375,6 +2375,7 @@
             const body = document.getElementById('posCartBody');
             body.innerHTML = '';
             let sub = 0;
+            let taxableAmount = 0;
             
             // Get selected price type
             const priceType = document.querySelector('input[name="priceType"]:checked')?.value || 'retail';
@@ -2391,21 +2392,35 @@
                 cart.forEach((item, idx) => {
                     // Use selected price type (retail or wholesale)
                     const price = priceType === 'wholesale' ? (item.wholesale || item.retail) : item.retail;
-                    sub = moneyRound(sub + moneyRound(price * item.qty));
+                    const itemTotal = moneyRound(price * item.qty);
+                    sub = moneyRound(sub + itemTotal);
+                    
+                    // Track taxable amount (excluding VAT exempt items)
+                    if(!item.vatExempt) {
+                        taxableAmount = moneyRound(taxableAmount + itemTotal);
+                    }
+                    
                     const row = document.createElement('div');
-                    row.className = "flex justify-between items-center bg-white/5 p-2 rounded text-xs";
+                    row.className = "flex flex-col bg-white/5 p-2 rounded text-xs mb-1";
                     row.innerHTML = `
-                        <div class="flex-1">
-                            <div class="text-white font-bold">${item.name}</div>
-                            <div class="text-gray-400">${db.config.currency}${price.toFixed(2)} ${priceType === 'wholesale' ? '<span class="text-blue-400">(W)</span>' : ''}</div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex-1">
+                                <div class="text-white font-bold">${item.name}</div>
+                                <div class="text-gray-400">${db.config.currency}${price.toFixed(2)} ${priceType === 'wholesale' ? '<span class="text-blue-400">(W)</span>' : ''}</div>
+                            </div>
+                            <div class="flex items-center gap-2 mx-2">
+                                <button onclick="updateCartQty(${idx}, -1)" class="w-5 h-5 bg-gray-700 rounded hover:bg-gray-600 text-[10px]">-</button>
+                                <span class="font-bold w-3 text-center text-[10px]">${item.qty}</span>
+                                <button onclick="updateCartQty(${idx}, 1)" class="w-5 h-5 bg-gray-700 rounded hover:bg-gray-600 text-[10px]">+</button>
+                            </div>
+                            <div class="font-bold mr-2 w-14 text-right">${db.config.currency}${itemTotal.toFixed(2)}</div>
+                            <button onclick="removeFromCart(${idx})" class="text-red-500 hover:text-red-400 transition p-1 text-[10px]"><i class="fa-solid fa-trash"></i></button>
                         </div>
-                        <div class="flex items-center gap-2 mx-2">
-                            <button onclick="updateCartQty(${idx}, -1)" class="w-6 h-6 bg-gray-700 rounded hover:bg-gray-600">-</button>
-                            <span class="font-bold w-4 text-center">${item.qty}</span>
-                            <button onclick="updateCartQty(${idx}, 1)" class="w-6 h-6 bg-gray-700 rounded hover:bg-gray-600">+</button>
+                        <div class="mt-1 flex items-center gap-2">
+                            <button onclick="toggleVatExempt(${idx})" class="flex-1 text-[9px] px-2 py-1 rounded ${item.vatExempt ? 'bg-red-600/50 text-red-300 border border-red-500' : 'bg-gray-700 text-gray-300 border border-gray-600'} hover:bg-opacity-75 transition">
+                                <i class="fa-solid ${item.vatExempt ? 'fa-ban' : 'fa-receipt'} mr-1"></i>${item.vatExempt ? 'VAT Exempt' : 'Apply VAT'}
+                            </button>
                         </div>
-                        <div class="font-bold mr-2 w-16 text-right">${db.config.currency}${moneyRound(item.qty * price).toFixed(2)}</div>
-                        <button onclick="removeFromCart(${idx})" class="text-red-500 hover:text-red-400 transition p-1"><i class="fa-solid fa-trash"></i></button>
                     `;
                     body.appendChild(row);
                 });
@@ -2415,8 +2430,8 @@
             const discountAmount = moneyRound(sub * (discountPercent / 100));
             const subtotalAfterDiscount = moneyRound(sub - discountAmount);
             
-            // Calculate tax on discounted amount
-            const tax = applyVat ? moneyRound(subtotalAfterDiscount * (db.config.vatRate / 100)) : 0;
+            // Calculate tax only on taxable items
+            const tax = applyVat ? moneyRound(subtotalAfterDiscount * (taxableAmount / sub) * (db.config.vatRate / 100)) : 0;
             
             document.getElementById('posSubTotal').innerText = `${db.config.currency}${sub.toFixed(2)}`;
             document.getElementById('posVatRate').innerText = db.config.vatRate;
@@ -2425,6 +2440,13 @@
             document.getElementById('posTax').className = applyVat ? "" : "line-through text-gray-600";
             
             document.getElementById('posTotal').innerText = `${db.config.currency}${moneyRound(subtotalAfterDiscount + tax).toFixed(2)}`;
+        }
+
+        window.toggleVatExempt = function(idx) {
+            if(idx >= 0 && idx < cart.length) {
+                cart[idx].vatExempt = !cart[idx].vatExempt;
+                renderCart();
+            }
         }
 
         window.clearCart = function() { cart = []; renderCart(); }
@@ -2451,7 +2473,21 @@
             }, 0));
             const discount = moneyRound(sub * (discountPercent / 100));
             const subtotalAfterDiscount = moneyRound(sub - discount);
-            const tax = applyVat ? moneyRound(subtotalAfterDiscount * (db.config.vatRate / 100)) : 0;
+            
+            // Calculate VAT only on taxable items (excluding VAT exempt items)
+            let taxableAmount = 0;
+            if(applyVat) {
+                cart.forEach(item => {
+                    if(!item.vatExempt) {
+                        const price = priceType === 'wholesale' ? (item.wholesale || item.retail) : item.retail;
+                        taxableAmount = moneyRound(taxableAmount + (item.qty * price));
+                    }
+                });
+            }
+            
+            // Apply discount proportionally to taxable amount
+            const taxableAfterDiscount = applyVat ? moneyRound(taxableAmount * (1 - (discountPercent / 100))) : 0;
+            const tax = applyVat ? moneyRound(taxableAfterDiscount * (db.config.vatRate / 100)) : 0;
             const total = moneyRound(subtotalAfterDiscount + tax);
 
             if(type === 'credit') {
@@ -2465,12 +2501,13 @@
                 if(prod) prod.stock -= item.qty;
             });
 
-            // FIX #6: COST TRACKING - Store cost per unit with each item for accurate COGS
+            // Store cost per unit and VAT exemption status with each item
             const itemsWithCost = cart.map(item => {
                 const prod = db.products.find(p => p.id === item.id);
                 return {
                     ...item,
-                    cost: prod ? moneyRound(prod.cost) : 0  // Store actual cost of this unit
+                    cost: prod ? moneyRound(prod.cost) : 0,
+                    vatExempt: item.vatExempt || false  // Store VAT exempt status
                 };
             });
 
@@ -2480,7 +2517,7 @@
                 date: new Date().toISOString(),
                 entityId: custId,
                 entityName: custName,
-                items: itemsWithCost,  // Now includes cost per unit
+                items: itemsWithCost,
                 priceType: priceType,
                 sub: sub,
                 discount: discount,
@@ -3293,13 +3330,17 @@
             const tbody = document.getElementById('invItemsBody');
             tbody.innerHTML = '';
             txn.items.forEach((item, idx) => {
+                const itemPrice = item.retail || 0;
+                const itemTotal = item.qty * itemPrice;
+                const vatStatus = item.vatExempt ? ' <span style="color: #e74c3c; font-size: 11px;">[No VAT]</span>' : '';
+                
                 tbody.innerHTML += `
                     <tr>
                         <td style="padding: 8px; border-bottom: 1px solid #eee;">${idx+1}</td>
-                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}${vatStatus}</td>
                         <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${item.qty}</td>
-                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${parseFloat(item.retail).toFixed(2)}</td>
-                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${(item.qty * item.retail).toFixed(2)}</td>
+                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${itemPrice.toFixed(2)}</td>
+                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">${itemTotal.toFixed(2)}</td>
                     </tr>
                 `;
             });
@@ -3319,7 +3360,106 @@
             document.getElementById('invTax').innerText = (txn.tax || 0).toFixed(2);
             document.getElementById('invTotal').innerText = (txn.total || 0).toFixed(2);
             
-            setTimeout(() => window.print(), 200);
+            // Try print, fallback to PDF for mobile apps
+            setTimeout(() => {
+                if(navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
+                    generateInvoicePDF(txn);
+                } else {
+                    window.print();
+                }
+            }, 200);
+        }
+
+        // Generate Invoice as PDF (Mobile-friendly)
+        function generateInvoicePDF(txn) {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                let yPos = 20;
+                
+                // Logo
+                if(db.config.logo) {
+                    try {
+                        doc.addImage(db.config.logo, 'JPEG', 85, 10, 30, 30);
+                        yPos = 45;
+                    } catch(e) { }
+                }
+                
+                // Header
+                doc.setFontSize(16);
+                doc.text(db.config.name, 14, yPos);
+                doc.setFontSize(10);
+                yPos += 7;
+                doc.text(db.config.address, 14, yPos);
+                yPos += 5;
+                doc.text(db.config.phone, 14, yPos);
+                yPos += 5;
+                doc.text(`VAT: ${db.config.taxId}`, 14, yPos);
+                
+                // Invoice Details
+                yPos += 10;
+                doc.setFontSize(14);
+                doc.text('INVOICE', 14, yPos);
+                yPos += 7;
+                doc.setFontSize(10);
+                doc.text(`Invoice #: ${txn.id.toString().slice(-6)}`, 14, yPos);
+                yPos += 5;
+                doc.text(`Date: ${new Date(txn.date).toLocaleDateString()}`, 14, yPos);
+                yPos += 5;
+                doc.text(`Customer: ${txn.entityName}`, 14, yPos);
+                
+                // Items Table
+                const tableData = txn.items.map((item, idx) => [
+                    idx + 1,
+                    item.name + (item.vatExempt ? ' [No VAT]' : ''),
+                    item.qty,
+                    item.retail.toFixed(2),
+                    (item.qty * item.retail).toFixed(2)
+                ]);
+                
+                doc.autoTable({
+                    startY: yPos + 8,
+                    head: [['SN', 'Description', 'Qty', 'Unit Price', 'Total']],
+                    body: tableData,
+                    theme: 'grid',
+                    styles: { fontSize: 9 },
+                    headStyles: { fillColor: [0, 200, 83], textColor: 255 }
+                });
+                
+                yPos = doc.lastAutoTable.finalY + 10;
+                
+                // Totals
+                doc.setFontSize(10);
+                doc.text(`Subtotal: ${db.config.currency}${(txn.sub).toFixed(2)}`, 140, yPos);
+                yPos += 5;
+                
+                if(txn.discountPercent && txn.discountPercent > 0) {
+                    doc.text(`Discount (${txn.discountPercent}%): -${db.config.currency}${(txn.discount).toFixed(2)}`, 140, yPos);
+                    yPos += 5;
+                }
+                
+                doc.setFont(undefined, 'bold');
+                doc.text(`VAT (${db.config.vatRate}%): ${db.config.currency}${(txn.tax).toFixed(2)}`, 140, yPos);
+                yPos += 7;
+                doc.setFontSize(12);
+                doc.text(`TOTAL: ${db.config.currency}${(txn.total).toFixed(2)}`, 140, yPos);
+                
+                // Footer
+                yPos += 15;
+                doc.setFontSize(8);
+                doc.text('Thank you for your business!', 105, yPos, { align: 'center' });
+                yPos += 4;
+                doc.text('Generated by KARTA System', 105, yPos, { align: 'center' });
+                
+                // Save or Open
+                const filename = `Invoice_${txn.id.toString().slice(-6)}_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(filename);
+                alert(`Invoice saved: ${filename}`);
+            } catch(err) {
+                console.error('PDF generation failed:', err);
+                alert('PDF generation failed. Please try again.');
+            }
         }
 
         // --- Report Printing ---
@@ -3329,137 +3469,232 @@
             const reportView = document.getElementById('report-print-view');
             reportView.classList.remove('hidden');
 
-            // GENERATE REPORT HTML FOR PRINT
-            // Include Logo
+            // GENERATE MINIMAL & ATTRACTIVE REPORT
             let logoHtml = '';
             if(db.config.logo) {
-                logoHtml = `<img src="${db.config.logo}" style="width: 50px; height: 50px; object-fit: contain; margin-bottom: 10px;">`;
+                logoHtml = `<img src="${db.config.logo}" style="width: 80px; height: 80px; object-fit: contain; margin: 0 auto 15px;">`;
             }
 
             let html = `
-                <div style="text-align:center; margin-bottom: 20px;">
+                <div style="text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
                     ${logoHtml}
-                    <h1 style="font-size: 24px; font-weight: bold; margin:0;">${db.config.name}</h1>
-                    <p style="margin:2px 0;">${db.config.address} | ${db.config.phone}</p>
-                    <h2 style="font-size: 18px; margin-top: 10px; text-decoration: underline;">${currentReportTitle}</h2>
-                    <p style="font-size: 12px;">Generated on: ${new Date().toLocaleString()}</p>
+                    <h1 style="font-size: 22px; font-weight: 700; margin: 0; color: #222;">${db.config.name}</h1>
+                    <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">${db.config.address} • ${db.config.phone}</p>
+                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #bbb;">VAT ID: ${db.config.taxId || 'N/A'}</p>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h2 style="font-size: 16px; font-weight: 600; margin: 0 0 5px 0; color: #222;">${currentReportTitle}</h2>
+                    <p style="font-size: 10px; color: #999; margin: 0;">${new Date().toLocaleDateString()} • ${currentReportData.length} records</p>
                 </div>
             `;
 
-            // Table Construction - Handle Balance Sheet specially
+            // Table Construction
             if(currentReportTitle.includes("Balance Sheet")) {
                 const stockVal = db.products.reduce((a,c) => a + (c.stock * c.cost), 0);
                 const receivables = db.customers.reduce((a,c) => a + c.balance, 0);
                 const payables = db.suppliers.reduce((a,c) => a + c.balance, 0);
-                
-                // Cash In: Sales (cash only) + Customer Payments + Supplier Returns (cash)
                 const salesCash = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a,c) => a + c.total, 0);
                 const custPayments = db.transactions.filter(t => t.type === 'payment' && !t.isReturn).reduce((a,c) => a + c.total, 0);
                 const supReturnsCash = db.transactions.filter(t => (t.type === 'payment' || t.type === 'return_cash_in') && t.isReturn).reduce((a,c) => a + c.total, 0);
                 const cashIn = salesCash + custPayments + supReturnsCash;
-                
-                // Cash Out: Expenses + Cash Purchases + Supplier Payments (payment_out)
                 const cashOut = db.transactions.filter(t => (t.type === 'expense') || (t.type === 'purchase' && t.payType === 'cash') || (t.type === 'payment_out')).reduce((a,c) => a + c.total, 0);
-                
-                // FIX #5: EMPTY REGISTER - Include opening balance in calculation
                 const openingBalance = db.config.initialCash || 0;
                 const cashHand = moneyRound(openingBalance + cashIn - cashOut);
                 const assets = stockVal + receivables + cashHand;
                 const equity = assets - payables;
 
-                html += `<table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                    <thead><tr style="background: #f0f0f0; border-bottom: 2px solid black;">
-                        <th style="padding:8px; text-align:left; border-right: 1px solid #ddd;">Category</th>
-                        <th style="padding:8px; text-align:right;">Amount</th>
-                    </tr></thead>
+                html += `<table style="width: 100%; border-collapse: collapse; font-size: 11px;">
                     <tbody>
-                        <tr style="background: #e0e0e0; font-weight: bold;"><td style="padding:8px; border-right: 1px solid #ddd;">ASSETS</td><td style="padding:8px; text-align:right;"></td></tr>
-                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px;">Current Stock</td><td style="padding:8px; text-align:right;">${db.config.currency}${stockVal.toFixed(2)}</td></tr>
-                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px;">Accounts Receivable</td><td style="padding:8px; text-align:right;">${db.config.currency}${receivables.toFixed(2)}</td></tr>
-                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px; padding-left: 24px; font-size: 11px; color: #666;">  Sales (Cash)</td><td style="padding:8px; text-align:right; font-size: 11px; color: #666;">${db.config.currency}${salesCash.toFixed(2)}</td></tr>
-                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px; padding-left: 24px; font-size: 11px; color: #666;">  Customer Payments</td><td style="padding:8px; text-align:right; font-size: 11px; color: #666;">${db.config.currency}${custPayments.toFixed(2)}</td></tr>
-                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding:8px; padding-left: 24px; font-size: 11px; color: #666;">  Supplier Returns (Cash)</td><td style="padding:8px; text-align:right; font-size: 11px; color: #666;">${db.config.currency}${supReturnsCash.toFixed(2)}</td></tr>
-                        <tr style="border-bottom: 2px solid black; font-weight: bold;"><td style="padding:8px;">Cash/Bank (Est.)</td><td style="padding:8px; text-align:right;">${db.config.currency}${cashHand.toFixed(2)}</td></tr>
-                        <tr style="background: #f0f0f0; font-weight: bold; border-bottom: 1px solid #ddd;"><td style="padding:8px; border-right: 1px solid #ddd;">TOTAL ASSETS</td><td style="padding:8px; text-align:right; border-right: 1px solid #ddd;">${db.config.currency}${assets.toFixed(2)}</td></tr>
-                        
-                        <tr style="background: #e0e0e0; font-weight: bold;"><td style="padding:8px; border-right: 1px solid #ddd;">LIABILITIES</td><td style="padding:8px; text-align:right;"></td></tr>
-                        <tr style="border-bottom: 2px solid black; font-weight: bold;"><td style="padding:8px;">Accounts Payable</td><td style="padding:8px; text-align:right;">${db.config.currency}${payables.toFixed(2)}</td></tr>
-                        
-                        <tr style="background: #f0f0f0; font-weight: bold;"><td style="padding:8px; border-right: 1px solid #ddd;">EQUITY</td><td style="padding:8px; text-align:right;">${db.config.currency}${equity.toFixed(2)}</td></tr>
+                        <tr style="font-weight: 600; border-bottom: 1px solid #ddd;"><td style="padding: 8px;">ASSETS</td><td style="text-align: right; padding: 8px;"></td></tr>
+                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 8px; color: #666;">Stock Value</td><td style="text-align: right; padding: 8px;">${db.config.currency}${stockVal.toFixed(2)}</td></tr>
+                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 8px; color: #666;">Receivables</td><td style="text-align: right; padding: 8px;">${db.config.currency}${receivables.toFixed(2)}</td></tr>
+                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding: 8px; color: #666;">Cash on Hand</td><td style="text-align: right; padding: 8px;">${db.config.currency}${cashHand.toFixed(2)}</td></tr>
+                        <tr style="font-weight: 600; border-bottom: 1px solid #ddd;"><td style="padding: 8px;">Total Assets</td><td style="text-align: right; padding: 8px; color: #00c853;">${db.config.currency}${assets.toFixed(2)}</td></tr>
+                        <tr style="font-weight: 600; border-bottom: 1px solid #ddd;"><td style="padding: 8px;">Payables</td><td style="text-align: right; padding: 8px;">${db.config.currency}${payables.toFixed(2)}</td></tr>
+                        <tr style="font-weight: 600;"><td style="padding: 8px;">Net Equity</td><td style="text-align: right; padding: 8px; color: #00c853; font-size: 12px;">${db.config.currency}${equity.toFixed(2)}</td></tr>
                     </tbody>
                 </table>`;
-
-                html += `<div style="margin-top: 15px; padding: 10px; border: 1px solid #ddd; background: #f9f9f9;">
-                    <p style="margin: 5px 0; font-size: 11px;"><strong>Accounting Equation:</strong> Assets = Liabilities + Equity</p>
-                    <p style="margin: 5px 0; font-size: 11px;">${db.config.currency}${assets.toFixed(2)} = ${db.config.currency}${payables.toFixed(2)} + ${db.config.currency}${equity.toFixed(2)}</p>
-                </div>`;
             } else {
-                // Standard report format for Daily, Sales, VAT, etc.
-                html += `<table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                // Standard reports
+                html += `<table style="width: 100%; border-collapse: collapse; font-size: 11px;">
                     <thead>
-                        <tr style="background: #f0f0f0; border-bottom: 2px solid black;">`;
+                        <tr style="border-bottom: 1px solid #ddd; font-weight: 600; color: #666;">`;
                 
                 if(currentReportTitle.includes("VAT")) {
-                    html += `<th style="padding:5px; text-align:left;">Date</th>
-                             <th style="padding:5px; text-align:left;">Invoice #</th>
-                             <th style="padding:5px; text-align:right;">Taxable Amt</th>
-                             <th style="padding:5px; text-align:right;">VAT</th>
-                             <th style="padding:5px; text-align:right;">Total</th></tr></thead><tbody>`;
+                    html += `<th style="padding: 8px; text-align: left;">Date</th>
+                             <th style="padding: 8px; text-align: left;">Invoice</th>
+                             <th style="padding: 8px; text-align: right;">Taxable</th>
+                             <th style="padding: 8px; text-align: right; color: #00c853;">VAT</th>
+                             <th style="padding: 8px; text-align: right;">Total</th></tr></thead><tbody>`;
                     currentReportData.forEach(t => {
-                       html += `<tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding:5px;">${new Date(t.date).toLocaleDateString()}</td>
-                            <td style="padding:5px;">#${t.id.toString().slice(-6)}</td>
-                            <td style="padding:5px; text-align:right;">${db.config.currency}${(t.sub||0).toFixed(2)}</td>
-                            <td style="padding:5px; text-align:right;">${db.config.currency}${(t.tax||0).toFixed(2)}</td>
-                            <td style="padding:5px; text-align:right;">${db.config.currency}${t.total.toFixed(2)}</td>
+                       html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                            <td style="padding: 8px;">${new Date(t.date).toLocaleDateString()}</td>
+                            <td style="padding: 8px;">#${t.id.toString().slice(-6)}</td>
+                            <td style="padding: 8px; text-align: right;">${db.config.currency}${(t.sub||0).toFixed(2)}</td>
+                            <td style="padding: 8px; text-align: right; color: #00c853; font-weight: 500;">${db.config.currency}${(t.tax||0).toFixed(2)}</td>
+                            <td style="padding: 8px; text-align: right;">${db.config.currency}${t.total.toFixed(2)}</td>
                        </tr>`; 
                     });
                 } else {
-                    // Generic (Daily, Sales, etc)
-                    html += `<th style="padding:5px; text-align:left;">Date</th>
-                             <th style="padding:5px; text-align:left;">Type</th>
-                             <th style="padding:5px; text-align:left;">Entity/Ref</th>
-                             <th style="padding:5px; text-align:right;">Amount</th></tr></thead><tbody>`;
+                    html += `<th style="padding: 8px; text-align: left;">Date</th>
+                             <th style="padding: 8px; text-align: left;">Type</th>
+                             <th style="padding: 8px; text-align: left;">Reference</th>
+                             <th style="padding: 8px; text-align: right;">Amount</th></tr></thead><tbody>`;
                     currentReportData.forEach(t => {
-                       html += `<tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding:5px;">${new Date(t.date).toLocaleDateString()}</td>
-                            <td style="padding:5px; text-transform:uppercase;">${t.type}</td>
-                            <td style="padding:5px;">${t.entityName || '-'}</td>
-                            <td style="padding:5px; text-align:right;">${db.config.currency}${t.total.toFixed(2)}</td>
+                       html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                            <td style="padding: 8px;">${new Date(t.date).toLocaleDateString()}</td>
+                            <td style="padding: 8px; text-transform: uppercase; font-weight: 500; font-size: 10px;">${t.type}</td>
+                            <td style="padding: 8px; color: #666;">${t.entityName || '-'}</td>
+                            <td style="padding: 8px; text-align: right; font-weight: 500;">${db.config.currency}${t.total.toFixed(2)}</td>
                        </tr>`; 
                     });
                 }
                 
                 html += `</tbody></table>`;
                 
-                // Add Summary Footer
+                // Summary Footer - Minimal
                 const total = currentReportData.reduce((a,c) => a + c.total, 0);
-
                 let footerHtml = '';
                 
                 if (currentReportTitle.includes("VAT")) {
-                    // SPECIFIC VAT FOOTER
                     const totalVat = currentReportData.reduce((a,c) => a + (c.tax || 0), 0);
                     const totalTaxable = currentReportData.reduce((a,c) => a + (c.sub || 0), 0);
-                    
-                    footerHtml = `
-                    <div style="text-align:right; margin-top: 10px; font-size: 14px; border-top: 2px solid black; padding-top: 5px;">
-                        <p style="margin: 2px 0;">Total Taxable: ${db.config.currency}${totalTaxable.toFixed(2)}</p>
-                        <p style="margin: 2px 0;">Total VAT Collected: ${db.config.currency}${totalVat.toFixed(2)}</p>
-                        <p style="margin: 5px 0; font-weight: bold; font-size: 16px;">Grand Total: ${db.config.currency}${total.toFixed(2)}</p>
+                    footerHtml = `<div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; text-align: right; font-size: 12px;">
+                        <p style="margin: 3px 0; color: #666;">Taxable: <strong>${db.config.currency}${totalTaxable.toFixed(2)}</strong></p>
+                        <p style="margin: 3px 0; color: #00c853;">VAT: <strong>${db.config.currency}${totalVat.toFixed(2)}</strong></p>
+                        <p style="margin: 5px 0 0 0; font-weight: 700; font-size: 13px;">Total: ${db.config.currency}${total.toFixed(2)}</p>
                     </div>`;
                 } else {
-                    // GENERIC FOOTER
-                    footerHtml = `<div style="text-align:right; margin-top: 10px; font-weight:bold; border-top: 2px solid black; padding-top: 5px;">
+                    footerHtml = `<div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; text-align: right; font-size: 12px; font-weight: 700;">
                         Total: ${db.config.currency}${total.toFixed(2)}
                     </div>`;
                 }
-
                 html += footerHtml;
             }
 
+            // Minimal Footer
+            html += `<div style="margin-top: 30px; padding-top: 10px; border-top: 1px solid #eee; text-align: center; font-size: 8px; color: #bbb;">
+                Generated by KARTA • ${new Date().toLocaleString()}
+            </div>`;
+
             reportView.innerHTML = html;
-            setTimeout(() => window.print(), 200);
+            
+            // Try print, fallback to PDF for mobile apps
+            setTimeout(() => {
+                if(navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
+                    generateReportPDF(html);
+                } else {
+                    window.print();
+                }
+            }, 200);
+        }
+
+        // Generate Report as PDF (Mobile-friendly)
+        function generateReportPDF(htmlContent) {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Convert HTML to text-based layout
+                let yPos = 20;
+                const pageHeight = doc.internal.pageSize.height;
+                const pageWidth = doc.internal.pageSize.width;
+                const margin = 14;
+                const maxWidth = pageWidth - (2 * margin);
+                
+                // Extract text from HTML and add to PDF
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = htmlContent;
+                
+                // Add logo if exists
+                if(db.config.logo) {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const img = new Image();
+                        img.onload = function() {
+                            doc.addImage(img, 'JPEG', margin + (maxWidth/2) - 30, yPos, 60, 60);
+                        };
+                        img.src = db.config.logo;
+                        yPos = 75;
+                    } catch(e) { }
+                }
+                
+                // Title
+                doc.setFontSize(14);
+                doc.text(db.config.name, pageWidth/2, yPos, { align: 'center' });
+                yPos += 6;
+                
+                doc.setFontSize(9);
+                doc.text(db.config.address + ' • ' + db.config.phone, pageWidth/2, yPos, { align: 'center' });
+                yPos += 5;
+                doc.text('VAT ID: ' + (db.config.taxId || 'N/A'), pageWidth/2, yPos, { align: 'center' });
+                yPos += 10;
+                
+                // Report Title
+                doc.setFontSize(12);
+                doc.text(currentReportTitle, margin, yPos);
+                yPos += 6;
+                
+                doc.setFontSize(8);
+                doc.text(new Date().toLocaleString(), margin, yPos);
+                yPos += 10;
+                
+                // Build table from data
+                const tableData = [];
+                if(currentReportTitle.includes("VAT")) {
+                    tableData.push(['Date', 'Invoice', 'Taxable', 'VAT', 'Total']);
+                    currentReportData.forEach(t => {
+                        tableData.push([
+                            new Date(t.date).toLocaleDateString(),
+                            '#' + t.id.toString().slice(-6),
+                            db.config.currency + (t.sub||0).toFixed(2),
+                            db.config.currency + (t.tax||0).toFixed(2),
+                            db.config.currency + t.total.toFixed(2)
+                        ]);
+                    });
+                } else {
+                    tableData.push(['Date', 'Type', 'Reference', 'Amount']);
+                    currentReportData.forEach(t => {
+                        tableData.push([
+                            new Date(t.date).toLocaleDateString(),
+                            t.type.toUpperCase(),
+                            t.entityName || '-',
+                            db.config.currency + t.total.toFixed(2)
+                        ]);
+                    });
+                }
+                
+                // Add table
+                doc.autoTable({
+                    startY: yPos,
+                    head: [tableData[0]],
+                    body: tableData.slice(1),
+                    theme: 'grid',
+                    styles: { fontSize: 8 },
+                    headStyles: { fillColor: [0, 200, 83], textColor: 255 },
+                    columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } }
+                });
+                
+                // Footer
+                yPos = doc.lastAutoTable.finalY + 10;
+                doc.setFontSize(7);
+                doc.text('Generated by KARTA System • ' + new Date().toLocaleString(), pageWidth/2, yPos, { align: 'center' });
+                
+                // Save
+                const filename = `Report_${currentReportTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(filename);
+                alert(`Report saved: ${filename}`);
+            } catch(err) {
+                console.error('PDF generation failed:', err);
+                // Fallback: try to print anyway
+                try {
+                    window.print();
+                } catch(e2) {
+                    alert('Print/PDF generation not supported on this device.');
+                }
+            }
         }
 
 
@@ -3659,17 +3894,81 @@
             // --- VAT REPORT LOGIC ---
             if(type === 'vat') {
                 const sales = filteredTxns.filter(t => t.type === 'sale');
-                const totalTaxable = sales.reduce((a,c) => a + (c.sub || 0), 0);
-                const totalVat = sales.reduce((a,c) => a + (c.tax || 0), 0);
-                const totalWithVat = sales.reduce((a,c) => a + c.total, 0);
+                
+                // Calculate taxable amount (excluding VAT exempt items)
+                let totalTaxable = 0;
+                let totalVatExempt = 0;
+                let totalVat = 0;
+                
+                sales.forEach(t => {
+                    let txnTaxable = 0;
+                    let txnExempt = 0;
+                    
+                    // Calculate taxable and exempt amounts per transaction
+                    if(t.items && Array.isArray(t.items)) {
+                        const priceType = t.priceType || 'retail';
+                        t.items.forEach(item => {
+                            const price = priceType === 'wholesale' ? (item.wholesale || item.retail) : item.retail;
+                            const itemTotal = item.qty * price;
+                            
+                            if(item.vatExempt) {
+                                txnExempt += itemTotal;
+                            } else {
+                                txnTaxable += itemTotal;
+                            }
+                        });
+                    } else {
+                        // Fallback for old transactions without item-level VAT data
+                        txnTaxable = t.sub || 0;
+                    }
+                    
+                    // Apply discount proportionally to taxable amount
+                    const discount = t.discountPercent ? (txnTaxable * (t.discountPercent / 100)) : 0;
+                    const taxableAfterDiscount = moneyRound(txnTaxable - discount);
+                    
+                    totalTaxable = moneyRound(totalTaxable + taxableAfterDiscount);
+                    totalVatExempt = moneyRound(totalVatExempt + txnExempt);
+                    
+                    // Calculate VAT on taxable items only
+                    const txnVat = moneyRound(taxableAfterDiscount * (db.config.vatRate / 100));
+                    totalVat = moneyRound(totalVat + txnVat);
+                });
+                
+                const totalWithVat = moneyRound(totalTaxable + totalVatExempt + totalVat);
 
                 cards.innerHTML += createCard('Taxable Sales', totalTaxable, 'white');
+                cards.innerHTML += createCard('VAT Exempt Items', totalVatExempt, 'yellow-400');
                 cards.innerHTML += createCard('Total VAT Collected', totalVat, 'karta-primary');
                 cards.innerHTML += createCard('Grand Total', totalWithVat, 'green-400');
 
-                thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Invoice #</th><th class="p-3">Type</th><th class="p-3 text-right">Taxable Amt</th><th class="p-3 text-right">VAT</th><th class="p-3 text-right">Total</th></tr>`;
+                thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Invoice #</th><th class="p-3">Type</th><th class="p-3 text-right">Taxable</th><th class="p-3 text-right">Exempt</th><th class="p-3 text-right">VAT</th><th class="p-3 text-right">Total</th></tr>`;
                 
                 sales.forEach(t => {
+                    let txnTaxable = 0;
+                    let txnExempt = 0;
+                    
+                    // Calculate per transaction
+                    if(t.items && Array.isArray(t.items)) {
+                        const priceType = t.priceType || 'retail';
+                        t.items.forEach(item => {
+                            const price = priceType === 'wholesale' ? (item.wholesale || item.retail) : item.retail;
+                            const itemTotal = item.qty * price;
+                            
+                            if(item.vatExempt) {
+                                txnExempt += itemTotal;
+                            } else {
+                                txnTaxable += itemTotal;
+                            }
+                        });
+                    } else {
+                        txnTaxable = t.sub || 0;
+                    }
+                    
+                    const discount = t.discountPercent ? (txnTaxable * (t.discountPercent / 100)) : 0;
+                    const taxableAfterDiscount = moneyRound(txnTaxable - discount);
+                    const txnVat = moneyRound(taxableAfterDiscount * (db.config.vatRate / 100));
+                    const txnTotal = moneyRound(taxableAfterDiscount + txnExempt + txnVat);
+                    
                     const tr = document.createElement('tr');
                     const isReturn = t.isReturn ? ' bg-red-900/20' : '';
                     const typeLabel = t.isReturn ? 'RETURN' : 'SALE';
@@ -3678,9 +3977,10 @@
                         <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
                         <td class="p-3 font-mono text-xs">#${t.id.toString().slice(-6)}</td>
                         <td class="p-3 text-xs font-bold ${t.isReturn ? 'text-red-400' : 'text-green-400'}">${typeLabel}</td>
-                        <td class="p-3 text-right">${db.config.currency}${(t.sub||0).toFixed(2)}</td>
-                        <td class="p-3 text-right text-karta-primary font-bold">${db.config.currency}${(t.tax||0).toFixed(2)}</td>
-                        <td class="p-3 text-right ${t.total < 0 ? 'text-red-400' : 'text-green-400'}">${db.config.currency}${t.total.toFixed(2)}</td>
+                        <td class="p-3 text-right">${db.config.currency}${taxableAfterDiscount.toFixed(2)}</td>
+                        <td class="p-3 text-right ${txnExempt > 0 ? 'text-yellow-400 font-bold' : ''}">${db.config.currency}${txnExempt.toFixed(2)}</td>
+                        <td class="p-3 text-right text-karta-primary font-bold">${db.config.currency}${txnVat.toFixed(2)}</td>
+                        <td class="p-3 text-right ${txnTotal < 0 ? 'text-red-400' : 'text-green-400'}">${db.config.currency}${txnTotal.toFixed(2)}</td>
                     `;
                     tbody.appendChild(tr);
                 });
