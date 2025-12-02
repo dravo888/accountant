@@ -1268,17 +1268,22 @@
         <!-- TOAST NOTIFICATION -->
         <div id="toast-notification" style="position: fixed; bottom: 20px; right: 20px; background: #00c853; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,200,83,0.3); display: none; z-index: 9999; font-size: 14px; font-weight: 500; max-width: 300px; animation: slideIn 0.3s ease-out;"></div>
         
-        <!-- PRINT PREVIEW MODAL -->
-        <div id="print-preview-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; z-index: 9998; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out; pointer-events: auto;">
-            <div style="background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 90%; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; animation: slideUp 0.3s ease-out; pointer-events: auto;">
-                <div style="padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: white; flex-shrink: 0; pointer-events: auto;">
+        <!-- PRINT PREVIEW MODAL - SIMPLIFIED FOR MOBILE -->
+        <div id="print-preview-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; z-index: 9998; overflow: hidden;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; width: 100%; height: 100%;">
+                <!-- Header -->
+                <div style="padding: 15px 20px; background: white; border-bottom: 1px solid #eee; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;">
                     <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #222;">Print Preview</h2>
-                    <button id="close-modal-btn" onclick="closePreviewModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; pointer-events: auto; z-index: 10001;">&times;</button>
+                    <button id="close-modal-btn" onclick="window.closePreviewModal(); return false;" style="background: none; border: none; font-size: 32px; cursor: pointer; color: #666; padding: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; touch-action: manipulation;">×</button>
                 </div>
-                <div id="preview-content" style="padding: 30px; overflow-y: auto; background: white; flex: 1; pointer-events: auto;"></div>
-                <div style="padding: 20px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; background: white; flex-shrink: 0; pointer-events: auto;">
-                    <button id="cancel-modal-btn" onclick="closePreviewModal()" style="padding: 10px 20px; border: 1px solid #ddd; border-radius: 6px; background: white; color: #333; cursor: pointer; font-weight: 500; transition: all 0.2s; pointer-events: auto; z-index: 10001; font-size: 14px; font-family: inherit;">Cancel</button>
-                    <button id="confirm-modal-btn" onclick="confirmPrint()" style="padding: 10px 24px; background: #00c853; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; pointer-events: auto; z-index: 10001; font-size: 14px; font-family: inherit;">Confirm & Print</button>
+                
+                <!-- Preview Content -->
+                <div id="preview-content" style="flex: 1; overflow-y: auto; background: white; padding: 20px;"></div>
+                
+                <!-- Action Buttons -->
+                <div style="padding: 15px 20px; background: white; border-top: 1px solid #eee; flex-shrink: 0; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="cancel-modal-btn" onclick="window.closePreviewModal(); return false;" style="padding: 12px 24px; border: 1px solid #ddd; border-radius: 6px; background: white; color: #333; cursor: pointer; font-weight: 600; font-size: 16px; touch-action: manipulation; min-height: 48px;">Cancel</button>
+                    <button id="confirm-modal-btn" onclick="window.confirmPrint(); return false;" style="padding: 12px 28px; background: #00c853; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 16px; touch-action: manipulation; min-height: 48px;">Confirm</button>
                 </div>
             </div>
         </div>
@@ -3394,28 +3399,31 @@
 
         // Show invoice preview
         function showInvoicePreview() {
-            const previewContent = document.getElementById('preview-content');
-            previewContent.innerHTML = document.getElementById('invoice-print-view').innerHTML;
-            const modal = document.getElementById('print-preview-modal');
-            modal.style.display = 'flex';
-            
-            // Ensure buttons are clickable
-            setTimeout(() => {
-                const closeBtn = document.getElementById('close-modal-btn');
-                const cancelBtn = document.getElementById('cancel-modal-btn');
-                const confirmBtn = document.getElementById('confirm-modal-btn');
+            try {
+                const previewContent = document.getElementById('preview-content');
+                const modal = document.getElementById('print-preview-modal');
                 
-                if(closeBtn) closeBtn.style.pointerEvents = 'auto';
-                if(cancelBtn) cancelBtn.style.pointerEvents = 'auto';
-                if(confirmBtn) confirmBtn.style.pointerEvents = 'auto';
-            }, 50);
+                previewContent.innerHTML = document.getElementById('invoice-print-view').innerHTML;
+                modal.style.display = 'flex';
+                modal.style.position = 'fixed';
+                
+                // Prevent scrolling on body when modal is open
+                document.body.style.overflow = 'hidden';
+            } catch(err) {
+                console.error('Preview error:', err);
+            }
         }
         
         // Close preview modal
         function closePreviewModal() {
-            const modal = document.getElementById('print-preview-modal');
-            if(modal) {
-                modal.style.display = 'none';
+            try {
+                const modal = document.getElementById('print-preview-modal');
+                if(modal) {
+                    modal.style.display = 'none';
+                }
+                document.body.style.overflow = 'auto';
+            } catch(err) {
+                console.error('Close error:', err);
             }
         }
         
@@ -3424,19 +3432,22 @@
             try {
                 closePreviewModal();
                 
-                if(printPreviewMode === 'invoice' && globalTxnForPrint) {
-                    if(navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
-                        generateInvoicePDF(globalTxnForPrint);
-                    } else {
-                        window.print();
+                // Small delay to ensure modal closes first
+                setTimeout(() => {
+                    if(printPreviewMode === 'invoice' && globalTxnForPrint) {
+                        if(navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
+                            generateInvoicePDF(globalTxnForPrint);
+                        } else {
+                            window.print();
+                        }
+                    } else if(printPreviewMode === 'report') {
+                        if(navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
+                            generateReportPDF(globalReportHtml);
+                        } else {
+                            window.print();
+                        }
                     }
-                } else if(printPreviewMode === 'report') {
-                    if(navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
-                        generateReportPDF(globalReportHtml);
-                    } else {
-                        window.print();
-                    }
-                }
+                }, 100);
             } catch(err) {
                 console.error('Print error:', err);
                 showNotification('Error during printing. Please try again.');
@@ -3445,13 +3456,17 @@
         
         // Show toast notification
         function showNotification(message, duration = 3000) {
-            const toast = document.getElementById('toast-notification');
-            if(toast) {
-                toast.textContent = message;
-                toast.style.display = 'block';
-                setTimeout(() => {
-                    toast.style.display = 'none';
-                }, duration);
+            try {
+                const toast = document.getElementById('toast-notification');
+                if(toast) {
+                    toast.textContent = message;
+                    toast.style.display = 'block';
+                    setTimeout(() => {
+                        toast.style.display = 'none';
+                    }, duration);
+                }
+            } catch(err) {
+                console.error('Notification error:', err);
             }
         }
         
@@ -4370,34 +4385,66 @@
             const cancelBtn = document.getElementById('cancel-modal-btn');
             const confirmBtn = document.getElementById('confirm-modal-btn');
             
-            // Direct click listeners on buttons
+            // Close button
             if(closeBtn) {
                 closeBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     closePreviewModal();
+                    return false;
+                });
+                closeBtn.addEventListener('touch', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closePreviewModal();
+                    return false;
                 });
             }
             
+            // Cancel button
             if(cancelBtn) {
                 cancelBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     closePreviewModal();
+                    return false;
+                });
+                cancelBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closePreviewModal();
+                    return false;
                 });
             }
             
+            // Confirm button
             if(confirmBtn) {
                 confirmBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     confirmPrint();
+                    return false;
+                });
+                confirmBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    confirmPrint();
+                    return false;
+                });
+            }
+            
+            // Modal backdrop - close on click
+            if(modal) {
+                modal.addEventListener('click', function(e) {
+                    if(e.target === modal) {
+                        closePreviewModal();
+                    }
                 });
             }
             
             // Keyboard shortcuts
             document.addEventListener('keydown', function(e) {
-                if(modal && modal.style.display === 'flex') {
+                if(modal && modal.style.display !== 'none') {
                     if(e.key === 'Escape') {
                         e.preventDefault();
                         closePreviewModal();
@@ -4408,15 +4455,6 @@
                     }
                 }
             });
-            
-            // Modal backdrop click to close
-            if(modal) {
-                modal.addEventListener('click', function(e) {
-                    if(e.target === modal) {
-                        closePreviewModal();
-                    }
-                });
-            }
         }
         
         // Make functions global for onclick handlers
