@@ -4,6 +4,12 @@
    <link rel="icon" type="image/png" href="karta-logo-design.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <!-- Anti-Copy Protection Headers -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:;">
+    <meta name="theme-color" content="#0b0b0b">
     <title>Karta</title>
     
     <!-- Tailwind CSS -->
@@ -17,15 +23,112 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
     <script>
+        // ===== ANTI-COPY & CODE PROTECTION =====
+        // Store original console methods before any modifications
+        const originalConsole = {
+            log: console.log,
+            warn: console.warn,
+            error: console.error,
+            info: console.info,
+            debug: console.debug
+        };
+
+        // Wait for DOM to be ready before applying body styles
+        if (document.body) {
+            document.body.style.userSelect = 'none';
+            document.body.style.webkitUserSelect = 'none';
+            document.body.style.msUserSelect = 'none';
+        } else {
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.style.userSelect = 'none';
+                document.body.style.webkitUserSelect = 'none';
+                document.body.style.msUserSelect = 'none';
+            });
+        }
+
+        // Disable right-click context menu
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        }, false);
+
+        // Disable keyboard shortcuts for developer tools
+        document.addEventListener('keydown', function(e) {
+            // F12 - Developer Tools
+            if (e.keyCode === 123) {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+Shift+I - Inspect Element
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 73) {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+Shift+J - Developer Console
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 74) {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+Shift+C - Inspect Element (Alt)
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 67) {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+Shift+K - Developer Console (Firefox)
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 75) {
+                e.preventDefault();
+                return false;
+            }
+        }, false);
+
+        // Disable copy event
+        document.addEventListener('copy', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Disable cut event
+        document.addEventListener('cut', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Detect if Developer Tools are open (non-blocking)
+        let devToolsOpen = false;
+        const checkDevTools = setInterval(function() {
+            if (window.outerHeight - window.innerHeight > 100 || 
+                window.outerWidth - window.innerWidth > 100) {
+                devToolsOpen = true;
+            }
+        }, 500);
+
+        // Prevent saving the page
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.keyCode === 83) { // Ctrl+S
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Disable drag and drop for copying
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Watermark detection - Add hidden marker
+        document.documentElement.setAttribute('data-protected', 'true');
+        document.documentElement.setAttribute('data-source', 'KARTA_PROPRIETARY');
+
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         karta: {
-                            bg: '#0b0b0b',       // Deep Black
-                            surface: '#121212',  // Surface Black
-                            border: '#27272a',   // Border Gray
-                            primary: '#00c853',  // Vibrant Green
+                            bg: '#0b0b0b',
+                            surface: '#121212',
+                            border: '#27272a',
+                            primary: '#00c853',
                             primaryDark: '#009624',
                             text: '#e0e0e0',
                             muted: '#9e9e9e',
@@ -44,10 +147,46 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 
+        /* ===== CODE PROTECTION STYLES ===== */
+        /* Prevent text selection globally */
+        * {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            -webkit-user-drag: none !important;
+            -webkit-touch-callout: none !important;
+        }
+
+        /* Allow selection only in specific input fields */
+        input, textarea, select {
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+            user-select: text !important;
+        }
+
+        /* Disable inspect element highlighting */
+        *::-webkit-scrollbar-button {
+            pointer-events: none;
+        }
+
+        /* Hide during inspection */
+        @supports (-webkit-appearance: none) {
+            @media screen and (prefers-reduced-motion: no-preference) {
+                body::-webkit-scrollbar {
+                    width: 0 !important;
+                    height: 0 !important;
+                }
+            }
+        }
+
         body {
             background-color: #0b0b0b;
             color: #e0e0e0;
             font-family: 'Inter', sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         /* Custom Scrollbar */
@@ -69,11 +208,126 @@
             padding: 0.5rem;
             border-radius: 0.375rem;
             width: 100%;
-            transition: border-color 0.2s;
+            transition: all 0.2s ease;
         }
         .input-field:focus {
             outline: none;
             border-color: #00c853;
+            box-shadow: 0 0 8px rgba(0, 200, 83, 0.3);
+        }
+        .input-field:hover {
+            border-color: #555;
+        }
+        .input-field:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Button Styles */
+        button {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        button:focus-visible {
+            outline: 2px solid #00c853;
+            outline-offset: 2px;
+        }
+
+        /* Primary Button */
+        .btn-primary {
+            background-color: #00c853;
+            color: black;
+            font-weight: 600;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.25s ease;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: #00e676;
+            box-shadow: 0 8px 16px rgba(0, 200, 83, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        /* Secondary Button */
+        .btn-secondary {
+            background-color: transparent;
+            border: 1.5px solid #333;
+            color: #e0e0e0;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.25s ease;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            border-color: #00c853;
+            color: #00c853;
+            background-color: rgba(0, 200, 83, 0.1);
+        }
+
+        /* Danger Button */
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            transition: all 0.25s ease;
+        }
+        .btn-danger:hover:not(:disabled) {
+            background-color: #dc2626;
+            box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Success/Confirmation Animation */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .animate-spin { animation: spin 1s linear infinite; }
+        .animate-slideIn { animation: slideIn 0.3s ease-out; }
+
+        /* Loading State */
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            margin-left: 4px;
+            background: currentColor;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
         }
 
         /* Modal Content Fixes */
@@ -81,6 +335,7 @@
             pointer-events: auto !important;
             z-index: 51 !important;
             position: relative !important;
+            animation: slideIn 0.3s ease-out;
         }
 
         #modalBackdrop {
@@ -96,6 +351,104 @@
         .table-container {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+        }
+
+        /* Success Toast */
+        .toast-success {
+            animation: slideIn 0.3s ease-out, slideIn 0.3s ease-in 4.7s reverse;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid #22c55e;
+        }
+
+        /* Card Hover Effects */
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 200, 83, 0.15);
+            border-color: #00c853 !important;
+        }
+
+        /* Table Row Hover */
+        tbody tr {
+            transition: all 0.2s ease;
+        }
+        tbody tr:hover {
+            background-color: rgba(0, 200, 83, 0.05) !important;
+        }
+
+        /* KPI Cards */
+        .kpi-card {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .kpi-card:hover {
+            transform: scale(1.02);
+        }
+
+        /* Smooth Transitions */
+        * {
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        /* Focus States for Accessibility */
+        button:focus-visible,
+        a:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible {
+            outline: 2px solid #00c853;
+            outline-offset: 2px;
+        }
+
+        /* Placeholder Styling */
+        ::placeholder {
+            color: #666;
+            opacity: 0.8;
+        }
+
+        /* Select Element Styling */
+        select {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+        select:hover {
+            border-color: #555;
+        }
+        select:focus {
+            outline: none;
+            border-color: #00c853;
+            box-shadow: 0 0 8px rgba(0, 200, 83, 0.3);
+        }
+
+        /* Checkbox & Radio Styling */
+        input[type="checkbox"],
+        input[type="radio"] {
+            accent-color: #00c853;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        input[type="checkbox"]:hover,
+        input[type="radio"]:hover {
+            transform: scale(1.1);
+        }
+
+        /* Number Input */
+        input[type="number"] {
+            transition: all 0.2s ease;
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            background: linear-gradient(90deg, #1a1a1a 25%, #242424 50%, #1a1a1a 75%);
+            background-size: 200% 100%;
         }
 
         /* Print Layout - A4 Specification Fixed */
@@ -135,6 +488,295 @@
             
             .no-print { display: none !important; }
         }
+
+        /* ===== ENHANCED UX IMPROVEMENTS ===== */
+
+        /* Empty State Styling */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+            color: #999;
+        }
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        .empty-state-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ccc;
+            margin-bottom: 8px;
+        }
+        .empty-state-text {
+            font-size: 14px;
+            color: #999;
+        }
+
+        /* Enhanced Input Feedback */
+        .input-field:valid {
+            border-color: #00c853;
+        }
+        .input-field:invalid:not(:placeholder-shown) {
+            border-color: #ef4444;
+        }
+
+        /* Tooltip Styling */
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00c853;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 1000;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            border: 1px solid #333;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            max-width: 400px;
+            padding: 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideInUp 0.3s ease-out;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        .toast-success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid #22c55e;
+            color: #86efac;
+        }
+        .toast-error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+        }
+        .toast-info {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid #3b82f6;
+            color: #93c5fd;
+        }
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Breadcrumb Navigation */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 16px;
+        }
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .breadcrumb-item.active {
+            color: #00c853;
+            font-weight: 600;
+        }
+        .breadcrumb-separator {
+            color: #555;
+        }
+
+        /* Badge Styling */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+            border: 1px solid #22c55e;
+        }
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fcd34d;
+            border: 1px solid #f59e0b;
+        }
+        .badge-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid #ef4444;
+        }
+        .badge-info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            border: 1px solid #3b82f6;
+        }
+
+        /* Help Text */
+        .help-text {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+            display: block;
+        }
+
+        /* Form Group Spacing */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        /* Confirmation Dialog */
+        .confirm-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #121212;
+            border: 1px solid #27272a;
+            padding: 24px;
+            border-radius: 8px;
+            z-index: 1001;
+            min-width: 320px;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        .confirm-dialog-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+
+        /* Expandable Row */
+        .expandable-row {
+            cursor: pointer;
+            user-select: none;
+        }
+        .expandable-row:hover {
+            background: rgba(0, 200, 83, 0.05);
+        }
+        .expandable-row.expanded {
+            background: rgba(0, 200, 83, 0.08);
+        }
+
+        /* Loading Bar */
+        .progress-bar {
+            height: 3px;
+            background: linear-gradient(90deg, #00c853, #00e676);
+            animation: progress 2s ease-in-out infinite;
+            border-radius: 2px;
+        }
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 100%; }
+            100% { width: 0%; }
+        }
+
+        /* Status Indicator */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-indicator.online::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .status-indicator.offline::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+        }
+
+        /* Responsive Table Fixes */
+        table {
+            border-collapse: collapse;
+        }
+        thead th {
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tbody tr {
+            transition: background-color 0.2s ease;
+        }
+        tbody tr:hover {
+            background-color: rgba(0, 200, 83, 0.05);
+        }
+
+        /* Mobile-First Improvements */
+        @media (max-width: 768px) {
+            .breadcrumb {
+                font-size: 11px;
+            }
+            .badge {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            button {
+                font-size: 14px !important;
+                padding: 10px 16px !important;
+            }
+            .input-field {
+                font-size: 16px;
+                padding: 12px;
+            }
+        }
+
+        /* Section Transitions */
+        section {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Icon Loading Animation */
+        .fa-spin {
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body class="h-screen overflow-hidden text-sm relative">
@@ -166,10 +808,10 @@
                 <div id="authError" class="text-red-500 text-xs hidden"></div>
 
                 <div class="pt-4 flex flex-col gap-3">
-                    <button type="submit" id="btnSignIn" class="w-full bg-karta-primary hover:bg-karta-primaryDark text-black font-bold py-3 rounded transition">
+                    <button type="submit" id="btnSignIn" class="w-full bg-karta-primary hover:bg-karta-primaryDark text-black font-bold py-3 rounded transition-all duration-200 hover:shadow-lg hover:shadow-green-500/50 active:scale-95">
                         <i class="fa-solid fa-lock mr-2"></i> Access My Database
                     </button>
-                    <button type="button" id="btnSignUp" class="w-full bg-transparent border border-karta-border hover:border-gray-500 text-white py-2 rounded transition">
+                    <button type="button" id="btnSignUp" class="w-full bg-transparent border border-karta-border hover:border-karta-primary hover:bg-white/5 text-white py-2 rounded transition-all duration-200 active:scale-95">
                         Create New Private Database
                     </button>
                 </div>
@@ -207,51 +849,51 @@
 
             <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
                 <div class="text-xs font-bold text-karta-muted uppercase px-3 py-2 mt-2">Core</div>
-                <button onclick="nav('dashboard')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-karta-primary bg-white/5">
-                    <i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard
+                <button onclick="nav('dashboard')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:border-l-2 hover:border-karta-primary transition-all text-karta-primary bg-white/5">
+                    <i class="fa-solid fa-chart-pie w-5 text-center"></i> <span>Dashboard</span>
                 </button>
-                <button onclick="nav('pos')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
-                    <i class="fa-solid fa-cash-register w-5 text-center"></i> POS Terminal
+                <button onclick="nav('pos')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
+                    <i class="fa-solid fa-cash-register w-5 text-center"></i> <span>POS Terminal</span>
                 </button>
-                <button onclick="nav('invoices')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
-                    <i class="fa-solid fa-receipt w-5 text-center"></i> Invoices
+                <button onclick="nav('invoices')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
+                    <i class="fa-solid fa-receipt w-5 text-center"></i> <span>Invoices</span>
                 </button>
 
-                <button onclick="nav('returns')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
-                    <i class="fa-solid fa-rotate-left w-5 text-center"></i> Returns & Refunds
+                <button onclick="nav('returns')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
+                    <i class="fa-solid fa-rotate-left w-5 text-center"></i> <span>Returns & Refunds</span>
                 </button>
 
                 <div class="text-xs font-bold text-karta-muted uppercase px-3 py-2 mt-4">Management</div>
-                <button onclick="nav('inventory')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
-                    <i class="fa-solid fa-pills w-5 text-center"></i> Products & Stock
+                <button onclick="nav('inventory')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
+                    <i class="fa-solid fa-pills w-5 text-center"></i> <span>Products & Stock</span>
                 </button>
-                <button onclick="nav('customers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
-                    <i class="fa-solid fa-users w-5 text-center"></i> Customers
+                <button onclick="nav('customers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
+                    <i class="fa-solid fa-users w-5 text-center"></i> <span>Customers</span>
                 </button>
-                <button onclick="nav('suppliers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
-                    <i class="fa-solid fa-truck-field w-5 text-center"></i> Suppliers
+                <button onclick="nav('suppliers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
+                    <i class="fa-solid fa-truck-field w-5 text-center"></i> <span>Suppliers</span>
                 </button>
-                <button onclick="nav('productSuppliers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
-                    <i class="fa-solid fa-link w-5 text-center"></i> Product-Supplier
+                <button onclick="nav('productSuppliers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
+                    <i class="fa-solid fa-link w-5 text-center"></i> <span>Product-Supplier</span>
                 </button>
 
                 <div class="text-xs font-bold text-karta-muted uppercase px-3 py-2 mt-4">Finance</div>
-                <button onclick="nav('purchases')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
-                    <i class="fa-solid fa-file-invoice w-5 text-center"></i> Purchases & Exp
+                <button onclick="nav('purchases')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
+                    <i class="fa-solid fa-file-invoice w-5 text-center"></i> <span>Purchases & Exp</span>
                 </button>
-                <button onclick="nav('reports')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 transition text-gray-400">
-                    <i class="fa-solid fa-chart-line w-5 text-center"></i> Reports
+                <button onclick="nav('reports')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
+                    <i class="fa-solid fa-chart-line w-5 text-center"></i> <span>Reports</span>
                 </button>
             </nav>
 
             <div class="p-4 border-t border-karta-border space-y-2">
-                <div class="text-xs text-center text-gray-500 mb-2">
-                    <span id="syncStatusIndicator" class="text-green-500"><i class="fa-solid fa-circle"></i> Private Database Active</span>
+                <div class="text-xs text-center text-gray-500 mb-2 animate-pulse">
+                    <span id="syncStatusIndicator" class="text-green-500"><i class="fa-solid fa-circle"></i> Synced</span>
                 </div>
-                <button onclick="nav('settings')" class="flex items-center gap-2 text-gray-400 hover:text-white transition w-full p-2 hover:bg-white/5 rounded">
+                <button onclick="nav('settings')" class="flex items-center gap-2 text-gray-400 hover:text-karta-primary hover:bg-white/5 transition-all w-full p-2 rounded">
                     <i class="fa-solid fa-gear"></i> Settings
                 </button>
-                <button onclick="handleLogout()" class="flex items-center gap-2 text-red-500 hover:text-red-400 transition w-full p-2 hover:bg-white/5 rounded">
+                <button onclick="handleLogout()" class="flex items-center gap-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all w-full p-2 rounded">
                     <i class="fa-solid fa-sign-out-alt"></i> Logout
                 </button>
             </div>
@@ -262,19 +904,26 @@
             
             <!-- Top Bar -->
             <header class="h-16 border-b border-karta-border bg-karta-bg flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
                     <!-- Mobile Menu Button -->
-                    <button onclick="toggleSidebar()" class="md:hidden text-white p-2">
+                    <button onclick="toggleSidebar()" class="md:hidden text-white p-2 hover:bg-white/5 rounded transition" title="Menu">
                         <i class="fa-solid fa-bars fa-lg"></i>
                     </button>
-                    <h2 id="pageTitle" class="text-lg md:text-xl font-bold text-white truncate">Dashboard</h2>
+                    <!-- Breadcrumb Navigation -->
+                    <div class="breadcrumb hidden sm:flex overflow-x-auto">
+                        <span class="breadcrumb-item active">
+                            <i class="fa-solid fa-home text-xs"></i>
+                            <span id="pageTitle" class="font-bold text-white truncate">Dashboard</span>
+                        </span>
+                    </div>
+                    <h2 id="pageTitleMobile" class="text-lg md:text-xl font-bold text-white truncate sm:hidden">Dashboard</h2>
                 </div>
                 <div class="flex items-center gap-4">
                     <div class="text-right hidden sm:block">
                         <div class="text-sm font-bold text-white" id="clock">12:00 PM</div>
                         <div class="text-xs text-karta-muted" id="date">Jan 01, 2025</div>
                     </div>
-                    <div class="h-8 w-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-karta-primary" title="User">
+                    <div class="h-8 w-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-karta-primary hover:bg-gray-700 transition cursor-pointer" title="User Profile">
                         <i class="fa-solid fa-user-shield"></i>
                     </div>
                 </div>
@@ -285,32 +934,68 @@
                 
                 <!-- DASHBOARD -->
                 <section id="dashboard" class="space-y-6 animate-fade pb-20 md:pb-0">
-                    <!-- KPI Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden group">
+                    <!-- KPI Grid - Sales & Payments -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden group hover:border-karta-primary transition cursor-pointer" data-tooltip="Total revenue from all sales">
                             <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition text-karta-primary"><i class="fa-solid fa-sack-dollar fa-3x"></i></div>
-                            <p class="text-karta-muted text-xs uppercase tracking-wider">Total Revenue (Monthly)</p>
-                            <h3 class="text-2xl font-bold text-white mt-1" id="kpiRevenue">$0.00</h3>
+                            <p class="text-karta-muted text-xs uppercase tracking-wider">Total Revenue</p>
+                            <h3 class="text-2xl font-bold text-karta-primary mt-1" id="kpiRevenue">$0.00</h3>
                         </div>
-                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden">
-                            <div class="absolute right-0 top-0 p-4 opacity-10 text-blue-500"><i class="fa-solid fa-boxes-stacked fa-3x"></i></div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden group hover:border-green-600 transition cursor-pointer" data-tooltip="Cash received from customers">
+                            <div class="absolute right-0 top-0 p-4 opacity-10 text-green-500"><i class="fa-solid fa-money-bill fa-3x"></i></div>
+                            <p class="text-karta-muted text-xs uppercase tracking-wider">Cash Received</p>
+                            <h3 class="text-2xl font-bold text-green-500 mt-1" id="kpiCash">$0.00</h3>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden group hover:border-blue-600 transition cursor-pointer" data-tooltip="Bank deposits and transfers">
+                            <div class="absolute right-0 top-0 p-4 opacity-10 text-blue-500"><i class="fa-solid fa-building fa-3x"></i></div>
+                            <p class="text-karta-muted text-xs uppercase tracking-wider">Bank Received</p>
+                            <h3 class="text-2xl font-bold text-blue-500 mt-1" id="kpiBank">$0.00</h3>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden group hover:border-orange-600 transition cursor-pointer" data-tooltip="Products below reorder level">
+                            <div class="absolute right-0 top-0 p-4 opacity-10 text-orange-600"><i class="fa-solid fa-triangle-exclamation fa-3x"></i></div>
+                            <p class="text-karta-muted text-xs uppercase tracking-wider">Low Stock Items</p>
+                            <h3 class="text-2xl font-bold text-orange-500 mt-1" id="kpiLowStock">0</h3>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden group hover:border-gray-500 transition cursor-pointer" data-tooltip="Total value of inventory at cost">
+                            <div class="absolute right-0 top-0 p-4 opacity-10 text-gray-500"><i class="fa-solid fa-boxes-stacked fa-3x"></i></div>
                             <p class="text-karta-muted text-xs uppercase tracking-wider">Stock Value</p>
-                            <h3 class="text-2xl font-bold text-white mt-1" id="kpiStockVal">$0.00</h3>
+                            <h3 class="text-2xl font-bold text-gray-300 mt-1" id="kpiStockVal">$0.00</h3>
                         </div>
-                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden">
-                            <div class="absolute right-0 top-0 p-4 opacity-10 text-red-500"><i class="fa-solid fa-file-invoice fa-3x"></i></div>
-                            <p class="text-karta-muted text-xs uppercase tracking-wider">Outstanding (Receivables)</p>
-                            <h3 class="text-2xl font-bold text-white mt-1" id="kpiReceivables">$0.00</h3>
+                    </div>
+
+                    <!-- Balance Summary Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg hover:border-red-700 transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">Customer Balance Due</p>
+                                    <h3 class="text-3xl font-bold text-red-500" id="kpiCustDue">$0.00</h3>
+                                    <p class="text-xs text-gray-500 mt-2">Receivables from customers</p>
+                                </div>
+                                <div class="text-red-600/20"><i class="fa-solid fa-users fa-4x"></i></div>
+                            </div>
                         </div>
-                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden">
-                            <div class="absolute right-0 top-0 p-4 opacity-10 text-orange-500"><i class="fa-solid fa-triangle-exclamation fa-3x"></i></div>
-                            <p class="text-karta-muted text-xs uppercase tracking-wider">Low Stock Alerts</p>
-                            <h3 class="text-2xl font-bold text-white mt-1" id="kpiLowStock">0</h3>
+
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg hover:border-orange-700 transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">Supplier Balance Due</p>
+                                    <h3 class="text-3xl font-bold text-orange-600" id="kpiSupDue">$0.00</h3>
+                                    <p class="text-xs text-gray-500 mt-2">Payables to suppliers</p>
+                                </div>
+                                <div class="text-orange-700/20"><i class="fa-solid fa-handshake fa-4x"></i></div>
+                            </div>
                         </div>
-                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg relative overflow-hidden">
-                            <div class="absolute right-0 top-0 p-4 opacity-10 text-red-600"><i class="fa-solid fa-calendar-xmark fa-3x"></i></div>
-                            <p class="text-karta-muted text-xs uppercase tracking-wider">Expired Products</p>
-                            <h3 class="text-2xl font-bold text-red-500 mt-1" id="kpiExpired">0</h3>
+
+                        <div class="bg-karta-surface border border-karta-border p-4 rounded-lg hover:border-karta-primary transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">Net Balance</p>
+                                    <h3 class="text-3xl font-bold text-karta-primary" id="kpiNetBalance">$0.00</h3>
+                                    <p class="text-xs text-gray-500 mt-2">Receivables - Payables</p>
+                                </div>
+                                <div class="text-karta-primary/20"><i class="fa-solid fa-scale-balanced fa-4x"></i></div>
+                            </div>
                         </div>
                     </div>
 
@@ -334,7 +1019,7 @@
                     <!-- Low Stock Table (Restored) -->
                     <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
                         <div class="p-4 border-b border-karta-border flex justify-between items-center">
-                            <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-circle-exclamation text-orange-500 mr-2"></i>Critical Low Stock</h3>
+                            <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-circle-exclamation text-amber-600 mr-2"></i>Critical Low Stock</h3>
                             <button onclick="nav('purchases')" class="text-xs text-karta-primary hover:underline">Order Stock</button>
                         </div>
                         <div class="table-container">
@@ -349,17 +1034,25 @@
                                     </tr>
                                 </thead>
                                 <tbody id="lowStockBody" class="divide-y divide-gray-800">
-                                    <!-- JS Populated -->
+                                    <tr>
+                                        <td colspan="5" class="p-8">
+                                            <div class="empty-state">
+                                                <div class="empty-state-icon"><i class="fa-solid fa-check-circle"></i></div>
+                                                <div class="empty-state-title">All Items in Stock</div>
+                                                <div class="empty-state-text">No products are below their reorder level</div>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
                     <!-- Expired Products Alert -->
-                    <div class="bg-karta-surface border border-red-800 rounded-lg overflow-hidden">
-                        <div class="p-4 border-b border-red-800 flex justify-between items-center bg-red-950/30">
-                            <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-calendar-xmark text-red-500 mr-2"></i>Expired Products Alert</h3>
-                            <button onclick="nav('inventory')" class="text-xs text-red-400 hover:text-red-300">View & Remove</button>
+                    <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                        <div class="p-4 border-b border-karta-border flex justify-between items-center">
+                            <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-calendar-xmark text-red-600 mr-2"></i>Expired Products Alert</h3>
+                            <button onclick="nav('inventory')" class="text-xs text-karta-primary hover:underline">View & Remove</button>
                         </div>
                         <div class="table-container">
                             <table class="w-full text-left text-xs min-w-[500px]">
@@ -374,7 +1067,15 @@
                                     </tr>
                                 </thead>
                                 <tbody id="expiredBody" class="divide-y divide-gray-800">
-                                    <!-- JS Populated -->
+                                    <tr>
+                                        <td colspan="6" class="p-8">
+                                            <div class="empty-state">
+                                                <div class="empty-state-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                                                <div class="empty-state-title">No Expired Products</div>
+                                                <div class="empty-state-text">All products are within their expiry dates</div>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -459,8 +1160,10 @@
                                 <span id="posTotal">$0.00</span>
                             </div>
                             <div class="grid grid-cols-2 gap-2 mt-2">
-                                <button onclick="checkout('credit')" class="bg-yellow-600 hover:bg-yellow-700 text-black py-3 rounded font-bold transition text-xs md:text-sm">Credit Sale</button>
-                                <button onclick="checkout('cash')" class="bg-karta-primary hover:bg-karta-primaryDark text-black py-3 rounded font-bold transition text-xs md:text-sm"><i class="fa-solid fa-print"></i> Pay & Print</button>
+                                <button onclick="checkout('credit')" class="bg-yellow-600 hover:bg-yellow-700 text-black py-3 rounded font-bold transition text-xs md:text-sm"><i class="fa-solid fa-credit-card mr-1"></i>Credit</button>
+                                <button onclick="checkout('cash')" class="bg-karta-primary hover:bg-karta-primaryDark text-black py-3 rounded font-bold transition text-xs md:text-sm"><i class="fa-solid fa-money-bill mr-1"></i>Cash</button>
+                                <button onclick="checkout('bank')" class="bg-blue-600 hover:bg-blue-700 text-black py-3 rounded font-bold transition text-xs md:text-sm"><i class="fa-solid fa-university mr-1"></i>Bank</button>
+                                <button onclick="checkout('split')" class="bg-purple-600 hover:bg-purple-700 text-white py-3 rounded font-bold transition text-xs md:text-sm"><i class="fa-solid fa-arrows-split-up-and-left mr-1"></i>Split</button>
                             </div>
                         </div>
                     </div>
@@ -488,7 +1191,17 @@
                                         <th class="p-3 text-center">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="invoiceListBody" class="divide-y divide-gray-800"></tbody>
+                                <tbody id="invoiceListBody" class="divide-y divide-gray-800">
+                                    <tr>
+                                        <td colspan="6" class="p-8">
+                                            <div class="empty-state">
+                                                <div class="empty-state-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                                                <div class="empty-state-title">No Invoices Yet</div>
+                                                <div class="empty-state-text">Create your first invoice from the POS terminal</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -496,102 +1209,214 @@
 
                 <!-- RETURNS & REFUNDS -->
                 <section id="returns" class="hidden space-y-6 pb-20 md:pb-0">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         
                         <!-- LEFT: CUSTOMER RETURN (SALES RETURN) -->
-                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 flex flex-col">
+                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 flex flex-col h-full">
                             <div class="border-b border-gray-700 pb-3 mb-3">
                                 <h3 class="font-bold text-white text-lg"><i class="fa-solid fa-user-tag text-blue-500 mr-2"></i>Sales Return (From Customer)</h3>
                                 <p class="text-xs text-gray-400">Process customer returns. Restocks items & refunds payment.</p>
                             </div>
                             
-                            <div class="space-y-4 mb-auto">
+                            <div class="space-y-3 mb-auto">
                                 <div>
                                     <label class="text-xs text-gray-400">Select Customer</label>
                                     <select id="retCustSelect" class="input-field" onchange="loadReturnProducts('cust')"></select>
                                 </div>
+                                
                                 <div>
                                     <label class="text-xs text-gray-400">Select Product to Return</label>
                                     <select id="retCustProd" class="input-field" onchange="updateReturnPrice('cust')"></select>
                                 </div>
                                 
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="bg-white/5 p-3 rounded border border-gray-700">
-                                        <div class="text-xs text-gray-500">Retail Price</div>
-                                        <div class="text-xl font-bold text-white" id="retCustPrice">-</div>
-                                    </div>
-                                    <div class="bg-white/5 p-3 rounded border border-gray-700">
-                                        <div class="text-xs text-gray-500">Qty Purchased</div>
-                                        <div class="text-xl font-bold text-white" id="retCustQtyPurchased">-</div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label class="text-xs text-gray-400">Quantity to Return (Max: <span id="retCustMaxQty">0</span>)</label>
-                                    <input type="number" id="retCustQty" class="input-field font-bold text-lg" value="1" min="1" max="1" onchange="updateReturnPrice('cust')">
-                                    <div id="retCustQtyWarning" class="text-xs text-red-400 mt-1 hidden"></div>
-                                </div>
-                            </div>
-
-                            <div class="border-t border-gray-700 pt-3 mt-4">
-                                <div class="flex justify-between text-sm text-gray-300 mb-3">
-                                    <span>Refund Amount (Incl. VAT):</span>
-                                    <span class="font-bold text-white" id="retCustAmt">$0.00</span>
-                                </div>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="processReturn('cust', 'cash')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded font-bold text-xs">Cash Refund</button>
-                                    <button onclick="processReturn('cust', 'credit')" class="bg-blue-600 hover:bg-blue-500 text-white py-2 rounded font-bold text-xs">Credit Balance</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- RIGHT: SUPPLIER RETURN (PURCHASE RETURN) -->
-                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 flex flex-col">
-                            <div class="border-b border-gray-700 pb-3 mb-3">
-                                <h3 class="font-bold text-white text-lg"><i class="fa-solid fa-truck-ramp-box text-orange-500 mr-2"></i>Purchase Return (To Supplier)</h3>
-                                <p class="text-xs text-gray-400">Return damaged/expired items to supplier. Reduces stock & balance.</p>
-                            </div>
-
-                            <div class="space-y-4 mb-auto">
-                                <div>
-                                    <label class="text-xs text-gray-400">Select Supplier</label>
-                                    <select id="retSupSelect" class="input-field" onchange="loadSupplierProducts()"></select>
-                                </div>
-                                <div>
-                                    <label class="text-xs text-gray-400">Select Product to Return</label>
-                                    <select id="retSupProd" class="input-field" onchange="updateReturnPrice('sup')"></select>
-                                </div>
-                                
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="bg-white/5 p-3 rounded border border-gray-700">
-                                        <div class="text-xs text-gray-500">Cost Price</div>
-                                        <div class="text-xl font-bold text-white" id="retSupCost">-</div>
+                                    <div class="bg-white/5 p-2 rounded border border-gray-700">
+                                        <div class="text-xs text-gray-500">Price</div>
+                                        <div class="text-lg font-bold text-white" id="retCustPrice">-</div>
                                     </div>
-                                    <div class="bg-white/5 p-3 rounded border border-gray-700">
-                                        <div class="text-xs text-gray-500">Stock Available</div>
-                                        <div class="text-xl font-bold text-white" id="retSupStock">-</div>
+                                    <div class="bg-white/5 p-2 rounded border border-gray-700">
+                                        <div class="text-xs text-gray-500">Max Qty</div>
+                                        <div class="text-lg font-bold text-white" id="retCustQtyPurchased">-</div>
                                     </div>
                                 </div>
 
                                 <div>
                                     <label class="text-xs text-gray-400">Quantity to Return</label>
-                                    <input type="number" id="retSupQty" class="input-field font-bold text-lg" value="1" min="1" onchange="updateReturnPrice('sup')">
+                                    <input type="number" id="retCustQty" class="input-field text-sm" value="1" min="1" onchange="updateReturnPrice('cust')">
                                 </div>
-                                <div>
-                                    <label class="text-xs text-gray-400">Reason / Notes</label>
-                                    <input type="text" id="retSupReason" class="input-field" placeholder="e.g. Expired, Damaged">
-                                </div>
+
+                                <button onclick="addToReturnCart('cust')" class="w-full bg-karta-primary text-black py-2 rounded font-bold text-sm hover:bg-karta-primaryDark transition">
+                                    <i class="fa-solid fa-plus mr-1"></i> Add to Return Cart
+                                </button>
                             </div>
 
-                            <div class="border-t border-gray-700 pt-3 mt-4">
-                                <div class="flex justify-between text-sm text-gray-300 mb-3">
-                                    <span>Total Value:</span>
-                                    <span class="font-bold text-white" id="retSupAmt">$0.00</span>
+                            <!-- Return Cart -->
+                            <div class="border-t border-gray-700 mt-3 pt-3">
+                                <p class="text-xs text-gray-400 mb-2">Return Items (<span id="retCustCartCount">0</span>):</p>
+                                <div id="retCustCart" class="space-y-1 max-h-48 overflow-y-auto mb-3">
+                                    <p class="text-xs text-gray-600">No items added</p>
                                 </div>
+
+                                <div class="bg-white/5 p-2 rounded border border-gray-700 mb-3">
+                                    <div class="flex justify-between text-sm text-gray-300">
+                                        <span>Total Refund:</span>
+                                        <span class="font-bold text-karta-primary" id="retCustTotal">$0.00</span>
+                                    </div>
+                                </div>
+
+                                <!-- Payment Method -->
+                                <div class="mb-3">
+                                    <label class="text-xs text-gray-400 mb-2 block">Refund Mode</label>
+                                    <div class="grid grid-cols-2 gap-1">
+                                        <label class="flex items-center px-2 py-1 rounded border border-karta-border bg-karta-primary/20 text-xs cursor-pointer">
+                                            <input type="radio" name="retCustPayment" value="cash" checked onchange="toggleReturnSplit('cust')"> Cash
+                                        </label>
+                                        <label class="flex items-center px-2 py-1 rounded border border-karta-border hover:bg-white/5 text-xs cursor-pointer">
+                                            <input type="radio" name="retCustPayment" value="bank" onchange="toggleReturnSplit('cust')"> Bank
+                                        </label>
+                                        <label class="flex items-center px-2 py-1 rounded border border-karta-border hover:bg-white/5 text-xs cursor-pointer">
+                                            <input type="radio" name="retCustPayment" value="credit" onchange="toggleReturnSplit('cust')"> Credit
+                                        </label>
+                                        <label class="flex items-center px-2 py-1 rounded border border-karta-border hover:bg-white/5 text-xs cursor-pointer">
+                                            <input type="radio" name="retCustPayment" value="split" onchange="toggleReturnSplit('cust')"> Split
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Split Payment Input (Hidden by default) -->
+                                <div id="retCustSplitDiv" class="hidden bg-white/5 p-3 rounded border border-karta-border space-y-2">
+                                    <p class="text-xs text-gray-400 font-bold">Split Payment:</p>
+                                    <div class="flex gap-1">
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Cash</label>
+                                            <input type="number" id="retCustSplitCash" class="input-field text-xs" placeholder="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Bank</label>
+                                            <input type="number" id="retCustSplitBank" class="input-field text-xs" placeholder="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Credit</label>
+                                            <input type="number" id="retCustSplitCredit" class="input-field text-xs" placeholder="0" min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between text-xs text-gray-400">
+                                        <span>Total:</span>
+                                        <span id="retCustSplitTotal" class="font-bold">$0.00</span>
+                                    </div>
+                                </div>
+
+                                <button onclick="processReturn('cust')" class="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold text-sm transition">
+                                    <i class="fa-solid fa-check mr-1"></i> Process Refund
+                                </button>
+                                <button onclick="clearReturnCart('cust')" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1 rounded text-xs mt-1 transition">Clear Cart</button>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT: SUPPLIER RETURN (PURCHASE RETURN) -->
+                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 flex flex-col h-full">
+                            <div class="border-b border-gray-700 pb-3 mb-3">
+                                <h3 class="font-bold text-white text-lg"><i class="fa-solid fa-truck-ramp-box text-orange-500 mr-2"></i>Purchase Return (To Supplier)</h3>
+                                <p class="text-xs text-gray-400">Return items to supplier. Reduces stock & balance.</p>
+                            </div>
+
+                            <div class="space-y-3 mb-auto">
+                                <div>
+                                    <label class="text-xs text-gray-400">Select Supplier</label>
+                                    <select id="retSupSelect" class="input-field" onchange="loadReturnProductsSupplier()"></select>
+                                </div>
+                                
+                                <div>
+                                    <label class="text-xs text-gray-400">Select Product to Return</label>
+                                    <select id="retSupProd" class="input-field" onchange="updateReturnPrice('sup')"></select>
+                                </div>
+                                
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="processReturn('sup', 'cash')" class="bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold text-xs transition">Cash Return</button>
-                                    <button onclick="processReturn('sup', 'credit')" class="bg-orange-600 hover:bg-orange-500 text-white py-2 rounded font-bold text-xs transition">Credit Return</button>
+                                    <div class="bg-white/5 p-2 rounded border border-gray-700">
+                                        <div class="text-xs text-gray-500">Cost</div>
+                                        <div class="text-lg font-bold text-white" id="retSupCost">-</div>
+                                    </div>
+                                    <div class="bg-white/5 p-2 rounded border border-gray-700">
+                                        <div class="text-xs text-gray-500">Stock</div>
+                                        <div class="text-lg font-bold text-white" id="retSupStock">-</div>
+                                    </div>
                                 </div>
+
+                                <div>
+                                    <label class="text-xs text-gray-400">Quantity to Return</label>
+                                    <input type="number" id="retSupQty" class="input-field text-sm" value="1" min="1" onchange="updateReturnPrice('sup')">
+                                </div>
+
+                                <div>
+                                    <label class="text-xs text-gray-400">Reason / Notes</label>
+                                    <input type="text" id="retSupReason" class="input-field text-sm" placeholder="e.g. Expired, Damaged">
+                                </div>
+
+                                <button onclick="addToReturnCart('sup')" class="w-full bg-karta-primary text-black py-2 rounded font-bold text-sm hover:bg-karta-primaryDark transition">
+                                    <i class="fa-solid fa-plus mr-1"></i> Add to Return Cart
+                                </button>
+                            </div>
+
+                            <!-- Return Cart -->
+                            <div class="border-t border-gray-700 mt-3 pt-3">
+                                <p class="text-xs text-gray-400 mb-2">Return Items (<span id="retSupCartCount">0</span>):</p>
+                                <div id="retSupCart" class="space-y-1 max-h-48 overflow-y-auto mb-3">
+                                    <p class="text-xs text-gray-600">No items added</p>
+                                </div>
+
+                                <div class="bg-white/5 p-2 rounded border border-gray-700 mb-3">
+                                    <div class="flex justify-between text-sm text-gray-300">
+                                        <span>Total Value:</span>
+                                        <span class="font-bold text-karta-primary" id="retSupTotal">$0.00</span>
+                                    </div>
+                                </div>
+
+                                <!-- Payment Method -->
+                                <div class="mb-3">
+                                    <label class="text-xs text-gray-400 mb-2 block">Payment Mode</label>
+                                    <div class="grid grid-cols-2 gap-1">
+                                        <label class="flex items-center px-2 py-1 rounded border border-karta-border bg-karta-primary/20 text-xs cursor-pointer">
+                                            <input type="radio" name="retSupPayment" value="cash" checked onchange="toggleReturnSplit('sup')"> Cash
+                                        </label>
+                                        <label class="flex items-center px-2 py-1 rounded border border-karta-border hover:bg-white/5 text-xs cursor-pointer">
+                                            <input type="radio" name="retSupPayment" value="bank" onchange="toggleReturnSplit('sup')"> Bank
+                                        </label>
+                                        <label class="flex items-center px-2 py-1 rounded border border-karta-border hover:bg-white/5 text-xs cursor-pointer">
+                                            <input type="radio" name="retSupPayment" value="credit" onchange="toggleReturnSplit('sup')"> Credit
+                                        </label>
+                                        <label class="flex items-center px-2 py-1 rounded border border-karta-border hover:bg-white/5 text-xs cursor-pointer">
+                                            <input type="radio" name="retSupPayment" value="split" onchange="toggleReturnSplit('sup')"> Split
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Split Payment Input (Hidden by default) -->
+                                <div id="retSupSplitDiv" class="hidden bg-white/5 p-3 rounded border border-karta-border space-y-2">
+                                    <p class="text-xs text-gray-400 font-bold">Split Payment:</p>
+                                    <div class="flex gap-1">
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Cash</label>
+                                            <input type="number" id="retSupSplitCash" class="input-field text-xs" placeholder="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Bank</label>
+                                            <input type="number" id="retSupSplitBank" class="input-field text-xs" placeholder="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Credit</label>
+                                            <input type="number" id="retSupSplitCredit" class="input-field text-xs" placeholder="0" min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between text-xs text-gray-400">
+                                        <span>Total:</span>
+                                        <span id="retSupSplitTotal" class="font-bold">$0.00</span>
+                                    </div>
+                                </div>
+
+                                <button onclick="processReturn('sup')" class="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold text-sm transition">
+                                    <i class="fa-solid fa-check mr-1"></i> Process Return
+                                </button>
+                                <button onclick="clearReturnCart('sup')" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1 rounded text-xs mt-1 transition">Clear Cart</button>
                             </div>
                         </div>
 
@@ -629,7 +1454,17 @@
                                         <th class="p-3 text-center">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody id="invBody" class="divide-y divide-gray-800"></tbody>
+                                <tbody id="invBody" class="divide-y divide-gray-800">
+                                    <tr>
+                                        <td colspan="8" class="p-8">
+                                            <div class="empty-state">
+                                                <div class="empty-state-icon"><i class="fa-solid fa-box-open"></i></div>
+                                                <div class="empty-state-title">No Products Yet</div>
+                                                <div class="empty-state-text">Add your first product using the "New Product" button above</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -659,6 +1494,13 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="custGrid">
                         <!-- Customer Cards JS -->
+                        <div class="col-span-full">
+                            <div class="empty-state">
+                                <div class="empty-state-icon"><i class="fa-solid fa-user-group"></i></div>
+                                <div class="empty-state-title">No Customers Yet</div>
+                                <div class="empty-state-text">Click "Add Customer" to create a new customer profile</div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -697,7 +1539,17 @@
                                         <th class="p-3 text-center">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody id="supBody" class="divide-y divide-gray-800"></tbody>
+                                <tbody id="supBody" class="divide-y divide-gray-800">
+                                    <tr>
+                                        <td colspan="6" class="p-8">
+                                            <div class="empty-state">
+                                                <div class="empty-state-icon"><i class="fa-solid fa-truck"></i></div>
+                                                <div class="empty-state-title">No Suppliers Yet</div>
+                                                <div class="empty-state-text">Click "Add Supplier" to create a new supplier account</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -959,55 +1811,65 @@
             <form id="prodForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="hidden" id="prodId">
                 <div class="md:col-span-2">
-                    <label class="text-xs text-gray-400">Product Name</label>
-                    <input type="text" id="pName" required class="input-field">
+                    <label class="text-xs text-gray-400 font-bold">Product Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="pName" required class="input-field" placeholder="e.g., Paracetamol 500mg">
+                    <span class="help-text">The name displayed in reports and invoices</span>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">SKU / Barcode</label>
-                    <input type="text" id="pSku" required class="input-field">
+                    <label class="text-xs text-gray-400 font-bold">SKU / Barcode <span class="text-red-500">*</span></label>
+                    <input type="text" id="pSku" required class="input-field" placeholder="e.g., PAR-500-001">
+                    <span class="help-text">Unique identifier for scanning</span>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Category</label>
-                    <input type="text" id="pCat" list="catList" class="input-field">
+                    <label class="text-xs text-gray-400 font-bold">Category</label>
+                    <input type="text" id="pCat" list="catList" class="input-field" placeholder="e.g., Medicine">
                     <datalist id="catList"><option value="Medicine"><option value="Equipment"><option value="Supplement"></datalist>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Batch Number</label>
-                    <input type="text" id="pBatch" class="input-field" placeholder="e.g. BATCH-001">
+                    <label class="text-xs text-gray-400 font-bold">Batch Number</label>
+                    <input type="text" id="pBatch" class="input-field" placeholder="e.g., BATCH-001">
+                    <span class="help-text">For tracking and expiry management</span>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Expiry Date</label>
+                    <label class="text-xs text-gray-400 font-bold">Expiry Date</label>
                     <input type="date" id="pExpiry" class="input-field">
+                    <span class="help-text">Leave blank if not applicable</span>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Cost Price</label>
-                    <input type="number" step="0.01" id="pCost" required class="input-field">
+                    <label class="text-xs text-gray-400 font-bold">Cost Price <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" id="pCost" required class="input-field" placeholder="0.00">
+                    <span class="help-text">What you paid the supplier</span>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Retail Price</label>
-                    <input type="number" step="0.01" id="pRetail" required class="input-field">
+                    <label class="text-xs text-gray-400 font-bold">Retail Price <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" id="pRetail" required class="input-field" placeholder="0.00">
+                    <span class="help-text">Customer/walk-in price</span>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Wholesale Price</label>
-                    <input type="number" step="0.01" id="pWhole" class="input-field">
+                    <label class="text-xs text-gray-400 font-bold">Wholesale Price</label>
+                    <input type="number" step="0.01" id="pWhole" class="input-field" placeholder="0.00">
+                    <span class="help-text">For bulk orders (optional)</span>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Stock Qty</label>
-                    <input type="number" id="pStock" required class="input-field">
+                    <label class="text-xs text-gray-400 font-bold">Current Stock <span class="text-red-500">*</span></label>
+                    <input type="number" id="pStock" required class="input-field" placeholder="0">
+                    <span class="help-text">Available quantity now</span>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Reorder Level</label>
-                    <input type="number" id="pReorder" class="input-field" value="10">
+                    <label class="text-xs text-gray-400 font-bold">Reorder Level</label>
+                    <input type="number" id="pReorder" class="input-field" value="10" placeholder="10">
+                    <span class="help-text">Alert when stock falls below this</span>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="text-xs text-gray-400">Supplier (Optional - Assign to specific supplier)</label>
+                    <label class="text-xs text-gray-400 font-bold">Default Supplier (Optional)</label>
                     <select id="pSupplier" class="input-field">
                         <option value="">-- No specific supplier --</option>
                     </select>
+                    <span class="help-text">Assign for automatic purchase suggestions</span>
                 </div>
                 <div class="md:col-span-2 flex justify-end gap-2 mt-4">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save</button>
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded hover:bg-karta-primaryDark transition">Save Product</button>
                 </div>
             </form>
         </div>
@@ -1053,19 +1915,37 @@
             <h3 class="text-xl font-bold mb-4 text-white">Customer Profile</h3>
             <form id="custForm" class="space-y-4">
                 <input type="hidden" id="custId">
-                <input type="text" id="cName" placeholder="Full Name" required class="input-field">
-                <input type="text" id="cPhone" placeholder="Phone Number" required class="input-field">
-                <input type="text" id="cAddr" placeholder="Address" class="input-field">
-                <div class="flex gap-4">
-                    <input type="text" id="cTax" placeholder="VAT/Tax ID" class="input-field">
-                    <input type="number" id="cLimit" placeholder="Credit Limit" class="input-field">
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Full Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="cName" placeholder="e.g., Raj Poudel" required class="input-field">
                 </div>
-                <div class="flex gap-4">
-                    <input type="number" id="cBalance" placeholder="Initial Balance Due" step="0.01" class="input-field" title="Amount customer owes (if existing business)">
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Phone Number <span class="text-red-500">*</span></label>
+                    <input type="text" id="cPhone" placeholder="e.g., 9841234567" required class="input-field">
+                    <span class="help-text">For SMS updates and reminders</span>
                 </div>
-                <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save</button>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Address</label>
+                    <input type="text" id="cAddr" placeholder="e.g., Bharatpur, Chitwan" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">VAT/Tax ID</label>
+                    <input type="text" id="cTax" placeholder="e.g., 123456789" class="input-field">
+                    <span class="help-text">For business customers (optional)</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Credit Limit</label>
+                    <input type="number" id="cLimit" placeholder="0.00" class="input-field">
+                    <span class="help-text">Maximum amount they can owe</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Initial Balance Due</label>
+                    <input type="number" id="cBalance" placeholder="0.00" step="0.01" class="input-field">
+                    <span class="help-text">Amount they owe from previous transactions</span>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded hover:bg-karta-primaryDark transition">Save Customer</button>
                 </div>
             </form>
         </div>
@@ -1170,28 +2050,40 @@
 
         <!-- Customer Payment Modal -->
         <div id="payModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-sm">
-            <h3 class="text-xl font-bold mb-4 text-white">Receive Payment</h3>
-            <p id="payCustName" class="text-gray-400 mb-4 text-sm"></p>
+            <h3 class="text-xl font-bold mb-4 text-white"><i class="fa-solid fa-cash-register mr-2 text-green-500"></i>Receive Payment</h3>
+            <p id="payCustName" class="text-gray-400 mb-4 text-sm font-bold"></p>
             <form id="payForm" class="space-y-4">
                 <input type="hidden" id="payCustId">
-                <input type="number" step="0.01" id="payAmount" placeholder="Amount Received" required class="input-field">
-                <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-green-600 text-white font-bold rounded">Record Receipt</button>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Amount Received <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" id="payAmount" placeholder="0.00" required class="input-field text-lg font-bold">
+                    <span class="help-text">Amount to deduct from customer balance</span>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700 transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Record Receipt
+                    </button>
                 </div>
             </form>
         </div>
         
         <!-- NEW: Supplier Payment Modal -->
         <div id="supPayModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-sm">
-            <h3 class="text-xl font-bold mb-4 text-white">Record Payment to Supplier</h3>
-            <p id="spSupName" class="text-gray-400 mb-4 text-sm"></p>
+            <h3 class="text-xl font-bold mb-4 text-white"><i class="fa-solid fa-money-bill mr-2 text-orange-500"></i>Record Payment to Supplier</h3>
+            <p id="spSupName" class="text-gray-400 mb-4 text-sm font-bold"></p>
             <form id="supPayForm" class="space-y-4">
                 <input type="hidden" id="spSupId">
-                <input type="number" step="0.01" id="spAmount" placeholder="Amount Paid" required class="input-field">
-                <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-red-600 text-white font-bold rounded">Record Payment</button>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Amount Paid <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" id="spAmount" placeholder="0.00" required class="input-field text-lg font-bold">
+                    <span class="help-text">Amount to deduct from your payable balance</span>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-orange-600 text-white font-bold rounded hover:bg-orange-700 transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Record Payment
+                    </button>
                 </div>
             </form>
         </div>
@@ -1201,16 +2093,31 @@
             <h3 class="text-xl font-bold mb-4 text-white">Supplier Profile</h3>
             <form id="supForm" class="space-y-4">
                 <input type="hidden" id="supId">
-                <input type="text" id="sName" placeholder="Company Name" required class="input-field">
-                <input type="text" id="sContact" placeholder="Contact Person" class="input-field">
-                <input type="text" id="sPhone" placeholder="Phone" class="input-field">
-                <input type="text" id="sTax" placeholder="VAT Reg No" class="input-field">
-                <div class="flex gap-4">
-                    <input type="number" id="sBalance" placeholder="Amount You Owe" step="0.01" class="input-field" title="Outstanding balance payable to supplier">
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Company Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="sName" placeholder="e.g., ABC Pharma Ltd" required class="input-field">
                 </div>
-                <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save</button>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Contact Person</label>
+                    <input type="text" id="sContact" placeholder="e.g., John Smith" class="input-field">
+                    <span class="help-text">Name of primary contact</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Phone</label>
+                    <input type="text" id="sPhone" placeholder="e.g., 9841234567" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">VAT Registration No</label>
+                    <input type="text" id="sTax" placeholder="e.g., 123456789" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Amount You Owe</label>
+                    <input type="number" id="sBalance" placeholder="0.00" step="0.01" class="input-field">
+                    <span class="help-text">Outstanding balance payable to this supplier</span>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded hover:bg-karta-primaryDark transition">Save Supplier</button>
                 </div>
             </form>
         </div>
@@ -1281,6 +2188,44 @@
                     </div>
                 </div>
 
+                <!-- Payment Method Selection -->
+                <div class="border-t border-karta-border pt-4">
+                    <label class="text-xs font-bold text-gray-400 mb-3 block uppercase tracking-wide">💳 Payment Method</label>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <label class="flex items-center justify-center px-4 py-3 rounded border-2 border-karta-border bg-karta-primary/20 text-karta-primary cursor-pointer transition hover:bg-karta-primary/40" title="Pay cash now - Reduces cash balance">
+                            <input type="radio" name="purchPayment" value="cash" checked class="mr-2" onchange="updatePaymentDisplay()"> 
+                            <span class="font-bold"><i class="fa-solid fa-money-bill mr-1"></i>Cash</span>
+                        </label>
+                        <label class="flex items-center justify-center px-4 py-3 rounded border-2 border-karta-border hover:bg-white/5 text-white cursor-pointer transition" title="Purchase on credit - Add to supplier balance">
+                            <input type="radio" name="purchPayment" value="credit" class="mr-2" onchange="updatePaymentDisplay()"> 
+                            <span class="font-bold"><i class="fa-solid fa-handshake mr-1"></i>Credit</span>
+                        </label>
+                        <label class="flex items-center justify-center px-4 py-3 rounded border-2 border-karta-border hover:bg-white/5 text-white cursor-pointer transition" title="Split payment - Part cash, part credit">
+                            <input type="radio" name="purchPayment" value="split" class="mr-2" onchange="updatePaymentDisplay()"> 
+                            <span class="font-bold"><i class="fa-solid fa-arrows-split-up-and-left mr-1"></i>Split</span>
+                        </label>
+                    </div>
+
+                    <!-- Split Payment Input (Hidden by default) -->
+                    <div id="splitPaymentSection" class="hidden bg-white/5 p-4 rounded border border-karta-border mb-4">
+                        <label class="text-xs font-bold text-gray-400 mb-3 block">💰 Split Payment Details</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-400">Cash Amount</label>
+                                <input type="number" id="splitCashAmount" class="input-field" placeholder="0.00" step="0.01" min="0" oninput="calculateSplitCredit()">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Credit Amount</label>
+                                <input type="number" id="splitCreditAmount" class="input-field" placeholder="0.00" step="0.01" min="0" readonly style="background-color: #0a0a0a; opacity: 0.7;">
+                            </div>
+                        </div>
+                        <div class="mt-3 p-3 bg-blue-900/20 border border-blue-800 rounded text-xs text-blue-300">
+                            <i class="fa-solid fa-info-circle mr-2"></i>
+                            Grand Total: <span id="splitTotalDisplay" class="font-bold">$0.00</span> | Cash: <span id="splitCashDisplay" class="font-bold text-green-400">$0.00</span> | Credit: <span id="splitCreditDisplay" class="font-bold text-yellow-400">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Action Buttons -->
                 <div class="flex justify-end gap-2 pt-4 border-t border-karta-border">
                     <button type="button" onclick="clearPurchaseForm()" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-sm font-bold transition">Clear All</button>
@@ -1294,18 +2239,62 @@
 
          <!-- Expense Modal -->
          <div id="expModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-sm">
-            <h3 class="text-xl font-bold mb-4 text-red-500">Record Expense</h3>
+            <h3 class="text-xl font-bold mb-4 text-red-500"><i class="fa-solid fa-receipt mr-2"></i>Record Expense</h3>
             <form id="expForm" class="space-y-4">
-                <input type="text" id="expDesc" placeholder="Description (e.g. Rent)" required class="input-field">
-                <input type="number" step="0.01" id="expAmt" placeholder="Amount" required class="input-field">
-                <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-red-600 text-white font-bold rounded">Save</button>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Description <span class="text-red-500">*</span></label>
+                    <input type="text" id="expDesc" placeholder="e.g., Office Rent, Utilities, Transport" required class="input-field">
+                    <span class="help-text">What is this expense for?</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Amount <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" id="expAmt" placeholder="0.00" required class="input-field text-lg font-bold">
+                    <span class="help-text">This will reduce your available cash</span>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white font-bold rounded hover:bg-red-700 transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Save Expense
+                    </button>
                 </div>
             </form>
         </div>
 
         <!-- PRICE MANAGER MODAL - NEW FEATURE -->
+        <!-- Split Sales Payment Modal -->
+        <div id="splitSalesModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4 text-white">Split Payment - Sales</h3>
+            <div class="bg-white/5 p-4 rounded border border-gray-700 mb-4">
+                <div class="text-gray-400 text-sm">Total Amount:</div>
+                <div class="text-2xl font-bold text-karta-primary" id="splitSalesTotal">$0.00</div>
+            </div>
+            
+            <div class="space-y-3 mb-6">
+                <div>
+                    <label class="text-xs text-gray-400">💰 Cash Amount</label>
+                    <input type="number" id="splitSalesCash" class="input-field" placeholder="0.00" step="0.01" min="0" oninput="calculateSplitSales()" value="0">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">🏦 Bank Amount</label>
+                    <input type="number" id="splitSalesBank" class="input-field" placeholder="0.00" step="0.01" min="0" oninput="calculateSplitSales()" value="0">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">💳 Credit Amount</label>
+                    <input type="number" id="splitSalesCredit" class="input-field" placeholder="0.00" step="0.01" min="0" oninput="calculateSplitSales()" value="0">
+                </div>
+            </div>
+
+            <div class="bg-blue-900/20 p-3 rounded border border-blue-800 text-xs text-blue-300 mb-4">
+                <i class="fa-solid fa-info-circle mr-2"></i>
+                Remaining: <span id="splitSalesRemaining" class="font-bold">$0.00</span>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white">Cancel</button>
+                <button type="button" onclick="confirmSplitSales()" class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Confirm Payment</button>
+            </div>
+        </div>
+
         <div id="priceManagerModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h3 class="text-xl font-bold mb-4 text-karta-primary"><i class="fa-solid fa-percent mr-2"></i>Bulk Price Adjustment</h3>
             
@@ -1792,22 +2781,31 @@
         }
 
         // MODIFIED AUTO-SAVE FUNCTION
+        // Debounce saveDB to prevent excessive saves
+        let saveTimeout = null;
         function saveDB() {
             if(!currentUser || !DB_KEY) return;
             
-            // 1. Save Locally to ISOLATED Key
-            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            // Clear previous timeout
+            if(saveTimeout) clearTimeout(saveTimeout);
             
-            // 2. Auto-Save to Cloud (If Logged In)
-            updateSyncStatus("Saving...", "text-yellow-500");
-            const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
-            set(userRef, db)
-                .then(() => updateSyncStatus("Synced", "text-green-500"))
-                .catch((err) => {
-                    console.error(err);
-                    updateSyncStatus("Sync Error", "text-red-500");
-                });
+            // Debounce: Save after 500ms of inactivity
+            saveTimeout = setTimeout(() => {
+                // 1. Save Locally to ISOLATED Key
+                localStorage.setItem(DB_KEY, JSON.stringify(db));
+                
+                // 2. Auto-Save to Cloud (If Logged In)
+                updateSyncStatus("Saving...", "text-yellow-500");
+                const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
+                set(userRef, db)
+                    .then(() => updateSyncStatus("Synced ✓", "text-green-500"))
+                    .catch((err) => {
+                        console.error(err);
+                        updateSyncStatus("Sync Error", "text-red-500");
+                    });
+            }, 500);
             
+            // Update UI immediately (no debounce for UI)
             refreshUI();
         }
 
@@ -1827,10 +2825,40 @@
             }
         }
 
+        // Helper function: Filter out zero-stock products if duplicates with stock exist
+        window.filterDuplicateZeroStockProducts = function(products) {
+            const grouped = {};
+            products.forEach(p => {
+                if (!grouped[p.name]) grouped[p.name] = [];
+                grouped[p.name].push(p);
+            });
+
+            let filtered = [];
+            Object.keys(grouped).forEach(name => {
+                const variants = grouped[name];
+                if (variants.length > 1) {
+                    // Multiple variants of same product name
+                    const hasStock = variants.some(v => v.stock > 0);
+                    if (hasStock) {
+                        // Hide zero-stock variants
+                        filtered = filtered.concat(variants.filter(v => v.stock > 0));
+                    } else {
+                        // All have 0 stock, keep all
+                        filtered = filtered.concat(variants);
+                    }
+                } else {
+                    // Single variant, keep it
+                    filtered = filtered.concat(variants);
+                }
+            });
+            return filtered;
+        };
+
         // Attach global functions to window so HTML onclick works
         window.nav = function(page) {
             document.querySelectorAll('main section').forEach(el => el.classList.add('hidden'));
             document.getElementById(page).classList.remove('hidden');
+            
             document.getElementById('pageTitle').innerText = page.charAt(0).toUpperCase() + page.slice(1);
             
             // Close Sidebar on Mobile when nav clicked
@@ -1839,7 +2867,7 @@
                 document.getElementById('mobile-backdrop').classList.add('hidden');
             }
 
-            // Specific Loaders
+            // Specific Loaders - Load fresh data when navigating
             if(page === 'dashboard') loadDashboard();
             if(page === 'pos') loadPOS();
             if(page === 'invoices') loadInvoices();
@@ -2035,7 +3063,10 @@
             // Safety Check: ensure db.products exists
             if (!db.products) db.products = [];
 
-            db.products.filter(p => p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search))
+            // Filter out zero-stock duplicates
+            const displayProducts = filterDuplicateZeroStockProducts(db.products);
+
+            displayProducts.filter(p => p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search))
             .forEach(p => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-white/5 transition";
@@ -2905,8 +3936,9 @@
                     totalQty += item.qty;
                     grandTotal = moneyRound(grandTotal + itemTotal);
                     
-                    // Get supplier's products only
-                    const supplierProducts = db.products.filter(p => !p.supplierId || p.supplierId === supId);
+                    // Get supplier's products only, filtered for zero-stock duplicates
+                    let supplierProducts = db.products.filter(p => !p.supplierId || p.supplierId === supId);
+                    supplierProducts = filterDuplicateZeroStockProducts(supplierProducts);
                     
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-white/5 border-b border-gray-800 text-gray-300';
@@ -2952,10 +3984,167 @@
             }
         };
 
+        // Helper functions for split sales payment
+        window.calculateSplitSales = function() {
+            try {
+                const totalEl = document.getElementById('splitSalesTotal');
+                if(!totalEl) {
+                    console.error('splitSalesTotal element not found');
+                    return;
+                }
+                const totalText = totalEl.innerText;
+                const total = parseFloat(totalText.replace(db.config.currency, '')) || 0;
+                const cash = parseFloat(document.getElementById('splitSalesCash').value) || 0;
+                const bank = parseFloat(document.getElementById('splitSalesBank').value) || 0;
+                const credit = parseFloat(document.getElementById('splitSalesCredit').value) || 0;
+                const sum = cash + bank + credit;
+                const remaining = moneyRound(total - sum);
+                
+                const remainingEl = document.getElementById('splitSalesRemaining');
+                if(remainingEl) {
+                    remainingEl.innerText = `${db.config.currency}${Math.abs(remaining).toFixed(2)}`;
+                    if(remaining < 0) {
+                        remainingEl.style.color = '#ef4444';
+                    } else if(remaining > 0) {
+                        remainingEl.style.color = '#fbbf24';
+                    } else {
+                        remainingEl.style.color = '#4ade80';
+                    }
+                }
+            } catch(e) {
+                console.error('Error in calculateSplitSales:', e);
+            }
+        };
+
+        window.confirmSplitSales = function() {
+            const totalText = document.getElementById('splitSalesTotal').innerText;
+            const total = parseFloat(totalText.replace(db.config.currency, '')) || 0;
+            const cash = parseFloat(document.getElementById('splitSalesCash').value) || 0;
+            const bank = parseFloat(document.getElementById('splitSalesBank').value) || 0;
+            const credit = parseFloat(document.getElementById('splitSalesCredit').value) || 0;
+            const sum = cash + bank + credit;
+            
+            if(sum !== total) {
+                alert(`Amounts don't match!\nTotal: ${db.config.currency}${total.toFixed(2)}\nEntered: ${db.config.currency}${sum.toFixed(2)}`);
+                return;
+            }
+            
+            // Get customer info
+            const custInput = document.getElementById('posCustomerInput').value;
+            const custIdMatch = custInput.match(/\[ID:(\d+)\]/);
+            let custId = custIdMatch ? parseInt(custIdMatch[1]) : null;
+            let custName = custInput.split('[')[0].trim() || 'Guest Customer';
+
+            // Get selected price type
+            const priceType = document.querySelector('input[name="priceType"]:checked')?.value || 'retail';
+
+            // Get discount percentage
+            const discountPercent = parseFloat(document.getElementById('posDiscount').value) || 0;
+
+            // Recalculate amounts
+            const applyVat = document.getElementById('posVatToggle').checked;
+            const sub = moneyRound(cart.reduce((a, c) => {
+                const price = priceType === 'wholesale' ? (c.wholesale || c.retail) : c.retail;
+                return a + c.qty * price;
+            }, 0));
+            const discount = moneyRound(sub * (discountPercent / 100));
+            const subtotalAfterDiscount = moneyRound(sub - discount);
+            
+            let taxableAmount = 0;
+            if(applyVat) {
+                cart.forEach(item => {
+                    if(!item.vatExempt) {
+                        const price = priceType === 'wholesale' ? (item.wholesale || item.retail) : item.retail;
+                        taxableAmount = moneyRound(taxableAmount + (item.qty * price));
+                    }
+                });
+            }
+            
+            const taxableAfterDiscount = applyVat ? moneyRound(taxableAmount * (1 - (discountPercent / 100))) : 0;
+            const tax = applyVat ? moneyRound(taxableAfterDiscount * (db.config.vatRate / 100)) : 0;
+            const txnTotal = moneyRound(subtotalAfterDiscount + tax);
+
+            if(credit > 0) {
+                if(!custId) {
+                    alert("Please select a registered customer for credit portion of split payment.");
+                    return;
+                }
+                const customer = db.customers.find(c => c.id === custId);
+                customer.balance += credit;
+            }
+
+            cart.forEach(item => {
+                const prod = db.products.find(p => p.id === item.id);
+                if(prod) prod.stock -= item.qty;
+            });
+
+            const itemsWithCost = cart.map(item => {
+                const prod = db.products.find(p => p.id === item.id);
+                return {
+                    ...item,
+                    cost: prod ? moneyRound(prod.cost) : 0,
+                    vatExempt: item.vatExempt || false
+                };
+            });
+
+            const txn = {
+                id: Date.now(),
+                type: 'sale',
+                date: new Date().toISOString(),
+                entityId: custId,
+                entityName: custName,
+                items: itemsWithCost,
+                priceType: priceType,
+                sub: sub,
+                discount: discount,
+                discountPercent: discountPercent,
+                tax: tax,
+                total: txnTotal,
+                payType: 'split',
+                splitCash: cash,
+                splitBank: bank,
+                splitCredit: credit
+            };
+            db.transactions.push(txn);
+            saveDB();
+            
+            printInvoice(txn);
+            document.getElementById('posDiscount').value = '0';
+            clearCart();
+            document.getElementById('posCustomerInput').value = '';
+            window.closeModal();
+            
+            alert(`✅ Split Payment Sale Complete!\\nCash: ${db.config.currency}${cash.toFixed(2)}\\nBank: ${db.config.currency}${bank.toFixed(2)}\\nCredit: ${db.config.currency}${credit.toFixed(2)}`);
+        };
+
+        // Helper function for split payment display
+        window.updatePaymentDisplay = function() {
+            const paymentType = document.querySelector('input[name="purchPayment"]:checked').value;
+            const splitSection = document.getElementById('splitPaymentSection');
+            
+            if(paymentType === 'split') {
+                splitSection.classList.remove('hidden');
+            } else {
+                splitSection.classList.add('hidden');
+            }
+        };
+
+        window.calculateSplitCredit = function() {
+            const grandTotal = parseFloat(document.getElementById('purchGrandTotal').innerText.replace(db.config.currency, '') || 0);
+            const cashAmount = parseFloat(document.getElementById('splitCashAmount').value) || 0;
+            const creditAmount = moneyRound(grandTotal - cashAmount);
+            
+            document.getElementById('splitCreditAmount').value = creditAmount.toFixed(2);
+            document.getElementById('splitTotalDisplay').innerText = `${db.config.currency}${grandTotal.toFixed(2)}`;
+            document.getElementById('splitCashDisplay').innerText = `${db.config.currency}${cashAmount.toFixed(2)}`;
+            document.getElementById('splitCreditDisplay').innerText = `${db.config.currency}${creditAmount.toFixed(2)}`;
+        };
+
         document.getElementById('purchForm').onsubmit = e => {
             e.preventDefault();
             const supId = parseInt(document.getElementById('poSup').value);
             const ref = document.getElementById('poRef').value || 'PO-' + Date.now().toString().slice(-6);
+            const paymentMethod = document.querySelector('input[name="purchPayment"]:checked').value;
             
             if (!supId) {
                 alert('Please select a supplier');
@@ -3028,7 +4217,33 @@
                 });
             });
             
-            sup.balance = moneyRound(sup.balance + totalAmount);
+            // FIX: Handle payment method properly
+            let creditAmount = 0;
+            let cashAmount = 0;
+            
+            if(paymentMethod === 'credit') {
+                // Full Credit Purchase
+                creditAmount = totalAmount;
+                sup.balance = moneyRound(sup.balance + totalAmount);
+            } else if(paymentMethod === 'cash') {
+                // Full Cash Purchase
+                cashAmount = totalAmount;
+                // Balance stays same
+            } else if(paymentMethod === 'split') {
+                // Split Payment
+                cashAmount = moneyRound(parseFloat(document.getElementById('splitCashAmount').value) || 0);
+                creditAmount = moneyRound(totalAmount - cashAmount);
+                
+                if(cashAmount < 0 || creditAmount < 0) {
+                    alert('Invalid split payment amounts');
+                    return;
+                }
+                
+                // Only add credit portion to supplier balance
+                if(creditAmount > 0) {
+                    sup.balance = moneyRound(sup.balance + creditAmount);
+                }
+            }
             
             db.transactions.push({
                 id: Date.now(),
@@ -3038,13 +4253,26 @@
                 entityName: sup.name,
                 items: txnItems,
                 total: totalAmount,
+                payType: paymentMethod,
+                cashAmount: cashAmount,
+                creditAmount: creditAmount,
                 ref: ref
             });
             
             saveDB();
             window.closeModal();
-            alert(`Purchase order saved! ${purchaseCart.length} items added.`);
-            loadInventory();
+            
+            let message = '';
+            if(paymentMethod === 'cash') {
+                message = `✅ CASH PURCHASE saved!\\nSupplier: ${sup.name}\\nAmount: ${db.config.currency}${totalAmount.toFixed(2)}\\nPaid in Cash\\n\\n${purchaseCart.length} items added.`;
+            } else if(paymentMethod === 'credit') {
+                message = `✅ PURCHASE ON CREDIT saved!\\nSupplier: ${sup.name}\\nAmount: ${db.config.currency}${totalAmount.toFixed(2)}\\nBalance Due: ${db.config.currency}${sup.balance.toFixed(2)}\\n\\n${purchaseCart.length} items added.`;
+            } else if(paymentMethod === 'split') {
+                message = `✅ SPLIT PAYMENT PURCHASE saved!\\nSupplier: ${sup.name}\\nTotal: ${db.config.currency}${totalAmount.toFixed(2)}\\n\\nCash Paid: ${db.config.currency}${cashAmount.toFixed(2)}\\nCredit: ${db.config.currency}${creditAmount.toFixed(2)}\\nBalance Due: ${db.config.currency}${sup.balance.toFixed(2)}\\n\\n${purchaseCart.length} items added.`;
+            }
+            
+            alert(message);
+            renderProducts();
         };
 
         document.getElementById('expForm').onsubmit = e => {
@@ -3102,7 +4330,10 @@
             grid.innerHTML = '';
             const search = document.getElementById('posSearch').value.toLowerCase();
 
-            db.products.filter(p => p.stock > 0 && (p.name.toLowerCase().includes(search) || p.sku.includes(search)))
+            // Filter out zero-stock duplicates before displaying
+            const displayProducts = filterDuplicateZeroStockProducts(db.products);
+            
+            displayProducts.filter(p => p.stock > 0 && (p.name.toLowerCase().includes(search) || p.sku.includes(search)))
             .forEach(p => {
                 const el = document.createElement('div');
                 el.className = "bg-karta-surface border border-karta-border p-3 rounded cursor-pointer hover:border-karta-primary transition";
@@ -3251,6 +4482,60 @@
         window.checkout = function(type) {
             if(cart.length === 0) return alert("Empty Cart");
             
+            // For split payment, show split modal instead of direct checkout
+            if(type === 'split') {
+                try {
+                    const priceType = document.querySelector('input[name="priceType"]:checked')?.value || 'retail';
+                    const discountPercent = parseFloat(document.getElementById('posDiscount').value) || 0;
+                    const applyVat = document.getElementById('posVatToggle').checked;
+                    
+                    const sub = moneyRound(cart.reduce((a, c) => {
+                        const price = priceType === 'wholesale' ? (c.wholesale || c.retail) : c.retail;
+                        return a + c.qty * price;
+                    }, 0));
+                    
+                    const discount = moneyRound(sub * (discountPercent / 100));
+                    const subtotalAfterDiscount = moneyRound(sub - discount);
+                    
+                    let taxableAmount = 0;
+                    if(applyVat) {
+                        cart.forEach(item => {
+                            if(!item.vatExempt) {
+                                const price = priceType === 'wholesale' ? (item.wholesale || item.retail) : item.retail;
+                                taxableAmount = moneyRound(taxableAmount + (item.qty * price));
+                            }
+                        });
+                    }
+                    
+                    const taxableAfterDiscount = applyVat ? moneyRound(taxableAmount * (1 - (discountPercent / 100))) : 0;
+                    const tax = applyVat ? moneyRound(taxableAfterDiscount * (db.config.vatRate / 100)) : 0;
+                    const total = moneyRound(subtotalAfterDiscount + tax);
+                    
+                    const totalEl = document.getElementById('splitSalesTotal');
+                    const cashEl = document.getElementById('splitSalesCash');
+                    const bankEl = document.getElementById('splitSalesBank');
+                    const creditEl = document.getElementById('splitSalesCredit');
+                    
+                    if(!totalEl || !cashEl || !bankEl || !creditEl) {
+                        console.error('Split payment modal elements not found');
+                        alert('Split payment modal not found. Please refresh the page.');
+                        return;
+                    }
+                    
+                    totalEl.innerText = `${db.config.currency}${total.toFixed(2)}`;
+                    cashEl.value = '';
+                    bankEl.value = '';
+                    creditEl.value = '';
+                    calculateSplitSales();
+                    window.openModal('splitSalesModal');
+                    return;
+                } catch(e) {
+                    console.error('Error in split payment:', e);
+                    alert('Error opening split payment modal. Check console.');
+                    return;
+                }
+            }
+            
             const custInput = document.getElementById('posCustomerInput').value;
             const custIdMatch = custInput.match(/\[ID:(\d+)\]/);
             let custId = custIdMatch ? parseInt(custIdMatch[1]) : null;
@@ -3304,7 +4589,7 @@
                 return {
                     ...item,
                     cost: prod ? moneyRound(prod.cost) : 0,
-                    vatExempt: item.vatExempt || false  // Store VAT exempt status
+                    vatExempt: item.vatExempt || false
                 };
             });
 
@@ -3323,20 +4608,66 @@
                 total: total,
                 payType: type
             };
+
+            // FIX #1: Track payment method amounts for proper accounting
+            if(type === 'cash') {
+                txn.cashAmount = total;
+            } else if(type === 'bank') {
+                txn.bankAmount = total;
+            } else if(type === 'credit') {
+                txn.creditAmount = total;
+            }
             db.transactions.push(txn);
             saveDB();
             
-            if(type === 'cash') printInvoice(txn);
-            else alert("Credit Sale Recorded Successfully");
+            // Refresh POS grid instantly to hide sold-out items
+            loadPOS();
+            
+            if(type === 'cash' || type === 'bank') printInvoice(txn);
+            else alert("Sale Recorded Successfully - Payment: " + type.toUpperCase());
             
             document.getElementById('posDiscount').value = '0';
             clearCart();
             document.getElementById('posCustomerInput').value = '';
             // Reset to retail price after checkout
             document.querySelector('input[name="priceType"][value="retail"]').checked = true;
-        }
+        };
 
         // --- RETURNS & REFUNDS LOGIC ---
+        // Return carts for multiple items
+        let retCustCart = [];
+        let retSupCart = [];
+
+        window.toggleReturnSplit = function(mode) {
+            const paymentMode = document.querySelector(`input[name="ret${mode === 'cust' ? 'Cust' : 'Sup'}Payment"]:checked`)?.value || 'cash';
+            const splitDiv = document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitDiv`);
+            const splitInputs = document.querySelectorAll(`#ret${mode === 'cust' ? 'Cust' : 'Sup'}Split${mode === 'cust' ? 'C' : ''}ash, #ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitBank, #ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitCredit`);
+            
+            if(paymentMode === 'split') {
+                splitDiv.classList.remove('hidden');
+                // Add change listeners to split inputs
+                splitInputs.forEach(input => {
+                    input.addEventListener('input', () => window.calculateReturnSplitTotal(mode));
+                });
+            } else {
+                splitDiv.classList.add('hidden');
+                // Reset split values
+                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitCash`).value = '';
+                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitBank`).value = '';
+                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitCredit`).value = '';
+                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitTotal`).innerText = '$0.00';
+            }
+        }
+
+        window.calculateReturnSplitTotal = function(mode) {
+            const prefix = mode === 'cust' ? 'retCust' : 'retSup';
+            const cash = parseFloat(document.getElementById(`${prefix}SplitCash`).value) || 0;
+            const bank = parseFloat(document.getElementById(`${prefix}SplitBank`).value) || 0;
+            const credit = parseFloat(document.getElementById(`${prefix}SplitCredit`).value) || 0;
+            const total = cash + bank + credit;
+            document.getElementById(`${prefix}SplitTotal`).innerText = `${db.config.currency}${total.toFixed(2)}`;
+        }
+
         window.loadReturnProducts = function(mode) {
             if(mode === 'cust') {
                 const custVal = document.getElementById('retCustSelect').value || '';
@@ -3347,12 +4678,12 @@
                 const custSel = document.getElementById('retCustProd');
                 custSel.innerHTML = '<option value="">Select Product...</option>';
 
-                // Calculate total qty purchased per product for this customer (handles walk-ins)
+                // Get all sales for this customer (not returns)
                 const custTxns = db.transactions.filter(t => t.type === 'sale' && !t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
-                const productQtyMap = {}; // { productId: totalQty }
+                const productQtyMap = {};
 
                 custTxns.forEach(t => {
-                    if(t.items) {
+                    if(t.items && Array.isArray(t.items)) {
                         t.items.forEach(item => {
                             const itemId = item.id;
                             productQtyMap[itemId] = (productQtyMap[itemId] || 0) + (item.qty || 1);
@@ -3360,12 +4691,12 @@
                     }
                 });
 
-                // Calculate qty already returned for each product
+                // Get all returns for this customer
                 const returnTxns = db.transactions.filter(t => t.type === 'sale' && t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
-                const productReturnedMap = {}; // { productId: totalReturned }
+                const productReturnedMap = {};
 
                 returnTxns.forEach(t => {
-                    if(t.items) {
+                    if(t.items && Array.isArray(t.items)) {
                         t.items.forEach(item => {
                             const itemId = item.id;
                             productReturnedMap[itemId] = (productReturnedMap[itemId] || 0) + (item.qty || 1);
@@ -3373,35 +4704,42 @@
                     }
                 });
 
-                // Show products with remaining balance
-                db.products.forEach(p => {
-                    const totalPurchased = productQtyMap[p.id] || 0;
-                    const totalReturned = productReturnedMap[p.id] || 0;
-                    const remaining = totalPurchased - totalReturned;
+                // If customer has purchases, show returnable items
+                if(Object.keys(productQtyMap).length > 0) {
+                    // Filter out zero-stock duplicates
+                    const displayProducts = filterDuplicateZeroStockProducts(db.products);
+                    
+                    displayProducts.forEach(p => {
+                        const totalPurchased = productQtyMap[p.id] || 0;
+                        const totalReturned = productReturnedMap[p.id] || 0;
+                        const remaining = totalPurchased - totalReturned;
 
-                    if(remaining > 0) {
-                        custSel.innerHTML += `<option value="${p.id}" data-max-qty="${remaining}">${p.name} (Can return: ${remaining}/${totalPurchased})</option>`;
-                    }
-                });
+                        if(remaining > 0) {
+                            custSel.innerHTML += `<option value="${p.id}" data-max-qty="${remaining}">${p.name} (Can return: ${remaining}/${totalPurchased})</option>`;
+                        }
+                    });
+                } else {
+                    // No purchase history - show all products as fallback
+                    // Filter out zero-stock duplicates
+                    const displayProducts = filterDuplicateZeroStockProducts(db.products);
+                    displayProducts.forEach(p => {
+                        custSel.innerHTML += `<option value="${p.id}" data-max-qty="${p.stock}">${p.name}</option>`;
+                    });
+                }
 
-                // Reset quantity fields
                 document.getElementById('retCustQty').value = 1;
-                document.getElementById('retCustQty').max = 1;
-                document.getElementById('retCustMaxQty').innerText = '0';
                 document.getElementById('retCustQtyPurchased').innerText = '-';
                 document.getElementById('retCustPrice').innerText = '-';
             }
         }
 
-        window.loadSupplierProducts = function() {
-            const supId = parseInt(document.getElementById('retSupSelect').value);
+        window.loadReturnProductsSupplier = function() {
             const prodSel = document.getElementById('retSupProd');
             prodSel.innerHTML = '<option value="">Select Product...</option>';
             
-            // Get products that have stock
-            let supplierProducts = db.products.filter(p => p.stock > 0);
+            // Filter out zero-stock duplicates
+            let supplierProducts = filterDuplicateZeroStockProducts(db.products).filter(p => p.stock > 0);
             
-            // Sort by expiry date - closest expiration first
             supplierProducts.sort((a, b) => {
                 const expA = a.expiry ? new Date(a.expiry) : new Date('9999-12-31');
                 const expB = b.expiry ? new Date(b.expiry) : new Date('9999-12-31');
@@ -3424,239 +4762,363 @@
                 const maxQty = parseInt(selectedOption.getAttribute && selectedOption.getAttribute('data-max-qty')) || 0;
                 const prod = db.products.find(p => p.id === pid);
 
-                // Determine if selected customer is walk-in
-                const custVal = document.getElementById('retCustSelect').value || '';
-                const isWalkin = custVal.startsWith('walkin:');
-                const walkinName = isWalkin ? custVal.split(':')[1] : null;
-                const custId = isWalkin ? null : (custVal ? parseInt(custVal) : null);
-
-                // Calculate total purchased for selected product
-                const custTxns = db.transactions.filter(t => t.type === 'sale' && !t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
-                let totalPurchased = 0;
-                custTxns.forEach(t => {
-                    if(t.items) {
-                        t.items.forEach(item => {
-                            if(item.id === pid) totalPurchased += (item.qty || 1);
-                        });
-                    }
-                });
-
                 if(prod) {
-                    // Update max quantity input
-                    document.getElementById('retCustQty').max = maxQty;
-                    document.getElementById('retCustMaxQty').innerText = maxQty;
-                    document.getElementById('retCustQtyPurchased').innerText = totalPurchased;
+                    document.getElementById('retCustQtyPurchased').innerText = maxQty;
                     document.getElementById('retCustPrice').innerText = `${db.config.currency}${prod.retail}`;
-
-                    // Check if qty exceeds maximum
-                    const warning = document.getElementById('retCustQtyWarning');
-                    if(qty > maxQty) {
-                        document.getElementById('retCustQty').value = maxQty;
-                        warning.innerText = `⚠️ Customer purchased only ${totalPurchased} units. Max return: ${maxQty}`;
-                        warning.classList.remove('hidden');
-                    } else {
-                        warning.classList.add('hidden');
-                    }
-
-                    // Calculate refund
-                    const returnQty = Math.min(qty, maxQty);
-                    const subtotal = prod.retail * returnQty;
-                    const vatAmount = subtotal * (db.config.vatRate / 100);
-                    const totalWithVat = subtotal + vatAmount;
-                    document.getElementById('retCustAmt').innerText = `${db.config.currency}${totalWithVat.toFixed(2)}`;
                 }
             } else if(mode === 'sup') {
                 const pid = parseInt(document.getElementById('retSupProd').value);
-                const qty = parseInt(document.getElementById('retSupQty').value) || 0;
                 const prod = db.products.find(p => p.id === pid);
                 if(prod) {
-                    const total = prod.cost * qty;
                     document.getElementById('retSupCost').innerText = `${db.config.currency}${prod.cost}`;
                     document.getElementById('retSupStock').innerText = prod.stock;
-                    document.getElementById('retSupAmt').innerText = `${db.config.currency}${total.toFixed(2)}`;
                 }
             }
         }
 
-        window.processReturn = function(mode, type) {
+        window.addToReturnCart = function(mode) {
             if(mode === 'cust') {
-                const prodVal = document.getElementById('retCustProd').value;
-                const pid = parseInt(prodVal);
-                const qty = parseInt(document.getElementById('retCustQty').value);
+                const custVal = document.getElementById('retCustSelect').value || '';
+                const pid = parseInt(document.getElementById('retCustProd').value);
+                const qty = parseInt(document.getElementById('retCustQty').value) || 0;
+
+                if(!custVal || !pid || qty < 1) return alert('Please select customer, product, and quantity');
+
+                const prod = db.products.find(p => p.id === pid);
+                if(!prod) return alert('Product not found');
+
+                const prodSelect = document.getElementById('retCustProd');
+                const selectedOption = prodSelect.options[prodSelect.selectedIndex] || {};
+                const maxQty = parseInt(selectedOption.getAttribute('data-max-qty')) || 0;
+
+                if(qty > maxQty) return alert(`Cannot return more than ${maxQty} units`);
+
+                // Check if already in cart
+                const existingItem = retCustCart.find(item => item.pid === pid);
+                
+                if(existingItem) {
+                    // Calculate total if we add this quantity
+                    const newTotal = existingItem.qty + qty;
+                    if(newTotal > maxQty) {
+                        return alert(`Cannot exceed maximum returnable quantity!\nAlready in cart: ${existingItem.qty}\nMax returnable: ${maxQty}\nTrying to add: ${qty}`);
+                    }
+                    existingItem.qty += qty;
+                    alert(`✓ Quantity updated to ${newTotal} units`);
+                } else {
+                    retCustCart.push({
+                        pid: pid,
+                        name: prod.name,
+                        qty: qty,
+                        price: prod.retail,
+                        max: maxQty
+                    });
+                    alert(`✓ Added to cart`);
+                }
+
+                renderReturnCart('cust');
+                document.getElementById('retCustQty').value = 1;
+            } else if(mode === 'sup') {
+                const supId = parseInt(document.getElementById('retSupSelect').value);
+                const pid = parseInt(document.getElementById('retSupProd').value);
+                const qty = parseInt(document.getElementById('retSupQty').value) || 0;
+                const reason = document.getElementById('retSupReason').value || '';
+
+                if(!supId || !pid || qty < 1) return alert('Please select supplier, product, and quantity');
+
+                const prod = db.products.find(p => p.id === pid);
+                if(!prod) return alert('Product not found');
+                if(qty > prod.stock) return alert(`Cannot return more than ${prod.stock} units in stock`);
+
+                const existingItem = retSupCart.find(item => item.pid === pid);
+                
+                if(existingItem) {
+                    // Calculate total if we add this quantity
+                    const newTotal = existingItem.qty + qty;
+                    if(newTotal > prod.stock) {
+                        return alert(`Cannot exceed stock!\nAlready in cart: ${existingItem.qty}\nStock available: ${prod.stock}\nTrying to add: ${qty}`);
+                    }
+                    existingItem.qty += qty;
+                    alert(`✓ Quantity updated to ${newTotal} units`);
+                } else {
+                    retSupCart.push({
+                        pid: pid,
+                        name: prod.name,
+                        qty: qty,
+                        cost: prod.cost,
+                        reason: reason
+                    });
+                    alert(`✓ Added to cart`);
+                }
+
+                renderReturnCart('sup');
+                document.getElementById('retSupQty').value = 1;
+                document.getElementById('retSupReason').value = '';
+            }
+        }
+
+        window.renderReturnCart = function(mode) {
+            if(mode === 'cust') {
+                const cart = retCustCart;
+                const container = document.getElementById('retCustCart');
+                const countEl = document.getElementById('retCustCartCount');
+                let total = 0;
+
+                if(cart.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-gray-600">No items added</p>';
+                    countEl.innerText = '0';
+                } else {
+                    container.innerHTML = cart.map((item, idx) => {
+                        const itemTotal = item.price * item.qty;
+                        total += itemTotal;
+                        return `
+                            <div class="flex justify-between items-center text-xs bg-white/5 p-1 rounded border border-gray-700">
+                                <div>
+                                    <span class="text-white">${item.name}</span>
+                                    <span class="text-gray-500"> x${item.qty}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-karta-primary font-bold">${db.config.currency}${itemTotal.toFixed(2)}</span>
+                                    <button onclick="removeFromReturnCart('cust', ${idx})" class="text-red-500 hover:text-red-400 text-xs">✕</button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    countEl.innerText = cart.length;
+                }
+
+                document.getElementById('retCustTotal').innerText = `${db.config.currency}${total.toFixed(2)}`;
+            } else if(mode === 'sup') {
+                const cart = retSupCart;
+                const container = document.getElementById('retSupCart');
+                const countEl = document.getElementById('retSupCartCount');
+                let total = 0;
+
+                if(cart.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-gray-600">No items added</p>';
+                    countEl.innerText = '0';
+                } else {
+                    container.innerHTML = cart.map((item, idx) => {
+                        const itemTotal = item.cost * item.qty;
+                        total += itemTotal;
+                        return `
+                            <div class="flex justify-between items-center text-xs bg-white/5 p-1 rounded border border-gray-700">
+                                <div>
+                                    <span class="text-white">${item.name}</span>
+                                    <span class="text-gray-500"> x${item.qty}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-karta-primary font-bold">${db.config.currency}${itemTotal.toFixed(2)}</span>
+                                    <button onclick="removeFromReturnCart('sup', ${idx})" class="text-red-500 hover:text-red-400 text-xs">✕</button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    countEl.innerText = cart.length;
+                }
+
+                document.getElementById('retSupTotal').innerText = `${db.config.currency}${total.toFixed(2)}`;
+            }
+        }
+
+        window.removeFromReturnCart = function(mode, idx) {
+            if(mode === 'cust') {
+                retCustCart.splice(idx, 1);
+                renderReturnCart('cust');
+            } else if(mode === 'sup') {
+                retSupCart.splice(idx, 1);
+                renderReturnCart('sup');
+            }
+        }
+
+        window.clearReturnCart = function(mode) {
+            if(mode === 'cust') {
+                retCustCart = [];
+                renderReturnCart('cust');
+            } else if(mode === 'sup') {
+                retSupCart = [];
+                renderReturnCart('sup');
+            }
+        }
+
+        window.processReturn = function(mode) {
+            if(mode === 'cust') {
+                if(retCustCart.length === 0) return alert('No items in return cart');
+
                 const custVal = document.getElementById('retCustSelect').value || '';
                 const isWalkin = custVal.startsWith('walkin:');
                 const walkinName = isWalkin ? custVal.split(':')[1] : null;
                 const custId = isWalkin ? null : (custVal ? parseInt(custVal) : null);
+                const paymentMode = document.querySelector('input[name="retCustPayment"]:checked')?.value || 'cash';
 
-                if(!pid || !qty || (!isWalkin && !custId) && !isWalkin) return alert("Please fill all fields!");
+                if(!isWalkin && !custId) return alert('Please select a customer');
 
-                const prod = db.products.find(p => p.id === pid);
                 const cust = isWalkin ? null : db.customers.find(c => c.id === custId);
+                if(!isWalkin && !cust) return alert('Customer not found');
 
-                if(!prod) return alert("Product not found!");
-                if(!isWalkin && !cust) return alert("Customer not found!");
+                let totalRefund = 0;
+                const returnItems = [];
 
-                // Calculate max returnable quantity for this product for this customer (handle walk-in)
-                const custTxns = db.transactions.filter(t => t.type === 'sale' && !t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
-                let totalPurchased = 0;
-                custTxns.forEach(t => {
-                    if(t.items) {
-                        t.items.forEach(item => {
-                            if(item.id === pid) totalPurchased += (item.qty || 1);
-                        });
-                    }
-                });
-
-                const returnTxns = db.transactions.filter(t => t.type === 'sale' && t.isReturn && (isWalkin ? (!t.entityId && t.entityName === walkinName) : t.entityId === custId));
-                let totalReturned = 0;
-                returnTxns.forEach(t => {
-                    if(t.items) {
-                        t.items.forEach(item => {
-                            if(item.id === pid) totalReturned += (item.qty || 1);
-                        });
-                    }
-                });
-
-                const remaining = totalPurchased - totalReturned;
-
-                // Validation: Cannot return more than purchased
-                if(qty > remaining) {
-                    return alert(`❌ Cannot return ${qty} units!\n\nPurchased: ${totalPurchased}\nAlready Returned: ${totalReturned}\nCan Return: ${remaining}`);
+                // Validate and calculate total
+                for(let item of retCustCart) {
+                    const prod = db.products.find(p => p.id === item.pid);
+                    if(!prod) return alert(`Product ${item.name} not found`);
+                    
+                    const itemTotal = prod.retail * item.qty;
+                    totalRefund += itemTotal;
+                    returnItems.push({
+                        id: item.pid,
+                        name: item.name,
+                        qty: item.qty,
+                        retail: prod.retail
+                    });
+                    prod.stock += item.qty;
                 }
 
-                if(prod.stock < qty) return alert("Insufficient stock to return!");
-
-                // FIX #2: INFLATION LOOPHOLE - Look up original invoice price instead of current product price
-                // Find the original sale transaction to get the price actually paid
-                let originalPricePerItem = prod.retail;
-                let foundOriginalPrice = false;
-                
-                for(let txn of custTxns) {
-                    if(txn.items) {
-                        for(let item of txn.items) {
-                            if(item.id === pid && item.retail) {
-                                originalPricePerItem = item.retail;
-                                foundOriginalPrice = true;
-                                break;
-                            }
-                        }
-                    }
-                    if(foundOriginalPrice) break;
-                }
-
-                // Calculate refund using ORIGINAL price paid (not current shelf price)
-                const subtotal = moneyRound(originalPricePerItem * qty);
-                const vatRefund = moneyRound(subtotal * (db.config.vatRate / 100));
-                const totalRefund = moneyRound(subtotal + vatRefund);
-
-                if(confirm(`Process return of ${qty}x ${prod.name}?\nOriginal Price: ${db.config.currency}${originalPricePerItem.toFixed(2)}\nRefund: ${db.config.currency}${totalRefund.toFixed(2)}`)) {
-                    // Restore stock
-                    prod.stock += qty;
-
-                    // Update customer balance (reduce their debt) only for registered customers
+                if(confirm(`Process return for ${retCustCart.length} items?\nTotal Refund: ${db.config.currency}${totalRefund.toFixed(2)}\nMethod: ${paymentMode.toUpperCase()}`)) {
+                    // Update customer balance
                     if(!isWalkin && cust) {
-                        cust.balance -= totalRefund;
+                        cust.balance -= totalRefund;  // Customer owes less after refund
                     }
 
-                    // Record transaction as NEGATIVE sale (reduces turnover & VAT)
-                    db.transactions.push({
+                    // Record transaction
+                    const txn = {
                         id: Date.now(),
                         type: 'sale',
                         date: new Date().toISOString(),
                         entityId: custId,
                         entityName: isWalkin ? walkinName : (cust ? cust.name : 'Guest Customer'),
-                        items: [{id: pid, name: prod.name, qty: qty, retail: prod.retail}],
-                        sub: -subtotal,
-                        tax: -vatRefund,
+                        items: returnItems,
                         total: -totalRefund,
-                        payType: type,
+                        payType: paymentMode,
                         isReturn: true
-                    });
+                    };
+
+                    // Track cash/bank/credit - for returns, we subtract from totals
+                    if(paymentMode === 'cash') {
+                        txn.cashAmount = -totalRefund;
+                    } else if(paymentMode === 'bank') {
+                        txn.bankAmount = -totalRefund;
+                    } else if(paymentMode === 'credit') {
+                        txn.creditAmount = -totalRefund;
+                    } else if(paymentMode === 'split') {
+                        // Get split payment values from inputs
+                        const splitCash = parseFloat(document.getElementById('retCustSplitCash').value) || 0;
+                        const splitBank = parseFloat(document.getElementById('retCustSplitBank').value) || 0;
+                        const splitCredit = parseFloat(document.getElementById('retCustSplitCredit').value) || 0;
+                        const splitTotal = splitCash + splitBank + splitCredit;
+                        
+                        if(splitTotal !== totalRefund) {
+                            return alert(`Split payment total (${db.config.currency}${splitTotal.toFixed(2)}) doesn't match refund amount (${db.config.currency}${totalRefund.toFixed(2)})`);
+                        }
+                        
+                        txn.splitCash = -splitCash;
+                        txn.splitBank = -splitBank;
+                        txn.splitCredit = -splitCredit;
+                    }
+
+                    db.transactions.push(txn);
 
                     saveDB();
-                    alert(`Return Processed!\nRefund: ${db.config.currency}${totalRefund.toFixed(2)}`);
+                    alert(`✅ Return Processed!\nItems: ${retCustCart.length}\nRefund: ${db.config.currency}${totalRefund.toFixed(2)}\nMode: ${paymentMode.toUpperCase()}`);
+                    
+                    retCustCart = [];
+                    renderReturnCart('cust');
                     loadDashboard();
-                    runReports(currentReportTitle ? currentReportTitle.toLowerCase().split(' ')[0] : 'daily');
-
-                    // Reset form
                     document.getElementById('retCustSelect').value = '';
                     document.getElementById('retCustProd').innerHTML = '<option value="">Select Product...</option>';
-                    document.getElementById('retCustQty').value = 1;
-                    document.getElementById('retCustAmt').innerText = '$0.00';
                 }
             } else if(mode === 'sup') {
-                const pid = parseInt(document.getElementById('retSupProd').value);
-                const qty = parseInt(document.getElementById('retSupQty').value);
+                if(retSupCart.length === 0) return alert('No items in return cart');
+
                 const supId = parseInt(document.getElementById('retSupSelect').value);
-                const reason = document.getElementById('retSupReason').value;
-                
-                if(!pid || !qty || !supId) return alert("Please fill all fields!");
-                
-                const prod = db.products.find(p => p.id === pid);
+                const paymentMode = document.querySelector('input[name="retSupPayment"]:checked')?.value || 'cash';
+
+                if(!supId) return alert('Please select a supplier');
+
                 const sup = db.suppliers.find(s => s.id === supId);
-                
-                if(!prod || !sup) return alert("Product/Supplier not found!");
-                if(prod.stock < qty) return alert("Cannot return more than current stock!");
-                
-                const totalValue = moneyRound(prod.cost * qty);
-                const returnMethod = type; // 'cash' or 'credit' from button
-                
-                if(confirm(`Return ${qty}x ${prod.name} to ${sup.name}?\nValue: ${db.config.currency}${totalValue.toFixed(2)}\nMethod: ${returnMethod.toUpperCase()}`)) {
-                    // Reduce stock
-                    prod.stock -= qty;
+                if(!sup) return alert('Supplier not found');
+
+                let totalValue = 0;
+                const returnItems = [];
+
+                // Validate and calculate total
+                for(let item of retSupCart) {
+                    const prod = db.products.find(p => p.id === item.pid);
+                    if(!prod) return alert(`Product ${item.name} not found`);
+                    if(item.qty > prod.stock) return alert(`Cannot return more than ${prod.stock} units of ${item.name}`);
                     
-                    // Handle accounting based on payment method
-                    if(returnMethod === 'cash') {
-                        // CASH RETURN: Money comes IN from supplier (cash received)
-                        // This increases our cash account and decreases what we owe supplier
-                        db.transactions.push({
-                            id: Date.now(),
-                            type: 'return_cash_in',  // ✅ Fixed: Specific type for supplier cash returns
-                            date: new Date().toISOString(),
-                            entityId: supId,
-                            entityName: sup.name,
-                            items: [{id: pid, name: prod.name, qty: qty, cost: prod.cost}],
-                            total: totalValue,  // Positive = cash IN from supplier
-                            ref: 'Supplier Return (Cash) - ' + (reason || 'Stock Return'),
-                            isReturn: true
-                        });
-                        // Reduce supplier balance (what we still owe them)
-                        sup.balance -= totalValue;
-                    } else {
-                        // CREDIT RETURN: Reduces what we owe supplier (credit note)
-                        db.transactions.push({
-                            id: Date.now(),
-                            type: 'purchase',
-                            date: new Date().toISOString(),
-                            entityId: supId,
-                            entityName: sup.name,
-                            items: [{id: pid, name: prod.name, qty: qty, cost: prod.cost}],
-                            total: -totalValue,  // Negative = credit note
-                            ref: reason || 'Stock Return - Credit Note',
-                            payType: 'credit',
-                            isReturn: true
-                        });
-                        // Reduce supplier balance (what we still owe them)
-                        sup.balance -= totalValue;
+                    const itemTotal = prod.cost * item.qty;
+                    totalValue += itemTotal;
+                    returnItems.push({
+                        id: item.pid,
+                        name: item.name,
+                        qty: item.qty,
+                        cost: prod.cost
+                    });
+                    prod.stock -= item.qty;
+                }
+
+                if(confirm(`Process supplier return for ${retSupCart.length} items?\nTotal Value: ${db.config.currency}${totalValue.toFixed(2)}\nMethod: ${paymentMode.toUpperCase()}`)) {
+                    // Reduce supplier balance (what we owe them)
+                    sup.balance = moneyRound(sup.balance - totalValue);
+
+                    // Record transaction
+                    const txn = {
+                        id: Date.now(),
+                        type: 'purchase',
+                        date: new Date().toISOString(),
+                        entityId: supId,
+                        entityName: sup.name,
+                        items: returnItems,
+                        total: -totalValue,
+                        payType: paymentMode,
+                        ref: 'Supplier Return',
+                        isReturn: true
+                    };
+
+                    // Track cash/bank/credit - for supplier returns, money comes IN (positive)
+                    if(paymentMode === 'cash') {
+                        txn.cashAmount = totalValue;
+                    } else if(paymentMode === 'bank') {
+                        txn.bankAmount = totalValue;
+                    } else if(paymentMode === 'credit') {
+                        txn.creditAmount = totalValue;
+                    } else if(paymentMode === 'split') {
+                        // Get split payment values from inputs
+                        const splitCash = parseFloat(document.getElementById('retSupSplitCash').value) || 0;
+                        const splitBank = parseFloat(document.getElementById('retSupSplitBank').value) || 0;
+                        const splitCredit = parseFloat(document.getElementById('retSupSplitCredit').value) || 0;
+                        const splitTotal = splitCash + splitBank + splitCredit;
+                        
+                        if(splitTotal !== totalValue) {
+                            return alert(`Split payment total (${db.config.currency}${splitTotal.toFixed(2)}) doesn't match return value (${db.config.currency}${totalValue.toFixed(2)})`);
+                        }
+                        
+                        txn.splitCash = splitCash;
+                        txn.splitBank = splitBank;
+                        txn.splitCredit = splitCredit;
                     }
-                    
+
+                    db.transactions.push(txn);
+
                     saveDB();
-                    alert(`Supplier Return Processed!\nMethod: ${returnMethod.toUpperCase()}\nValue: ${db.config.currency}${totalValue.toFixed(2)}`);
-                    loadDashboard();
-                    runReports(currentReportTitle ? currentReportTitle.toLowerCase().split(' ')[0] : 'daily');
+                    alert(`✅ Supplier Return Processed!\nItems: ${retSupCart.length}\nValue: ${db.config.currency}${totalValue.toFixed(2)}\nMode: ${paymentMode.toUpperCase()}`);
                     
-                    // Reset form
+                    retSupCart = [];
+                    renderReturnCart('sup');
+                    loadDashboard();
                     document.getElementById('retSupSelect').value = '';
                     document.getElementById('retSupProd').innerHTML = '<option value="">Select Product...</option>';
-                    document.getElementById('retSupQty').value = 1;
-                    document.getElementById('retSupReason').value = '';
-                    document.getElementById('retSupAmt').innerText = '$0.00';
                 }
             }
         }
-
-        // --- Returns Page Loader ---
         window.loadReturns = function() {
+            // Clear carts when page loads
+            retCustCart = [];
+            retSupCart = [];
+            renderReturnCart('cust');
+            renderReturnCart('sup');
+            
             // Populate customer select for returns
             const custSel = document.getElementById('retCustSelect');
             custSel.innerHTML = '<option value="">Select Customer...</option>';
@@ -3911,7 +5373,7 @@
             saveDB();
             
             // Sort batches by purchase date (newest first)
-            const sortedBatches = db.batches.slice().reverse();
+            const sortedBatches = (db.batches && Array.isArray(db.batches)) ? db.batches.slice().reverse() : [];
             
             if(sortedBatches.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No stock batches recorded yet</td></tr>`;
@@ -3965,43 +5427,137 @@
             if(!db.transactions) db.transactions = [];
             if(!db.products) db.products = [];
             if(!db.customers) db.customers = [];
+            if(!db.suppliers) db.suppliers = [];
 
             const sales = db.transactions.filter(t => t.type === 'sale');
             const revenue = sales.reduce((a,c) => a + c.total, 0);
             const stockVal = db.products.reduce((a,c) => a + (c.stock * c.cost), 0);
-            const receivables = db.customers.reduce((a,c) => a + c.balance, 0);
-            const lowStock = db.products.filter(p => p.stock <= p.reorder);
             
-            // Get expired/expiring products (90 days from today)
+            // Calculate Cash, Bank, and Credit totals from sales (including returns as negative amounts)
+            let cashTotal = 0;
+            let bankTotal = 0;
+            let creditTotal = 0;
+            
+            sales.forEach(t => {
+                // Use explicit amount fields if they exist (these are properly signed: positive for sales, negative for returns)
+                if(t.cashAmount !== undefined) {
+                    cashTotal += t.cashAmount;
+                } else if(t.payType === 'cash') {
+                    cashTotal += t.total;
+                } else if(t.payType === 'split') {
+                    // For sales without explicit cashAmount, fall back to split breakdown
+                    cashTotal += t.splitCash || 0;
+                }
+                
+                if(t.bankAmount !== undefined) {
+                    bankTotal += t.bankAmount;
+                } else if(t.payType === 'bank') {
+                    bankTotal += t.total;
+                } else if(t.payType === 'split') {
+                    bankTotal += t.splitBank || 0;
+                }
+                
+                if(t.creditAmount !== undefined) {
+                    creditTotal += t.creditAmount;
+                } else if(t.payType === 'credit') {
+                    creditTotal += t.total;
+                } else if(t.payType === 'split') {
+                    creditTotal += t.splitCredit || 0;
+                }
+            });
+            
+            // Also add purchase transactions that affect cash/bank
+            db.transactions.filter(t => t.type === 'purchase').forEach(t => {
+                // Use explicit amount fields if they exist
+                if(t.cashAmount !== undefined) {
+                    cashTotal += t.cashAmount;
+                } else if(t.payType === 'cash') {
+                    cashTotal -= t.total;  // Negative because money is going out
+                }
+                
+                if(t.bankAmount !== undefined) {
+                    bankTotal += t.bankAmount;
+                } else if(t.payType === 'bank') {
+                    bankTotal -= t.total;
+                }
+                
+                if(t.creditAmount !== undefined) {
+                    creditTotal += t.creditAmount;
+                } else if(t.payType === 'credit') {
+                    creditTotal += t.total;  // FIX #2: Credit purchases ADD to payable (positive)
+                }
+            });
+            
+            // FIX #3: Account for expenses (subtract from cash as applicable)
+            db.transactions.filter(t => t.type === 'expense').forEach(t => {
+                if(t.total) cashTotal -= t.total;  // Expenses reduce cash
+            });
+            
+            // Calculate customer balance due (receivables)
+            const customerBalanceDue = db.customers.reduce((a, c) => a + c.balance, 0);
+            
+            // Calculate supplier balance due (payables)
+            const supplierBalanceDue = db.suppliers.reduce((a, s) => a + s.balance, 0);
+            
+            // Net balance = Receivables - Payables
+            const netBalance = customerBalanceDue - supplierBalanceDue;
+            
+            // Get expired/expiring products
             const today = new Date().toISOString().split('T')[0];
             const ninetyDaysLater = new Date();
             ninetyDaysLater.setDate(ninetyDaysLater.getDate() + 90);
             const expireThresholdDate = ninetyDaysLater.toISOString().split('T')[0];
             
+            const lowStock = db.products.filter(p => p.stock <= p.reorder && p.stock > 0);
+            
+            // Show both expired AND expiring soon products (within 90 days from today)
             const expiredProducts = db.products.filter(p => {
                 return p.expiry && p.expiry.trim() !== '' && p.expiry <= expireThresholdDate && p.stock > 0;
-            });
+            }).sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
 
-            document.getElementById('kpiRevenue').innerText = `${db.config.currency}${revenue.toFixed(2)}`;
-            document.getElementById('kpiStockVal').innerText = `${db.config.currency}${stockVal.toFixed(2)}`;
-            document.getElementById('kpiReceivables').innerText = `${db.config.currency}${receivables.toFixed(2)}`;
-            document.getElementById('kpiLowStock').innerText = lowStock.length;
-            document.getElementById('kpiExpired').innerText = expiredProducts.length;
+            // Update KPI Elements with null checks
+            if(document.getElementById('kpiRevenue')) document.getElementById('kpiRevenue').innerText = `${db.config.currency}${revenue.toFixed(2)}`;
+            if(document.getElementById('kpiCash')) document.getElementById('kpiCash').innerText = `${db.config.currency}${cashTotal.toFixed(2)}`;
+            if(document.getElementById('kpiBank')) document.getElementById('kpiBank').innerText = `${db.config.currency}${bankTotal.toFixed(2)}`;
+            if(document.getElementById('kpiStockVal')) document.getElementById('kpiStockVal').innerText = `${db.config.currency}${stockVal.toFixed(2)}`;
+            if(document.getElementById('kpiLowStock')) document.getElementById('kpiLowStock').innerText = `${lowStock.length}`;
+            
+            // Update Balance KPIs
+            if(document.getElementById('kpiCustDue')) document.getElementById('kpiCustDue').innerText = `${db.config.currency}${customerBalanceDue.toFixed(2)}`;
+            if(document.getElementById('kpiSupDue')) document.getElementById('kpiSupDue').innerText = `${db.config.currency}${supplierBalanceDue.toFixed(2)}`;
+            if(document.getElementById('kpiNetBalance')) {
+                document.getElementById('kpiNetBalance').innerText = `${db.config.currency}${netBalance.toFixed(2)}`;
+                // Color code net balance - use theme colors
+                const netEl = document.getElementById('kpiNetBalance');
+                if(netBalance > 0) {
+                    netEl.className = 'text-3xl font-bold text-green-500';
+                } else if(netBalance < 0) {
+                    netEl.className = 'text-3xl font-bold text-red-500';
+                } else {
+                    netEl.className = 'text-3xl font-bold text-karta-primary';
+                }
+            }
 
             const lsBody = document.getElementById('lowStockBody');
             if (lsBody) {
                 lsBody.innerHTML = '';
-                lowStock.forEach(p => {
-                    lsBody.innerHTML += `
-                        <tr>
-                            <td class="p-3 text-white font-bold">${p.name}</td>
-                            <td class="p-3 text-gray-500">${p.sku}</td>
-                            <td class="p-3 text-gray-500">Internal</td>
-                            <td class="p-3 text-right text-red-500 font-bold">${p.stock}</td>
-                            <td class="p-3 text-right text-gray-400">${p.reorder}</td>
-                        </tr>
-                    `;
-                });
+                if(lowStock.length === 0) {
+                    lsBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">✓ All products above reorder level</td></tr>`;
+                } else {
+                    lowStock.forEach(p => {
+                        const percentOfReorder = Math.round((p.stock / p.reorder) * 100);
+                        const rowClass = percentOfReorder < 25 ? 'bg-red-950/20 border-l-4 border-red-600' : 'bg-orange-950/20 border-l-4 border-orange-500';
+                        lsBody.innerHTML += `
+                            <tr class="hover:bg-white/5 ${rowClass}">
+                                <td class="p-3 text-white font-bold">${p.name}</td>
+                                <td class="p-3 text-gray-500">${p.sku || '-'}</td>
+                                <td class="p-3 text-gray-500">${p.supplierName || 'Internal'}</td>
+                                <td class="p-3 text-right font-bold ${percentOfReorder < 25 ? 'text-red-500' : 'text-orange-500'}">${p.stock}</td>
+                                <td class="p-3 text-right text-gray-400">${p.reorder} (${percentOfReorder}%)</td>
+                            </tr>
+                        `;
+                    });
+                }
             }
 
             // Populate expired products table
@@ -4009,42 +5565,58 @@
             if (expBody) {
                 expBody.innerHTML = '';
                 if (expiredProducts.length === 0) {
-                    expBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">No expired products with stock</td></tr>`;
+                    expBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">✓ No expired or expiring products</td></tr>`;
                 } else {
                     expiredProducts.forEach(p => {
-                        const daysExpired = Math.floor((new Date() - new Date(p.expiry)) / (1000 * 60 * 60 * 24));
+                        const expiryDate = new Date(p.expiry);
+                        const todayDate = new Date();
+                        const daysExpired = Math.floor((todayDate - expiryDate) / (1000 * 60 * 60 * 24));
                         let statusClass, statusText, rowClass;
                         
                         if (daysExpired > 0) {
                             // Already expired
-                            statusClass = daysExpired > 30 ? 'text-red-600 font-bold' : 'text-red-500';
-                            statusText = daysExpired > 30 ? `${daysExpired} days overdue` : `${daysExpired} day(s) ago`;
-                            rowClass = 'bg-red-950/20 border-l-4 border-red-600';
+                            if(daysExpired > 90) {
+                                statusClass = 'text-red-700 font-bold';
+                                statusText = `🔴 ${daysExpired} days OVERDUE`;
+                                rowClass = 'bg-red-950/40 border-l-4 border-red-700';
+                            } else if(daysExpired > 30) {
+                                statusClass = 'text-red-600 font-bold';
+                                statusText = `🔴 ${daysExpired} days overdue`;
+                                rowClass = 'bg-red-950/30 border-l-4 border-red-600';
+                            } else {
+                                statusClass = 'text-red-500 font-bold';
+                                statusText = `🔴 Expired ${daysExpired} day(s) ago`;
+                                rowClass = 'bg-red-950/20 border-l-4 border-red-500';
+                            }
                         } else {
                             // Expiring soon
                             const daysUntilExpiry = Math.abs(daysExpired);
-                            if (daysUntilExpiry <= 7) {
+                            if (daysUntilExpiry <= 3) {
+                                statusClass = 'text-red-600 font-bold';
+                                statusText = ` EXPIRES IN ${daysUntilExpiry} DAY${daysUntilExpiry !== 1 ? 'S' : ''}`;
+                                rowClass = 'bg-red-950/30 border-l-4 border-red-600';
+                            } else if (daysUntilExpiry <= 7) {
                                 statusClass = 'text-red-500 font-bold';
-                                statusText = `Expires in ${daysUntilExpiry} day(s)`;
-                                rowClass = 'bg-red-950/10 border-l-4 border-red-500';
+                                statusText = ` Expires in ${daysUntilExpiry} days`;
+                                rowClass = 'bg-red-950/20 border-l-4 border-red-500';
                             } else if (daysUntilExpiry <= 30) {
                                 statusClass = 'text-orange-500 font-bold';
-                                statusText = `Expires in ${daysUntilExpiry} day(s)`;
-                                rowClass = 'bg-orange-950/10 border-l-4 border-orange-500';
+                                statusText = ` Expires in ${daysUntilExpiry} days`;
+                                rowClass = 'bg-orange-950/15 border-l-4 border-orange-500';
                             } else {
-                                statusClass = 'text-yellow-500';
-                                statusText = `Expires in ${daysUntilExpiry} day(s)`;
-                                rowClass = 'bg-yellow-950/10 border-l-4 border-yellow-500';
+                                statusClass = 'text-yellow-600';
+                                statusText = ` Expires in ${daysUntilExpiry} days`;
+                                rowClass = 'bg-yellow-950/10 border-l-4 border-yellow-600';
                             }
                         }
                         
                         expBody.innerHTML += `
                             <tr class="hover:bg-white/5 ${rowClass}">
                                 <td class="p-3 text-white font-bold">${p.name}</td>
-                                <td class="p-3 text-gray-500">${p.sku}</td>
-                                <td class="p-3 text-gray-500">${p.batch || '-'}</td>
-                                <td class="p-3 text-center text-gray-300">${p.expiry}</td>
-                                <td class="p-3 text-right font-bold text-white">${p.stock}</td>
+                                <td class="p-3 text-gray-500">${p.sku || '-'}</td>
+                                <td class="p-3 text-gray-400">${p.batch || 'N/A'}</td>
+                                <td class="p-3 text-center font-mono text-sm text-gray-300">${p.expiry}</td>
+                                <td class="p-3 text-right font-bold text-white">${p.stock} units</td>
                                 <td class="p-3 text-center ${statusClass}">${statusText}</td>
                             </tr>
                         `;
@@ -4073,30 +5645,36 @@
                 });
             });
 
-            const ctxMain = document.getElementById('mainChart').getContext('2d');
-            if(mainChart) mainChart.destroy();
-            mainChart = new Chart(ctxMain, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'Sales', data: salesData, backgroundColor: '#00c853' },
-                        { label: 'Purchases', data: purchData, backgroundColor: '#333333' }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+            const ctxMain = document.getElementById('mainChart');
+            if(ctxMain) {
+                const mainCtx = ctxMain.getContext('2d');
+                if(mainChart) mainChart.destroy();
+                mainChart = new Chart(mainCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Sales', data: salesData, backgroundColor: '#00c853' },
+                            { label: 'Purchases', data: purchData, backgroundColor: '#333333' }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
 
-            const ctxCat = document.getElementById('categoryChart').getContext('2d');
-            if(catChart) catChart.destroy();
-            catChart = new Chart(ctxCat, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(catTotals).length ? Object.keys(catTotals) : ['No Sales'],
-                    datasets: [{ data: Object.values(catTotals).length ? Object.values(catTotals) : [1], backgroundColor: ['#00c853', '#009624', '#69f0ae'] }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+            const ctxCat = document.getElementById('categoryChart');
+            if(ctxCat) {
+                const catCtx = ctxCat.getContext('2d');
+                if(catChart) catChart.destroy();
+                catChart = new Chart(catCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(catTotals).length ? Object.keys(catTotals) : ['No Sales'],
+                        datasets: [{ data: Object.values(catTotals).length ? Object.values(catTotals) : [1], backgroundColor: ['#00c853', '#009624', '#69f0ae'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
         }
 
         // --- Invoice Printing ---
@@ -4482,8 +6060,67 @@
                     
                     // Update total to only include filtered debtors
                     currentReportData = filteredDebtors;
+                } else if (currentReportTitle.includes("PURCHASE")) {
+                    // PURCHASE REPORT WITH DETAILED INVOICE FORMAT
+                    html += `<th style="padding: 8px; text-align: left;">Date</th>
+                             <th style="padding: 8px; text-align: left;">GRN #</th>
+                             <th style="padding: 8px; text-align: left;">Supplier</th>
+                             <th style="padding: 8px; text-align: left;">Item Details</th>
+                             <th style="padding: 8px; text-align: center;">Qty</th>
+                             <th style="padding: 8px; text-align: right;">Unit Price</th>
+                             <th style="padding: 8px; text-align: right;">Line Total</th>
+                             <th style="padding: 8px; text-align: right;">Grand Total</th>
+                             <th style="padding: 8px; text-align: center;">Payment</th></tr></thead><tbody>`;
+                    
+                    if(currentReportData && currentReportData.length > 0) {
+                        currentReportData.forEach(t => {
+                            if(t.items && t.items.length > 0) {
+                                let firstRow = true;
+                                t.items.forEach((item, idx) => {
+                                    const itemCost = item.cost || 0;
+                                    const lineTotal = moneyRound((item.qty || 1) * itemCost);
+                                    
+                                    if(firstRow) {
+                                        html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                                            <td style="padding: 8px;">${new Date(t.date).toLocaleDateString()}</td>
+                                            <td style="padding: 8px; font-weight: 600;">#${t.id.toString().slice(-6)}</td>
+                                            <td style="padding: 8px; font-weight: 500;">${t.entityName || '-'}</td>
+                                            <td style="padding: 8px; color: #666;">${item.name || '-'}</td>
+                                            <td style="padding: 8px; text-align: center; font-weight: 500;">${item.qty || 1}</td>
+                                            <td style="padding: 8px; text-align: right;">${db.config.currency}${itemCost.toFixed(2)}</td>
+                                            <td style="padding: 8px; text-align: right; color: #00c853; font-weight: 500;">${db.config.currency}${lineTotal.toFixed(2)}</td>
+                                            <td style="padding: 8px; text-align: right; font-weight: 600; color: #0066cc;">${db.config.currency}${t.total.toFixed(2)}</td>
+                                            <td style="padding: 8px; text-align: center; font-size: 10px; font-weight: 500; color: ${t.payType === 'credit' ? '#ff6600' : '#00aa00'};">${t.payType ? t.payType.toUpperCase() : 'CASH'}</td>
+                                        </tr>`;
+                                        firstRow = false;
+                                    } else {
+                                        html += `<tr style="border-bottom: 1px solid #f0f0f0; background-color: #f9f9f9;">
+                                            <td colspan="2"></td>
+                                            <td></td>
+                                            <td style="padding: 8px; color: #666;">${item.name || '-'}</td>
+                                            <td style="padding: 8px; text-align: center; font-weight: 500;">${item.qty || 1}</td>
+                                            <td style="padding: 8px; text-align: right;">${db.config.currency}${itemCost.toFixed(2)}</td>
+                                            <td style="padding: 8px; text-align: right; color: #00c853; font-weight: 500;">${db.config.currency}${lineTotal.toFixed(2)}</td>
+                                            <td colspan="2"></td>
+                                        </tr>`;
+                                    }
+                                });
+                            } else {
+                                html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                                    <td style="padding: 8px;">${new Date(t.date).toLocaleDateString()}</td>
+                                    <td style="padding: 8px; font-weight: 600;">#${t.id.toString().slice(-6)}</td>
+                                    <td style="padding: 8px; font-weight: 500;">${t.entityName || '-'}</td>
+                                    <td colspan="4" style="padding: 8px; color: #999;">-</td>
+                                    <td style="padding: 8px; text-align: right; font-weight: 600; color: #0066cc;">${db.config.currency}${t.total.toFixed(2)}</td>
+                                    <td style="padding: 8px; text-align: center; font-size: 10px; font-weight: 500; color: ${t.payType === 'credit' ? '#ff6600' : '#00aa00'};">${t.payType ? t.payType.toUpperCase() : 'CASH'}</td>
+                                </tr>`;
+                            }
+                        });
+                    } else {
+                        html += `<tr><td colspan="9" style="padding: 15px; text-align: center; color: #999;">No purchase records found for the selected date range</td></tr>`;
+                    }
                 } else {
-                    // GENERIC TRANSACTION REPORTS (Daily, Sales, Purchase, Expense)
+                    // GENERIC TRANSACTION REPORTS (Daily, Sales, Expense)
                     html += `<th style="padding: 8px; text-align: left;">Date</th>
                              <th style="padding: 8px; text-align: left;">Type</th>
                              <th style="padding: 8px; text-align: left;">Description</th>
@@ -5019,8 +6656,94 @@
                 cards.innerHTML += createCard('Sales (Net)', dSales, 'green-400');
                 cards.innerHTML += createCard('Expenses', dExp, 'red-400');
                 cards.innerHTML += createCard('Net', dSales - dExp, 'white');
+            } else if(type === 'purchase') {
+                // PURCHASE REPORT WITH DETAILED INVOICE INFORMATION
+                reportTxns = filteredTxns.filter(t => t.type === dbType);
+                
+                // Summary Card
+                let purchaseTotal = 0;
+                let itemCount = 0;
+                reportTxns.forEach(t => {
+                    purchaseTotal += t.total;
+                    if(t.items) itemCount += t.items.length;
+                });
+                cards.innerHTML += createCard('Total Purchases', purchaseTotal, 'karta-primary');
+                cards.innerHTML += `<div class="bg-karta-surface border border-karta-border p-6 rounded-lg"><h4 class="text-gray-400 text-xs uppercase">Total Items Purchased</h4><h2 class="text-2xl font-bold text-white mt-2">${itemCount}</h2></div>`;
+                cards.innerHTML += `<div class="bg-karta-surface border border-karta-border p-6 rounded-lg"><h4 class="text-gray-400 text-xs uppercase">Number of GRNs</h4><h2 class="text-2xl font-bold text-white mt-2">${reportTxns.length}</h2></div>`;
+                
+                // Detailed Header
+                thead.innerHTML = `<tr>
+                    <th class="p-3">Date</th>
+                    <th class="p-3">GRN #</th>
+                    <th class="p-3">Supplier</th>
+                    <th class="p-3">Item Details</th>
+                    <th class="p-3 text-center">Qty</th>
+                    <th class="p-3 text-right">Unit Price</th>
+                    <th class="p-3 text-right">Line Total</th>
+                    <th class="p-3 text-right">Grand Total</th>
+                    <th class="p-3 text-center">Payment</th>
+                </tr>`;
+                
+                reportTxns.forEach(t => {
+                    if(t.items && t.items.length > 0) {
+                        let firstRow = true;
+                        t.items.forEach((item, idx) => {
+                            const tr = document.createElement('tr');
+                            tr.className = "border-b border-gray-800 text-gray-300";
+                            
+                            const itemCost = item.cost || 0;
+                            const lineTotal = moneyRound((item.qty || 1) * itemCost);
+                            
+                            if(firstRow) {
+                                // Show transaction-level info only on first row
+                                tr.innerHTML = `
+                                    <td class="p-3 text-gray-400">${new Date(t.date).toLocaleDateString()}</td>
+                                    <td class="p-3 font-mono font-bold text-white">#${t.id.toString().slice(-6)}</td>
+                                    <td class="p-3 font-bold text-white">${t.entityName || '-'}</td>
+                                    <td class="p-3">${item.name || '-'}</td>
+                                    <td class="p-3 text-center text-white font-bold">${item.qty || 1}</td>
+                                    <td class="p-3 text-right">${db.config.currency}${itemCost.toFixed(2)}</td>
+                                    <td class="p-3 text-right text-green-400 font-bold">${db.config.currency}${lineTotal.toFixed(2)}</td>
+                                    <td class="p-3 text-right font-bold text-karta-primary">${db.config.currency}${t.total.toFixed(2)}</td>
+                                    <td class="p-3 text-center"><span class="px-2 py-1 rounded text-xs ${t.payType === 'credit' ? 'bg-yellow-900 text-yellow-300' : 'bg-green-900 text-green-300'}">${t.payType || 'CASH'}</span></td>
+                                `;
+                                firstRow = false;
+                            } else {
+                                // Additional items in same purchase
+                                tr.innerHTML = `
+                                    <td colspan="2"></td>
+                                    <td></td>
+                                    <td class="p-3">${item.name || '-'}</td>
+                                    <td class="p-3 text-center text-white font-bold">${item.qty || 1}</td>
+                                    <td class="p-3 text-right">${db.config.currency}${itemCost.toFixed(2)}</td>
+                                    <td class="p-3 text-right text-green-400 font-bold">${db.config.currency}${lineTotal.toFixed(2)}</td>
+                                    <td colspan="2"></td>
+                                `;
+                            }
+                            
+                            tr.style.backgroundColor = firstRow ? '' : 'rgba(255,255,255,0.02)';
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        // Purchase with no items (older format)
+                        const tr = document.createElement('tr');
+                        tr.className = "border-b border-gray-800 text-gray-300";
+                        tr.innerHTML = `
+                            <td class="p-3 text-gray-400">${new Date(t.date).toLocaleDateString()}</td>
+                            <td class="p-3 font-mono font-bold text-white">#${t.id.toString().slice(-6)}</td>
+                            <td class="p-3 font-bold text-white">${t.entityName || '-'}</td>
+                            <td class="p-3 text-gray-500">-</td>
+                            <td class="p-3 text-center">-</td>
+                            <td class="p-3 text-right">-</td>
+                            <td class="p-3 text-right">-</td>
+                            <td class="p-3 text-right font-bold text-karta-primary">${db.config.currency}${t.total.toFixed(2)}</td>
+                            <td class="p-3 text-center"><span class="px-2 py-1 rounded text-xs ${t.payType === 'credit' ? 'bg-yellow-900 text-yellow-300' : 'bg-green-900 text-green-300'}">${t.payType || 'CASH'}</span></td>
+                        `;
+                        tbody.appendChild(tr);
+                    }
+                });
             } else {
-                // Filter specific type
+                // Filter specific type (sales, expense, etc.)
                 reportTxns = filteredTxns.filter(t => t.type === dbType);
                 
                 // Add Action Header for Sales/Invoices
@@ -5057,27 +6780,41 @@
             // Run data migration on load
             migrateProductIds();
             
+            // Update only visible sections to improve speed
+            const currentSection = document.querySelector('main section:not(.hidden)');
+            const sectionId = currentSection ? currentSection.id : '';
+            
+            // Always refresh core sections
             renderProducts();
             renderCustomers();
             renderSuppliers();
             loadSettings();
             
+            // Update Dashboard if visible
+            if(!sectionId || sectionId === 'dashboard') {
+                loadDashboard();
+            }
+            
             // Ensure array exists before filtering
             const txns = db.transactions || [];
 
-            // Populate Purch History
+            // Populate Purch History (Last 5)
             const ph = document.getElementById('purchHistory');
-            ph.innerHTML = '';
-            txns.filter(t => t.type === 'purchase').slice().reverse().forEach(t => {
-                ph.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white">${t.entityName}</div><div class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString()}</div></div><div class="text-red-400 font-bold">-${t.total.toFixed(2)}</div></div>`;
-            });
+            if(ph) {
+                ph.innerHTML = '';
+                txns.filter(t => t.type === 'purchase').slice().reverse().slice(0, 5).forEach(t => {
+                    ph.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white text-sm">${t.entityName}</div><div class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString()}</div></div><div class="text-red-400 font-bold text-sm">-${t.total.toFixed(2)}</div></div>`;
+                });
+            }
             
-             // Populate Expense History
+            // Populate Expense History (Last 5)
             const eh = document.getElementById('expHistory');
-            eh.innerHTML = '';
-            txns.filter(t => t.type === 'expense').slice().reverse().forEach(t => {
-                eh.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white">${t.items[0].name}</div><div class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString()}</div></div><div class="text-red-400 font-bold">-${t.total.toFixed(2)}</div></div>`;
-            });
+            if(eh) {
+                eh.innerHTML = '';
+                txns.filter(t => t.type === 'expense').slice().reverse().slice(0, 5).forEach(t => {
+                    eh.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white text-sm">${t.items?.[0]?.name || 'Expense'}</div><div class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString()}</div></div><div class="text-red-400 font-bold text-sm">-${t.total.toFixed(2)}</div></div>`;
+                });
+            }
         }
         
         // --- PRICE MANAGEMENT FUNCTIONS ---
@@ -5268,6 +7005,51 @@
             refreshUI();
             nav('dashboard');
         };
+
+        // ===== ADDITIONAL PROTECTION LAYER (Non-Blocking) =====
+        window.addEventListener('load', function() {
+            // Prevent iframe breaking out
+            if (window.self !== window.top) {
+                window.top.location = window.self.location;
+            }
+
+            // Monitor for injected content
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length > 0) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1) { // Element node
+                                // Check for injected scripts from external sources
+                                if (node.tagName === 'SCRIPT' && node.src && !node.src.includes(window.location.hostname) && !node.src.includes('cdn') && !node.src.includes('jsDelivr')) {
+                                    originalConsole.warn('Security: Potential script injection detected');
+                                    node.remove();
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: false,
+                attributes: false
+            });
+        });
+
+        // Monitor for source map attacks
+        window.addEventListener('error', function(e) {
+            if (e.filename && e.filename.includes('sourcemap')) {
+                originalConsole.warn('Security: Source map access blocked');
+                e.preventDefault();
+            }
+        }, true);
+
+        // Log protection enabled to original console
+        setTimeout(() => {
+            originalConsole.log('%c🔐 KARTA Application Protected', 'color: #00c853; font-size: 14px; font-weight: bold;');
+            originalConsole.log('%cRight-click, copying, and developer tools are disabled for security.', 'color: #888; font-size: 12px;');
+        }, 1000);
     </script>
 </body>
 
