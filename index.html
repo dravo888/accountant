@@ -1770,8 +1770,32 @@
                         </div>
                     </div>
 
-                    <!-- Batch Tracking -->
+                    <!-- Purchase List with Delete -->
                     <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
+                        <div class="p-4 border-b border-karta-border flex justify-between items-center">
+                            <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-list text-blue-400 mr-2"></i>All Purchases</h3>
+                            <input type="text" id="purchaseSearch" placeholder="Search purchases..." class="input-field text-xs w-40" onkeyup="filterPurchases()">
+                        </div>
+                        <div class="table-container">
+                            <table class="w-full text-left text-xs min-w-[1000px]">
+                                <thead class="bg-white/5 text-gray-400">
+                                    <tr>
+                                        <th class="p-3">Date</th>
+                                        <th class="p-3">Supplier</th>
+                                        <th class="p-3 text-right">Qty</th>
+                                        <th class="p-3 text-right">Subtotal</th>
+                                        <th class="p-3 text-right">VAT</th>
+                                        <th class="p-3 text-right">Total</th>
+                                        <th class="p-3">Payment</th>
+                                        <th class="p-3 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="purchListBody" class="divide-y divide-gray-800">
+                                    <!-- JS Populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                         <div class="p-4 border-b border-karta-border flex justify-between items-center">
                             <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-layer-group text-blue-400 mr-2"></i>Stock Batches (Old & New)</h3>
                             <button onclick="loadBatches()" class="text-xs text-karta-primary hover:underline">Refresh</button>
@@ -3181,7 +3205,10 @@
                 loadInvoices();
                 switchInvoiceTab('sales'); // Default to Sales Invoices tab
             }
-            if(page === 'purchases') loadBatches();
+            if(page === 'purchases') {
+                loadBatches();
+                loadPurchaseList();
+            }
             if(page === 'returns') loadReturns();
             if(page === 'reports') runReports('daily');
             if(page === 'productSuppliers') loadProductSupplierPage();
@@ -6383,6 +6410,114 @@ Updated Balances:
         }
 
         // Load and display batches in the Stock Batches table
+        window.loadPurchaseList = function() {
+            const tbody = document.getElementById('purchListBody');
+            if(!tbody) return;
+            
+            tbody.innerHTML = '';
+            const purchases = (db.transactions || []).filter(t => t.type === 'purchase' && !t.isReturn).slice().reverse();
+            
+            purchases.forEach(t => {
+                const itemCount = (t.items || []).length;
+                const totalQty = (t.items || []).reduce((sum, item) => sum + (item.qty || 0), 0);
+                const date = new Date(t.date).toLocaleDateString();
+                const supplier = t.entityName || 'Unknown';
+                const subtotal = t.sub || 0;
+                const tax = t.tax || 0;
+                const total = t.total || 0;
+                const payType = (t.payType || 'cash').toUpperCase();
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-white/5 transition">
+                        <td class="p-3 text-gray-300">${date}</td>
+                        <td class="p-3 text-gray-300">${supplier}</td>
+                        <td class="p-3 text-right text-gray-300">${totalQty}</td>
+                        <td class="p-3 text-right text-gray-300">${db.config.currency}${subtotal.toFixed(2)}</td>
+                        <td class="p-3 text-right text-gray-300">${db.config.currency}${tax.toFixed(2)}</td>
+                        <td class="p-3 text-right font-bold text-white">${db.config.currency}${total.toFixed(2)}</td>
+                        <td class="p-3 text-yellow-400 text-xs">${payType}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="deletePurchase(${t.id})" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs transition">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            if(purchases.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">No purchases found</td></tr>';
+            }
+        }
+
+        window.filterPurchases = function() {
+            const searchTerm = (document.getElementById('purchaseSearch').value || '').toLowerCase();
+            const tbody = document.getElementById('purchListBody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                if(text.includes(searchTerm)) {
+                    row.classList.remove('hidden');
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+        }
+
+        window.deletePurchase = function(txnId) {
+            const txn = db.transactions.find(t => t.id === txnId);
+            if(!txn) return alert('Purchase not found');
+            
+            if(!confirm(`Delete purchase from ${txn.entityName}?\nTotal: ${db.config.currency}${Math.abs(txn.total).toFixed(2)}\n\nThis will:\n• Reduce stock for ${(txn.items || []).length} product(s)\n• Refund supplier balance\n• Reverse cash/bank changes\n\nContinue?`)) {
+                return;
+            }
+            
+            // STEP 1: Restore stock for all items
+            (txn.items || []).forEach(item => {
+                const prod = db.products.find(p => p.id === item.id);
+                if(prod) {
+                    prod.stock -= item.qty || 1;
+                }
+            });
+            
+            // STEP 2: Reverse supplier balance
+            if(txn.entityId) {
+                const sup = db.suppliers.find(s => s.id === txn.entityId);
+                if(sup) {
+                    // Purchase decreased balance, so deletion increases it
+                    sup.balance = moneyRound((sup.balance || 0) - txn.total);
+                }
+            }
+            
+            // STEP 3: Reverse cash/bank changes
+            if (!db.config.cashBalance) db.config.cashBalance = 0;
+            if (!db.config.bankBalance) db.config.bankBalance = 0;
+            
+            if(txn.payType === 'cash') {
+                // Purchase decreased cash, so deletion increases it
+                db.config.cashBalance = moneyRound(db.config.cashBalance - txn.total);
+            } else if(txn.payType === 'bank') {
+                db.config.bankBalance = moneyRound(db.config.bankBalance - txn.total);
+            } else if(txn.payType === 'split') {
+                // Reverse split amounts
+                if(txn.splitCash) {
+                    db.config.cashBalance = moneyRound(db.config.cashBalance - txn.splitCash);
+                }
+                if(txn.splitBank) {
+                    db.config.bankBalance = moneyRound(db.config.bankBalance - txn.splitBank);
+                }
+            }
+            
+            // STEP 4: Remove transaction
+            db.transactions = db.transactions.filter(t => t.id !== txnId);
+            
+            saveDB();
+            loadPurchaseList();
+            loadDashboard();
+            alert('✓ Purchase deleted successfully');
+        }
+
         window.loadBatches = function() {
             const tbody = document.getElementById('batchBody');
             if(!tbody) return; // Element doesn't exist if not on purchases page
