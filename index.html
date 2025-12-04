@@ -1770,32 +1770,8 @@
                         </div>
                     </div>
 
-                    <!-- Purchase List with Delete -->
+                    <!-- Batch Tracking -->
                     <div class="bg-karta-surface border border-karta-border rounded-lg overflow-hidden">
-                        <div class="p-4 border-b border-karta-border flex justify-between items-center">
-                            <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-list text-blue-400 mr-2"></i>All Purchases</h3>
-                            <input type="text" id="purchaseSearch" placeholder="Search purchases..." class="input-field text-xs w-40" onkeyup="filterPurchases()">
-                        </div>
-                        <div class="table-container">
-                            <table class="w-full text-left text-xs min-w-[1000px]">
-                                <thead class="bg-white/5 text-gray-400">
-                                    <tr>
-                                        <th class="p-3">Date</th>
-                                        <th class="p-3">Supplier</th>
-                                        <th class="p-3 text-right">Qty</th>
-                                        <th class="p-3 text-right">Subtotal</th>
-                                        <th class="p-3 text-right">VAT</th>
-                                        <th class="p-3 text-right">Total</th>
-                                        <th class="p-3">Payment</th>
-                                        <th class="p-3 text-center">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="purchListBody" class="divide-y divide-gray-800">
-                                    <!-- JS Populated -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                         <div class="p-4 border-b border-karta-border flex justify-between items-center">
                             <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-layer-group text-blue-400 mr-2"></i>Stock Batches (Old & New)</h3>
                             <button onclick="loadBatches()" class="text-xs text-karta-primary hover:underline">Refresh</button>
@@ -1873,7 +1849,7 @@
                 </section>
 
                  <!-- SETTINGS -->
-                 <section id="settings" class="hidden space-y-6 max-w-2xl pb-20 md:pb-0 max-h-[calc(100vh-120px)] overflow-y-auto">
+                 <section id="settings" class="hidden space-y-6 max-w-2xl pb-20 md:pb-0">
                     <div class="bg-karta-surface border border-karta-border rounded-lg p-6">
                         <h3 class="text-xl font-bold mb-4 text-karta-primary">Company Profile & Configuration</h3>
                         <form id="settingsForm" class="space-y-4">
@@ -1945,6 +1921,7 @@
                                     <i class="fa-solid fa-upload"></i> Restore (Import File)
                                     <input type="file" id="importFile" class="hidden" onchange="importDB(this)">
                                 </label>
+                                <button onclick="repairCashAndBankBalances()" class="bg-orange-700 text-white px-4 py-2 rounded text-xs hover:bg-orange-600 text-center"><i class="fa-solid fa-wrench"></i> Repair Balances</button>
                             </div>
                             <div class="mt-4">
                                 <button onclick="resetData()" class="text-red-500 text-xs hover:text-red-400 underline">Danger: Wipe My Data</button>
@@ -2268,10 +2245,11 @@
                 <div class="form-group">
                     <label class="text-xs text-gray-400 font-bold">Amount You Owe</label>
                     <input type="number" id="sBalance" placeholder="0.00" step="0.01" class="input-field">
-                    <span class="help-text">Outstanding balance payable to this supplier</span>
+                    <span class="help-text">Outstanding balance payable to this supplier. Can be manually adjusted if needed.</span>
                 </div>
                 <div class="flex justify-end gap-2 mt-6">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
+                    <button type="button" id="fixBalanceBtn" onclick="fixSupplierBalance()" class="px-4 py-2 bg-orange-700 text-white rounded hover:bg-orange-600 transition hidden"><i class="fa-solid fa-wrench mr-2"></i>Fix Negative Balance</button>
                     <button type="submit" class="px-4 py-2 bg-karta-primary text-black font-bold rounded hover:bg-karta-primaryDark transition">Save Supplier</button>
                 </div>
             </form>
@@ -2904,10 +2882,21 @@
             measurementId: "G-K165K36HRF"
         };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const dbRealtime = getDatabase(app);
+        // Initialize Firebase with Error Handling
+        let firebaseAvailable = false;
+        let app, auth, dbRealtime;
+        
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            dbRealtime = getDatabase(app);
+            firebaseAvailable = true;
+        } catch (error) {
+            console.warn("Firebase not available in this environment:", error.message);
+            firebaseAvailable = false;
+            auth = null;
+            dbRealtime = null;
+        }
         
         // --- Firebase Auth & Sync Logic ---
         const authScreen = document.getElementById('auth-screen');
@@ -3156,6 +3145,182 @@
             }
         }
 
+        // REPAIR FUNCTION: Recalculate cash, bank, AND credit balances from transactions
+        // This fixes negative balances and incorrect credit amounts caused by improper deletes or past bugs
+        window.repairCashAndBankBalances = function() {
+            const originalCash = db.config.cashBalance || 0;
+            const originalBank = db.config.bankBalance || 0;
+            
+            console.log(`\n=== STARTING DATABASE REPAIR (CASH + BANK + CREDIT) ===`);
+            console.log(`Original Cash Balance: ${originalCash}`);
+            console.log(`Original Bank Balance: ${originalBank}`);
+            
+            // Reset all customer and supplier balances to 0
+            if(db.customers && Array.isArray(db.customers)) {
+                db.customers.forEach(c => {
+                    c.balance = 0;
+                });
+                console.log(`✓ Reset ${db.customers.length} customer balances to 0`);
+            }
+            if(db.suppliers && Array.isArray(db.suppliers)) {
+                db.suppliers.forEach(s => {
+                    s.balance = 0;
+                });
+                console.log(`✓ Reset ${db.suppliers.length} supplier balances to 0`);
+            }
+            
+            // Recalculate from ALL transactions
+            let calculatedCash = 0;
+            let calculatedBank = 0;
+            
+            if(db.transactions && Array.isArray(db.transactions)) {
+                db.transactions.forEach(txn => {
+                    // SALES - increase cash/bank, decrease customer credit
+                    if(txn.type === 'sale') {
+                        if(txn.payType === 'cash') {
+                            calculatedCash = moneyRound(calculatedCash + txn.total);
+                        } else if(txn.payType === 'bank') {
+                            calculatedBank = moneyRound(calculatedBank + txn.total);
+                        } else if(txn.payType === 'credit') {
+                            // Customer owes us money
+                            const customer = db.customers.find(c => c.id === txn.entityId);
+                            if(customer) {
+                                customer.balance = moneyRound(customer.balance + txn.total);
+                            }
+                        } else if(txn.payType === 'split') {
+                            if(txn.splitCash) calculatedCash = moneyRound(calculatedCash + txn.splitCash);
+                            if(txn.splitBank) calculatedBank = moneyRound(calculatedBank + txn.splitBank);
+                            if(txn.splitCredit) {
+                                const customer = db.customers.find(c => c.id === txn.entityId);
+                                if(customer) {
+                                    customer.balance = moneyRound(customer.balance + txn.splitCredit);
+                                }
+                            }
+                        }
+                    }
+                    // PURCHASES - decrease cash/bank, increase supplier credit
+                    else if(txn.type === 'purchase') {
+                        if(txn.payType === 'cash') {
+                            calculatedCash = moneyRound(calculatedCash - txn.total);
+                        } else if(txn.payType === 'bank') {
+                            calculatedBank = moneyRound(calculatedBank - txn.total);
+                        } else if(txn.payType === 'credit') {
+                            // We owe supplier money
+                            const supplier = db.suppliers.find(s => s.id === txn.entityId);
+                            if(supplier) {
+                                supplier.balance = moneyRound(supplier.balance + txn.total);
+                            }
+                        } else if(txn.payType === 'split') {
+                            if(txn.cashAmount) calculatedCash = moneyRound(calculatedCash - txn.cashAmount);
+                            if(txn.bankAmount) calculatedBank = moneyRound(calculatedBank - txn.bankAmount);
+                            if(txn.creditAmount) {
+                                const supplier = db.suppliers.find(s => s.id === txn.entityId);
+                                if(supplier) {
+                                    supplier.balance = moneyRound(supplier.balance + txn.creditAmount);
+                                }
+                            }
+                        }
+                    }
+                    // SALES RETURN - decrease customer credit (they return money)
+                    else if(txn.type === 'sale' && txn.isReturn) {
+                        const customer = db.customers.find(c => c.id === txn.entityId);
+                        if(customer) {
+                            customer.balance = moneyRound(customer.balance - txn.total);
+                        }
+                    }
+                    // PURCHASE RETURN - decrease supplier credit (they return money)
+                    else if(txn.type === 'purchase' && txn.isReturn) {
+                        const supplier = db.suppliers.find(s => s.id === txn.entityId);
+                        if(supplier) {
+                            supplier.balance = moneyRound(supplier.balance - txn.total);
+                        }
+                    }
+                    // CASH RECEIVED from customer - decrease customer credit, increase cash
+                    else if(txn.type === 'cash_in' || txn.type === 'payment_in') {
+                        if(txn.amount) calculatedCash = moneyRound(calculatedCash + txn.amount);
+                        if(txn.entityId) {
+                            const customer = db.customers.find(c => c.id === txn.entityId);
+                            if(customer) {
+                                customer.balance = moneyRound(customer.balance - txn.amount);
+                            }
+                        }
+                    }
+                    // CASH PAID to supplier - decrease supplier credit, decrease cash
+                    else if(txn.type === 'cash_out' || txn.type === 'payment_out') {
+                        if(txn.amount) calculatedCash = moneyRound(calculatedCash - txn.amount);
+                        if(txn.entityId) {
+                            const supplier = db.suppliers.find(s => s.id === txn.entityId);
+                            if(supplier) {
+                                supplier.balance = moneyRound(supplier.balance - txn.amount);
+                            }
+                        }
+                    }
+                    // CASH TO BANK - transfer
+                    else if(txn.type === 'cash_to_bank') {
+                        if(txn.amount) {
+                            calculatedCash = moneyRound(calculatedCash - txn.amount);
+                            calculatedBank = moneyRound(calculatedBank + txn.amount);
+                        }
+                    }
+                    // BANK TO CASH - transfer
+                    else if(txn.type === 'bank_to_cash') {
+                        if(txn.amount) {
+                            calculatedBank = moneyRound(calculatedBank - txn.amount);
+                            calculatedCash = moneyRound(calculatedCash + txn.amount);
+                        }
+                    }
+                });
+            }
+            
+            console.log(`Calculated from Transactions:`);
+            console.log(`Cash Balance: ${calculatedCash}`);
+            console.log(`Bank Balance: ${calculatedBank}`);
+            
+            // Apply the corrected balances
+            db.config.cashBalance = calculatedCash;
+            db.config.bankBalance = calculatedBank;
+            
+            // Log credit balances
+            console.log(`\nCustomer Credit Balances (what customers owe us):`);
+            if(db.customers && Array.isArray(db.customers)) {
+                db.customers.forEach(c => {
+                    if(c.balance !== 0) {
+                        console.log(`  ${c.name}: ${db.config.currency}${c.balance.toFixed(2)}`);
+                    }
+                });
+            }
+            
+            console.log(`\nSupplier Credit Balances (what we owe suppliers):`);
+            if(db.suppliers && Array.isArray(db.suppliers)) {
+                db.suppliers.forEach(s => {
+                    if(s.balance !== 0) {
+                        console.log(`  ${s.name}: ${db.config.currency}${s.balance.toFixed(2)}`);
+                    }
+                });
+            }
+            
+            console.log(`\n✓ Database Repaired!`);
+            console.log(`New Cash Balance: ${db.config.cashBalance}`);
+            console.log(`New Bank Balance: ${db.config.bankBalance}`);
+            
+            // Save the repaired database
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            refreshUI();
+            
+            let repairSummary = `✓ DATABASE REPAIRED\n\n`;
+            repairSummary += `Cash Balance: ${db.config.currency}${calculatedCash.toFixed(2)}\n`;
+            repairSummary += `Bank Balance: ${db.config.currency}${calculatedBank.toFixed(2)}\n\n`;
+            
+            const totalCustomerCredit = db.customers ? db.customers.reduce((a, c) => a + c.balance, 0) : 0;
+            const totalSupplierCredit = db.suppliers ? db.suppliers.reduce((a, s) => a + s.balance, 0) : 0;
+            
+            repairSummary += `Customer Credit (Receivables): ${db.config.currency}${totalCustomerCredit.toFixed(2)}\n`;
+            repairSummary += `Supplier Credit (Payables): ${db.config.currency}${totalSupplierCredit.toFixed(2)}\n\n`;
+            repairSummary += `All balances recalculated from transaction history.`;
+            
+            alert(repairSummary);
+        }
+
         // Helper function: Filter out zero-stock products if duplicates with stock exist
         window.filterDuplicateZeroStockProducts = function(products) {
             const grouped = {};
@@ -3205,10 +3370,7 @@
                 loadInvoices();
                 switchInvoiceTab('sales'); // Default to Sales Invoices tab
             }
-            if(page === 'purchases') {
-                loadBatches();
-                loadPurchaseList();
-            }
+            if(page === 'purchases') loadBatches();
             if(page === 'returns') loadReturns();
             if(page === 'reports') runReports('daily');
             if(page === 'productSuppliers') loadProductSupplierPage();
@@ -4041,7 +4203,7 @@
             const contact = document.getElementById('sContact').value;
             const phone = document.getElementById('sPhone').value;
             const taxId = document.getElementById('sTax').value;
-            const balance = parseFloat(document.getElementById('sBalance').value) || 0;
+            const balance = moneyRound(parseFloat(document.getElementById('sBalance').value) || 0);
             
             if(supId) {
                 // Edit existing supplier
@@ -4052,6 +4214,7 @@
                     sup.phone = phone;
                     sup.taxId = taxId;
                     sup.balance = balance;
+                    console.log(`✓ Supplier updated: ${name} with balance: ${db.config.currency}${balance.toFixed(2)}`);
                 }
             } else {
                 // Add new supplier
@@ -4063,6 +4226,12 @@
                     taxId: taxId,
                     balance: balance
                 });
+                console.log(`✓ New supplier created: ${name} with balance: ${db.config.currency}${balance.toFixed(2)}`);
+            }
+            // Save immediately without debounce for critical data
+            if(currentUser && DB_KEY) {
+                localStorage.setItem(DB_KEY, JSON.stringify(db));
+                console.log('✓ Balance saved to localStorage');
             }
             saveDB();
             window.closeModal();
@@ -4289,7 +4458,103 @@
             document.getElementById('sTax').value = sup.taxId || '';
             document.getElementById('sBalance').value = sup.balance || 0;
             
+            // Show "Fix Balance" button only if balance is negative (glitch)
+            const fixBtn = document.getElementById('fixBalanceBtn');
+            if(sup.balance < 0) {
+                fixBtn.classList.remove('hidden');
+                fixBtn.innerHTML = `<i class="fa-solid fa-wrench mr-2"></i>Fix Negative Balance (${db.config.currency}${Math.abs(sup.balance).toFixed(2)})`;
+            } else {
+                fixBtn.classList.add('hidden');
+            }
+            
             window.openModal('supModal');
+        };
+        
+        // FIX SUPPLIER NEGATIVE BALANCE - Reset to 0 and recalculate properly
+        window.fixSupplierBalance = function() {
+            const supId = parseInt(document.getElementById('supId').value);
+            const sup = db.suppliers.find(s => s.id === supId);
+            
+            if(!sup) {
+                alert('Supplier not found!');
+                return;
+            }
+            
+            if(sup.balance >= 0) {
+                alert('This supplier balance is not negative. No fix needed.');
+                return;
+            }
+            
+            if(!confirm(`Fix negative balance for "${sup.name}"?\n\nCurrent: ${db.config.currency}${sup.balance.toFixed(2)}\n\nThis will:\n1. Set balance to 0\n2. Recalculate from actual purchase transactions\n3. Remove glitched duplicate deletes\n\nContinue?`)) {
+                return;
+            }
+            
+            console.log(`\n=== FIXING SUPPLIER NEGATIVE BALANCE ===`);
+            console.log(`Supplier: ${sup.name}`);
+            console.log(`Before: ${sup.balance}`);
+            
+            // Step 1: Set to 0
+            sup.balance = 0;
+            
+            // Step 2: Recalculate from ONLY valid purchase transactions for this supplier
+            const purchaseTransactions = db.transactions.filter(t => 
+                t.type === 'purchase' && 
+                t.entityId === supId && 
+                !t.isReturn  // Exclude returns
+            );
+            
+            console.log(`Found ${purchaseTransactions.length} valid purchase transactions`);
+            
+            // Step 3: Add up all valid purchases (credit and split portions)
+            purchaseTransactions.forEach(txn => {
+                let amountOwed = 0;
+                
+                if(txn.payType === 'credit') {
+                    amountOwed = txn.total;
+                } else if(txn.payType === 'split' && txn.creditAmount) {
+                    amountOwed = txn.creditAmount;
+                }
+                
+                sup.balance = moneyRound(sup.balance + amountOwed);
+                console.log(`  + Purchase: ${db.config.currency}${amountOwed.toFixed(2)} → Balance: ${db.config.currency}${sup.balance.toFixed(2)}`);
+            });
+            
+            // Step 4: Subtract any payments made to this supplier
+            const paymentTransactions = db.transactions.filter(t => 
+                (t.type === 'payment_out') && 
+                t.entityId === supId
+            );
+            
+            console.log(`Found ${paymentTransactions.length} payment transactions`);
+            
+            paymentTransactions.forEach(txn => {
+                sup.balance = moneyRound(sup.balance - txn.amount);
+                console.log(`  - Payment: ${db.config.currency}${txn.amount.toFixed(2)} → Balance: ${db.config.currency}${sup.balance.toFixed(2)}`);
+            });
+            
+            console.log(`After: ${sup.balance}`);
+            console.log(`=== BALANCE FIX COMPLETE ===\n`);
+            
+            // Step 5: Save immediately without debounce
+            if(currentUser && DB_KEY) {
+                localStorage.setItem(DB_KEY, JSON.stringify(db));
+                console.log('✓ Saved to localStorage');
+            }
+            
+            // Also sync to Firebase if available
+            if(firebaseAvailable && dbRealtime) {
+                const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
+                set(userRef, db)
+                    .then(() => console.log('✓ Synced to Firebase'))
+                    .catch((err) => console.error('Firebase sync error:', err));
+            }
+            
+            // Update display
+            document.getElementById('sBalance').value = sup.balance;
+            renderSuppliers();
+            refreshUI();
+            
+            alert(`✓ SUPPLIER BALANCE FIXED!\n\nSupplier: ${sup.name}\nNew Balance: ${db.config.currency}${sup.balance.toFixed(2)}\n\nRecalculated from all valid purchases and payments.`);
         };
         
         window.delSup = function(id) { if(confirm("Delete Supplier?")) { db.suppliers = db.suppliers.filter(s=>s.id!==id); saveDB(); renderSuppliers(); } }
@@ -6181,6 +6446,7 @@ Updated Balances:
                     <td class="p-3 text-center">
                         <button onclick="viewPurchaseInvoice('${t.id}')" class="text-green-400 hover:text-green-300 mx-1" title="View"><i class="fa-solid fa-eye"></i></button>
                         <button onclick="printPurchaseInvoiceFromTxn('${t.id}')" class="text-blue-400 hover:text-blue-300 mx-1" title="Print"><i class="fa-solid fa-print"></i></button>
+                        <button onclick="deletePurchase('${t.id}')" class="text-red-400 hover:text-red-300 mx-1" title="Delete"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -6189,6 +6455,144 @@ Updated Balances:
         
         window.filterPurchaseInvoices = function() {
             loadPurchaseInvoices();
+        }
+        
+        // DELETE PURCHASE - Completely undo the purchase transaction
+        // Reverses: Product stock, Supplier balance, Cash/Bank amounts, Batch entries
+        window.deletePurchase = function(txnId) {
+            const txn = db.transactions.find(t => t.id == txnId && t.type === 'purchase');
+            if(!txn) {
+                alert('Purchase not found!');
+                return;
+            }
+            
+            // Confirmation dialog with details
+            if(!confirm(`Are you sure you want to DELETE this purchase?\n\nSupplier: ${txn.entityName}\nTotal: ${db.config.currency}${txn.total.toFixed(2)}\n\nThis will undo ALL effects:\n- Removing purchased stock\n- Reversing supplier balance\n- Refunding payment amounts\n\nThis action CANNOT be undone.`)) {
+                return;
+            }
+            
+            console.log('=== DELETING PURCHASE ===');
+            console.log('Transaction:', txn);
+            
+            // STEP 1: REMOVE PURCHASED STOCK (delete the batch products created during purchase)
+            if(txn.items && Array.isArray(txn.items)) {
+                txn.items.forEach(item => {
+                    // Find the batch product (the one created during this specific purchase)
+                    const prod = db.products.find(p => p.id === item.id);
+                    if(prod) {
+                        console.log(`✓ Deleting batch product: ${item.qty} units of "${item.name}" (ID: ${item.id}, Ref: ${txn.ref})`);
+                        // Remove this batch product from inventory completely
+                        db.products = db.products.filter(p => p.id !== item.id);
+                    } else {
+                        console.warn(`⚠ Batch product not found: ${item.name} (ID: ${item.id})`);
+                    }
+                });
+            }
+            
+            // STEP 2: Reverse supplier balance change
+            const supplier = db.suppliers.find(s => s.id === txn.entityId);
+            if(supplier) {
+                const originalBalance = supplier.balance;
+                
+                // Credit payment: supplier balance was increased, so reverse it
+                if(txn.payType === 'credit' && txn.creditAmount && txn.creditAmount > 0) {
+                    supplier.balance = moneyRound(supplier.balance - txn.creditAmount);
+                    console.log(`✓ CREDIT REVERSAL: Balance ${originalBalance} → ${supplier.balance} (reduced by ${txn.creditAmount})`);
+                } 
+                // Split payment: only credit portion affected supplier balance
+                else if(txn.payType === 'split' && txn.creditAmount && txn.creditAmount > 0) {
+                    supplier.balance = moneyRound(supplier.balance - txn.creditAmount);
+                    console.log(`✓ SPLIT CREDIT REVERSAL: Balance ${originalBalance} → ${supplier.balance} (reduced by ${txn.creditAmount})`);
+                }
+                // Cash/Bank payments don't affect supplier balance
+                else if(txn.payType === 'cash' || txn.payType === 'bank') {
+                    console.log(`✓ ${txn.payType.toUpperCase()} payment - supplier balance unchanged: ${supplier.balance}`);
+                }
+            } else {
+                console.warn(`⚠ Supplier not found: ${txn.entityId}`);
+            }
+            
+            // STEP 3: Refund CASH amount
+            if(txn.cashAmount && txn.cashAmount > 0) {
+                if(!db.config.cashBalance) db.config.cashBalance = 0;
+                const originalCash = db.config.cashBalance;
+                db.config.cashBalance = moneyRound(db.config.cashBalance + txn.cashAmount);
+                console.log(`✓ CASH REFUND: ${originalCash} → ${db.config.cashBalance} (added ${txn.cashAmount})`);
+            } else if(txn.payType === 'cash' && txn.total && txn.total > 0) {
+                // Fallback: if cashAmount is not set but payType is cash, refund the total
+                if(!db.config.cashBalance) db.config.cashBalance = 0;
+                const originalCash = db.config.cashBalance;
+                db.config.cashBalance = moneyRound(db.config.cashBalance + txn.total);
+                console.log(`✓ CASH REFUND (fallback): ${originalCash} → ${db.config.cashBalance} (added ${txn.total})`);
+            }
+            
+            // STEP 4: Refund BANK amount
+            if(txn.bankAmount && txn.bankAmount > 0) {
+                if(!db.config.bankBalance) db.config.bankBalance = 0;
+                const originalBank = db.config.bankBalance;
+                db.config.bankBalance = moneyRound(db.config.bankBalance + txn.bankAmount);
+                console.log(`✓ BANK REFUND: ${originalBank} → ${db.config.bankBalance} (added ${txn.bankAmount})`);
+            } else if(txn.payType === 'bank' && txn.total && txn.total > 0) {
+                // Fallback: if bankAmount is not set but payType is bank, refund the total
+                if(!db.config.bankBalance) db.config.bankBalance = 0;
+                const originalBank = db.config.bankBalance;
+                db.config.bankBalance = moneyRound(db.config.bankBalance + txn.total);
+                console.log(`✓ BANK REFUND (fallback): ${originalBank} → ${db.config.bankBalance} (added ${txn.total})`);
+            }
+            
+            // STEP 5: Delete batch entries that were created for this purchase
+            if(!db.batches) db.batches = [];
+            const originalBatchCount = db.batches.length;
+            const purchaseBatches = db.batches.filter(batch => batch.ref === txn.ref);
+            db.batches = db.batches.filter(batch => batch.ref !== txn.ref);
+            console.log(`✓ Removed ${purchaseBatches.length} batch entries`);
+            
+            // STEP 6: Delete the transaction itself from db.transactions
+            const originalTxnCount = db.transactions.length;
+            db.transactions = db.transactions.filter(t => t.id !== txnId);
+            console.log(`✓ Deleted purchase transaction #${txnId} (removed 1 of ${originalTxnCount})`);
+            
+            // STEP 7: Ensure purchase is completely removed from all storage
+            // Double-check that no trace of this purchase remains
+            const purchaseStillExists = db.transactions.some(t => t.id == txnId && t.type === 'purchase');
+            if(purchaseStillExists) {
+                console.warn(`⚠ WARNING: Purchase still exists after deletion attempt!`);
+                // Force removal again
+                db.transactions = db.transactions.filter(t => !(t.id == txnId && t.type === 'purchase'));
+            }
+            
+            console.log('=== PURCHASE DELETION COMPLETE ===');
+            
+            // IMMEDIATE SAVE - Don't use debounced saveDB() for critical deletes
+            // Save synchronously to ensure data is persisted before refresh
+            if(currentUser && DB_KEY) {
+                // 1. Save to localStorage IMMEDIATELY without debounce
+                localStorage.setItem(DB_KEY, JSON.stringify(db));
+                console.log('✓ Saved to localStorage immediately');
+                
+                // 2. Also save to Firebase if available
+                if(firebaseAvailable && dbRealtime) {
+                    const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
+                    set(userRef, db)
+                        .then(() => {
+                            console.log('✓ Synced to Firebase');
+                            updateSyncStatus("Synced ✓", "text-green-500");
+                        })
+                        .catch((err) => {
+                            console.error('Firebase sync error:', err);
+                            updateSyncStatus("Sync Error", "text-red-500");
+                        });
+                }
+            }
+            
+            // Force immediate UI update
+            setTimeout(() => {
+                loadPurchaseInvoices();
+                refreshUI();
+            }, 100);
+            
+            // Show success message
+            alert(`✓ PURCHASE DELETED PERMANENTLY!\n\n${txn.entityName}\nInvoice #${txn.ref || txn.id.toString().slice(-6)}\nAmount: ${db.config.currency}${txn.total.toFixed(2)}\n\nAll records have been permanently removed from database.`);
         }
         
         window.clearPurchaseFilters = function() {
@@ -6371,15 +6775,19 @@ Updated Balances:
         }
 
         window.deleteInvoice = function() {
-            if(!editTxnId || !confirm("Delete this invoice permanently? This will reverse stock changes.")) return;
+            if(!editTxnId || !confirm("Delete this invoice permanently? This will remove sold stock.")) return;
             
             const oldTxn = db.transactions.find(t => t.id === editTxnId);
             
             // REVERSE ALL EFFECTS
-            // 1. Revert stock
+            // 1. REMOVE SOLD STOCK (delete batch products sold in this invoice)
             oldTxn.items.forEach(i => {
-                const p = db.products.find(x => x.name === i.name);
-                if(p) p.stock += i.qty;
+                const p = db.products.find(x => x.id === i.id);
+                if(p) {
+                    console.log(`✓ Deleting sold batch: ${i.qty} units of "${i.name}" (ID: ${i.id})`);
+                    // Remove this batch product completely
+                    db.products = db.products.filter(x => x.id !== i.id);
+                }
             });
             
             // 2. Revert customer balance
@@ -6402,122 +6810,25 @@ Updated Balances:
             }
 
             db.transactions = db.transactions.filter(t => t.id !== editTxnId);
-            saveDB();
+            
+            // CRITICAL: Save immediately to localStorage (without debounce for permanent deletion)
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            
+            // Also sync to Firebase if available
+            if(firebaseAvailable && dbRealtime && currentUser) {
+                const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
+                set(userRef, db)
+                    .then(() => console.log("✓ Invoice deletion synced to Firebase"))
+                    .catch((err) => console.error("Firebase sync error:", err));
+            }
+            
             window.closeModal();
             loadInvoices();
             loadDashboard(); // Refresh dashboard KPIs
-            alert(`Invoice Deleted!\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
+            alert(`✓ INVOICE DELETED PERMANENTLY!\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}\n\nInvoice has been completely removed from database.`);
         }
 
         // Load and display batches in the Stock Batches table
-        window.loadPurchaseList = function() {
-            const tbody = document.getElementById('purchListBody');
-            if(!tbody) return;
-            
-            tbody.innerHTML = '';
-            const purchases = (db.transactions || []).filter(t => t.type === 'purchase' && !t.isReturn).slice().reverse();
-            
-            purchases.forEach(t => {
-                const itemCount = (t.items || []).length;
-                const totalQty = (t.items || []).reduce((sum, item) => sum + (item.qty || 0), 0);
-                const date = new Date(t.date).toLocaleDateString();
-                const supplier = t.entityName || 'Unknown';
-                const subtotal = t.sub || 0;
-                const tax = t.tax || 0;
-                const total = t.total || 0;
-                const payType = (t.payType || 'cash').toUpperCase();
-                
-                tbody.innerHTML += `
-                    <tr class="hover:bg-white/5 transition">
-                        <td class="p-3 text-gray-300">${date}</td>
-                        <td class="p-3 text-gray-300">${supplier}</td>
-                        <td class="p-3 text-right text-gray-300">${totalQty}</td>
-                        <td class="p-3 text-right text-gray-300">${db.config.currency}${subtotal.toFixed(2)}</td>
-                        <td class="p-3 text-right text-gray-300">${db.config.currency}${tax.toFixed(2)}</td>
-                        <td class="p-3 text-right font-bold text-white">${db.config.currency}${total.toFixed(2)}</td>
-                        <td class="p-3 text-yellow-400 text-xs">${payType}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="deletePurchase(${t.id})" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs transition">
-                                <i class="fa-solid fa-trash"></i> Delete
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            if(purchases.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">No purchases found</td></tr>';
-            }
-        }
-
-        window.filterPurchases = function() {
-            const searchTerm = (document.getElementById('purchaseSearch').value || '').toLowerCase();
-            const tbody = document.getElementById('purchListBody');
-            const rows = tbody.querySelectorAll('tr');
-            
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                if(text.includes(searchTerm)) {
-                    row.classList.remove('hidden');
-                } else {
-                    row.classList.add('hidden');
-                }
-            });
-        }
-
-        window.deletePurchase = function(txnId) {
-            const txn = db.transactions.find(t => t.id === txnId);
-            if(!txn) return alert('Purchase not found');
-            
-            if(!confirm(`Delete purchase from ${txn.entityName}?\nTotal: ${db.config.currency}${Math.abs(txn.total).toFixed(2)}\n\nThis will:\n• Reduce stock for ${(txn.items || []).length} product(s)\n• Refund supplier balance\n• Reverse cash/bank changes\n\nContinue?`)) {
-                return;
-            }
-            
-            // STEP 1: Restore stock for all items
-            (txn.items || []).forEach(item => {
-                const prod = db.products.find(p => p.id === item.id);
-                if(prod) {
-                    prod.stock -= item.qty || 1;
-                }
-            });
-            
-            // STEP 2: Reverse supplier balance
-            if(txn.entityId) {
-                const sup = db.suppliers.find(s => s.id === txn.entityId);
-                if(sup) {
-                    // Purchase decreased balance, so deletion increases it
-                    sup.balance = moneyRound((sup.balance || 0) - txn.total);
-                }
-            }
-            
-            // STEP 3: Reverse cash/bank changes
-            if (!db.config.cashBalance) db.config.cashBalance = 0;
-            if (!db.config.bankBalance) db.config.bankBalance = 0;
-            
-            if(txn.payType === 'cash') {
-                // Purchase decreased cash, so deletion increases it
-                db.config.cashBalance = moneyRound(db.config.cashBalance - txn.total);
-            } else if(txn.payType === 'bank') {
-                db.config.bankBalance = moneyRound(db.config.bankBalance - txn.total);
-            } else if(txn.payType === 'split') {
-                // Reverse split amounts
-                if(txn.splitCash) {
-                    db.config.cashBalance = moneyRound(db.config.cashBalance - txn.splitCash);
-                }
-                if(txn.splitBank) {
-                    db.config.bankBalance = moneyRound(db.config.bankBalance - txn.splitBank);
-                }
-            }
-            
-            // STEP 4: Remove transaction
-            db.transactions = db.transactions.filter(t => t.id !== txnId);
-            
-            saveDB();
-            loadPurchaseList();
-            loadDashboard();
-            alert('✓ Purchase deleted successfully');
-        }
-
         window.loadBatches = function() {
             const tbody = document.getElementById('batchBody');
             if(!tbody) return; // Element doesn't exist if not on purchases page
