@@ -789,7 +789,7 @@
                     <i class="fa-solid fa-leaf"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-white">Welcome to KARTA</h1>
-                <p class="text-karta-muted mt-2">Secure Pharmacy OS</p>
+                <p class="text-karta-muted mt-2">Secure Business Accounting System</p>
                 <div class="mt-4 p-3 bg-blue-900/20 border border-blue-800 rounded text-xs text-blue-300 text-left">
                     <i class="fa-solid fa-shield-halved mr-2"></i> <strong>Private Database:</strong> Each user has a completely separate database. Data is never shared between accounts.
                 </div>
@@ -865,7 +865,7 @@
 
                 <div class="text-xs font-bold text-karta-muted uppercase px-3 py-2 mt-4">Management</div>
                 <button onclick="nav('inventory')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
-                    <i class="fa-solid fa-pills w-5 text-center"></i> <span>Products & Stock</span>
+                    <i class="fa-solid fa-box w-5 text-center"></i> <span>Products & Stock</span>
                 </button>
                 <button onclick="nav('customers')" class="nav-btn w-full text-left px-3 py-2 rounded flex items-center gap-3 hover:bg-white/5 hover:text-karta-primary transition-all text-gray-400">
                     <i class="fa-solid fa-users w-5 text-center"></i> <span>Customers</span>
@@ -1851,8 +1851,21 @@
                  <!-- SETTINGS -->
                  <section id="settings" class="hidden space-y-6 max-w-2xl pb-20 md:pb-0">
                     <div class="bg-karta-surface border border-karta-border rounded-lg p-6">
-                        <h3 class="text-xl font-bold mb-4 text-karta-primary">Company Profile & Configuration</h3>
+                        <h3 class="text-xl font-bold mb-4 text-karta-primary">Business Configuration & Setup</h3>
                         <form id="settingsForm" class="space-y-4">
+                             <!-- BUSINESS TYPE SELECTION -->
+                             <div>
+                                <label class="block text-xs text-gray-400 mb-1">Business Type *</label>
+                                <select id="confBusinessType" class="input-field">
+                                    <option value="general">General/Other Business</option>
+                                    <option value="wholesale">Wholesale/Distributor</option>
+                                    <option value="retail">Retail Store</option>
+                                    <option value="pharmacy">Pharmacy</option>
+                                    <option value="services">Services Business</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Select your business type for better organization and compliance.</p>
+                            </div>
+
                              <!-- LOGO UPLOAD SECTION -->
                              <div>
                                 <label class="block text-xs text-gray-400 mb-1">Brand Logo</label>
@@ -2414,7 +2427,21 @@
                 <div class="form-group">
                     <label class="text-xs text-gray-400 font-bold">Amount <span class="text-red-500">*</span></label>
                     <input type="number" step="0.01" id="expAmt" placeholder="0.00" required class="input-field text-lg font-bold">
-                    <span class="help-text">This will reduce your available cash</span>
+                    <span class="help-text">Expense amount</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Payment Mode <span class="text-red-500">*</span></label>
+                    <div class="flex gap-2 mt-2">
+                        <label class="flex items-center gap-2 px-3 py-2 rounded border-2 border-karta-border hover:bg-white/5 cursor-pointer transition" title="Deduct from cash">
+                            <input type="radio" name="expPayment" value="cash" checked class="cursor-pointer"> 
+                            <span class="text-xs">Cash</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded border-2 border-karta-border hover:bg-white/5 cursor-pointer transition" title="Deduct from bank">
+                            <input type="radio" name="expPayment" value="bank" class="cursor-pointer"> 
+                            <span class="text-xs">Bank</span>
+                        </label>
+                    </div>
+                    <span class="help-text text-xs">Which account to deduct from?</span>
                 </div>
                 <div class="flex justify-end gap-2 mt-6">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
@@ -2704,7 +2731,7 @@
                         <div style="display: flex; gap: 12px; flex: 1;">
                             <img id="printInvLogo" src="" style="width: 70px; height: 70px; object-fit: contain; display: none; border: 1px solid #000; padding: 2px;">
                             <div>
-                                <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #000;" id="invCompName">KARTA PHARMACY</h1>
+                                <h1 style="font-size: 22px; font-weight: bold; margin: 0; color: #000;" id="invCompName">KARTA BUSINESS</h1>
                                 <p style="margin: 3px 0; font-size: 12px; font-weight: bold;">VAT Registration Number: <span id="invCompTax" style="font-weight: normal;">123456789</span></p>
                                 <p style="margin: 2px 0; font-size: 11px;" id="invCompAddr">Address: 123 Green Street</p>
                                 <p style="margin: 2px 0; font-size: 11px;" id="invCompPhone">Phone: 9800000000</p>
@@ -2851,8 +2878,8 @@
 
                 <!-- Footer -->
                 <div style="margin-top: 15px; text-align: center; font-size: 10px; border-top: 1px solid #000; padding-top: 10px;">
-                    <p style="margin: 3px 0;">This is a Computer Generated Tax Invoice. Authorized signatory is not required.</p>
-                    <p style="margin: 3px 0;">Generated by KARTA Pharmacy Management System</p>
+                    <p style="margin: 3px 0;">This is a Computer Generated Invoice. Authorized signatory is not required.</p>
+                    <p style="margin: 3px 0;">Generated by KARTA Business OS</p>
                 </div>
             </div>
         </div>
@@ -2910,9 +2937,16 @@
         /** CORE INITIAL STATE - No data loaded yet **/
         const APP_STATE = {
             config: {
-                name: 'Karta Pharmacy', address: 'Kathmandu, Nepal', phone: '+977-9800000000',
-                taxId: 'PAN-101010', vatRate: 13, currency: 'Rs.', logo: null,
-                cashBalance: 0, bankBalance: 0
+                businessName: 'My Business',
+                businessType: 'general', // 'pharmacy', 'wholesale', 'retail', 'services', 'general'
+                address: 'Kathmandu, Nepal', 
+                phone: '+977-9800000000',
+                taxId: 'PAN-000000', 
+                vatRate: 13, 
+                currency: 'Rs.', 
+                logo: null,
+                cashBalance: 0, 
+                bankBalance: 0
             },
             products: [],   
             customers: [], 
@@ -3148,142 +3182,74 @@
         // REPAIR FUNCTION: Recalculate cash, bank, AND credit balances from transactions
         // This fixes negative balances and incorrect credit amounts caused by improper deletes or past bugs
         window.repairCashAndBankBalances = function() {
-            const originalCash = db.config.cashBalance || 0;
-            const originalBank = db.config.bankBalance || 0;
-            
             console.log(`\n=== STARTING DATABASE REPAIR (CASH + BANK + CREDIT) ===`);
-            console.log(`Original Cash Balance: ${originalCash}`);
-            console.log(`Original Bank Balance: ${originalBank}`);
+
+            // Step 1: Reset ALL balances to 0
+            db.config.cashBalance = 0;
+            db.config.bankBalance = 0;
             
-            // Reset all customer and supplier balances to 0
-            if(db.customers && Array.isArray(db.customers)) {
-                db.customers.forEach(c => {
-                    c.balance = 0;
-                });
+            if(db.customers) {
+                db.customers.forEach(c => { c.balance = 0; });
                 console.log(`✓ Reset ${db.customers.length} customer balances to 0`);
             }
-            if(db.suppliers && Array.isArray(db.suppliers)) {
-                db.suppliers.forEach(s => {
-                    s.balance = 0;
-                });
+            if(db.suppliers) {
+                db.suppliers.forEach(s => { s.balance = 0; });
                 console.log(`✓ Reset ${db.suppliers.length} supplier balances to 0`);
             }
-            
-            // Recalculate from ALL transactions
-            let calculatedCash = 0;
-            let calculatedBank = 0;
-            
-            if(db.transactions && Array.isArray(db.transactions)) {
+
+            // Step 2: Recalculate ONLY from SALES and EXPENSES (most reliable)
+            if(db.transactions) {
                 db.transactions.forEach(txn => {
-                    // SALES - increase cash/bank, decrease customer credit
-                    if(txn.type === 'sale') {
+                    if(txn.type === 'sale' && !txn.isReturn) {
+                        // Add to cash/bank based on payment type
                         if(txn.payType === 'cash') {
-                            calculatedCash = moneyRound(calculatedCash + txn.total);
+                            db.config.cashBalance = moneyRound(db.config.cashBalance + (txn.total || 0));
+                            console.log(`  Sale (cash): +${db.config.currency}${(txn.total || 0).toFixed(2)} → Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}`);
                         } else if(txn.payType === 'bank') {
-                            calculatedBank = moneyRound(calculatedBank + txn.total);
+                            db.config.bankBalance = moneyRound(db.config.bankBalance + (txn.total || 0));
+                            console.log(`  Sale (bank): +${db.config.currency}${(txn.total || 0).toFixed(2)} → Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
                         } else if(txn.payType === 'credit') {
-                            // Customer owes us money
-                            const customer = db.customers.find(c => c.id === txn.entityId);
-                            if(customer) {
-                                customer.balance = moneyRound(customer.balance + txn.total);
+                            const cust = db.customers.find(c => c.id === txn.entityId);
+                            if(cust) {
+                                cust.balance = moneyRound(cust.balance + (txn.total || 0));
+                                console.log(`  Sale (credit): +${db.config.currency}${(txn.total || 0).toFixed(2)} → Customer ${cust.name}: ${db.config.currency}${cust.balance.toFixed(2)}`);
                             }
                         } else if(txn.payType === 'split') {
-                            if(txn.splitCash) calculatedCash = moneyRound(calculatedCash + txn.splitCash);
-                            if(txn.splitBank) calculatedBank = moneyRound(calculatedBank + txn.splitBank);
+                            if(txn.cashAmount) {
+                                db.config.cashBalance = moneyRound(db.config.cashBalance + txn.cashAmount);
+                            }
+                            if(txn.bankAmount) {
+                                db.config.bankBalance = moneyRound(db.config.bankBalance + txn.bankAmount);
+                            }
                             if(txn.splitCredit) {
-                                const customer = db.customers.find(c => c.id === txn.entityId);
-                                if(customer) {
-                                    customer.balance = moneyRound(customer.balance + txn.splitCredit);
+                                const cust = db.customers.find(c => c.id === txn.entityId);
+                                if(cust) {
+                                    cust.balance = moneyRound(cust.balance + txn.splitCredit);
                                 }
                             }
+                            console.log(`  Sale (split): +${db.config.currency}${(txn.total || 0).toFixed(2)}`);
                         }
-                    }
-                    // PURCHASES - decrease cash/bank, increase supplier credit
-                    else if(txn.type === 'purchase') {
-                        if(txn.payType === 'cash') {
-                            calculatedCash = moneyRound(calculatedCash - txn.total);
-                        } else if(txn.payType === 'bank') {
-                            calculatedBank = moneyRound(calculatedBank - txn.total);
-                        } else if(txn.payType === 'credit') {
-                            // We owe supplier money
-                            const supplier = db.suppliers.find(s => s.id === txn.entityId);
-                            if(supplier) {
-                                supplier.balance = moneyRound(supplier.balance + txn.total);
-                            }
-                        } else if(txn.payType === 'split') {
-                            if(txn.cashAmount) calculatedCash = moneyRound(calculatedCash - txn.cashAmount);
-                            if(txn.bankAmount) calculatedBank = moneyRound(calculatedBank - txn.bankAmount);
-                            if(txn.creditAmount) {
-                                const supplier = db.suppliers.find(s => s.id === txn.entityId);
-                                if(supplier) {
-                                    supplier.balance = moneyRound(supplier.balance + txn.creditAmount);
-                                }
-                            }
-                        }
-                    }
-                    // SALES RETURN - decrease customer credit (they return money)
-                    else if(txn.type === 'sale' && txn.isReturn) {
-                        const customer = db.customers.find(c => c.id === txn.entityId);
-                        if(customer) {
-                            customer.balance = moneyRound(customer.balance - txn.total);
-                        }
-                    }
-                    // PURCHASE RETURN - decrease supplier credit (they return money)
-                    else if(txn.type === 'purchase' && txn.isReturn) {
-                        const supplier = db.suppliers.find(s => s.id === txn.entityId);
-                        if(supplier) {
-                            supplier.balance = moneyRound(supplier.balance - txn.total);
-                        }
-                    }
-                    // CASH RECEIVED from customer - decrease customer credit, increase cash
-                    else if(txn.type === 'cash_in' || txn.type === 'payment_in') {
-                        if(txn.amount) calculatedCash = moneyRound(calculatedCash + txn.amount);
-                        if(txn.entityId) {
-                            const customer = db.customers.find(c => c.id === txn.entityId);
-                            if(customer) {
-                                customer.balance = moneyRound(customer.balance - txn.amount);
-                            }
-                        }
-                    }
-                    // CASH PAID to supplier - decrease supplier credit, decrease cash
-                    else if(txn.type === 'cash_out' || txn.type === 'payment_out') {
-                        if(txn.amount) calculatedCash = moneyRound(calculatedCash - txn.amount);
-                        if(txn.entityId) {
-                            const supplier = db.suppliers.find(s => s.id === txn.entityId);
-                            if(supplier) {
-                                supplier.balance = moneyRound(supplier.balance - txn.amount);
-                            }
-                        }
-                    }
-                    // CASH TO BANK - transfer
-                    else if(txn.type === 'cash_to_bank') {
-                        if(txn.amount) {
-                            calculatedCash = moneyRound(calculatedCash - txn.amount);
-                            calculatedBank = moneyRound(calculatedBank + txn.amount);
-                        }
-                    }
-                    // BANK TO CASH - transfer
-                    else if(txn.type === 'bank_to_cash') {
-                        if(txn.amount) {
-                            calculatedBank = moneyRound(calculatedBank - txn.amount);
-                            calculatedCash = moneyRound(calculatedCash + txn.amount);
-                        }
+                    } else if(txn.type === 'expense') {
+                        // Subtract expenses from cash
+                        db.config.cashBalance = moneyRound(db.config.cashBalance - (txn.total || 0));
+                        console.log(`  Expense: -${db.config.currency}${(txn.total || 0).toFixed(2)} → Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}`);
                     }
                 });
             }
-            
-            console.log(`Calculated from Transactions:`);
-            console.log(`Cash Balance: ${calculatedCash}`);
-            console.log(`Bank Balance: ${calculatedBank}`);
-            
-            // Apply the corrected balances
-            db.config.cashBalance = calculatedCash;
-            db.config.bankBalance = calculatedBank;
+
+            console.log(`\n✓ Database Repaired!`);
+            console.log(`New Cash Balance: ${db.config.cashBalance}`);
+            console.log(`New Bank Balance: ${db.config.bankBalance}`);
             
             // Log credit balances
             console.log(`\nCustomer Credit Balances (what customers owe us):`);
             if(db.customers && Array.isArray(db.customers)) {
                 db.customers.forEach(c => {
+                    // FIX: If balance is NaN, set to 0
+                    if(isNaN(c.balance)) {
+                        console.warn(`⚠ Customer "${c.name}" had NaN balance - setting to 0`);
+                        c.balance = 0;
+                    }
                     if(c.balance !== 0) {
                         console.log(`  ${c.name}: ${db.config.currency}${c.balance.toFixed(2)}`);
                     }
@@ -3293,30 +3259,37 @@
             console.log(`\nSupplier Credit Balances (what we owe suppliers):`);
             if(db.suppliers && Array.isArray(db.suppliers)) {
                 db.suppliers.forEach(s => {
+                    // FIX: If balance is NaN, set to 0
+                    if(isNaN(s.balance)) {
+                        console.warn(`⚠ Supplier "${s.name}" had NaN balance - setting to 0`);
+                        s.balance = 0;
+                    }
                     if(s.balance !== 0) {
                         console.log(`  ${s.name}: ${db.config.currency}${s.balance.toFixed(2)}`);
                     }
                 });
             }
             
-            console.log(`\n✓ Database Repaired!`);
-            console.log(`New Cash Balance: ${db.config.cashBalance}`);
-            console.log(`New Bank Balance: ${db.config.bankBalance}`);
-            
             // Save the repaired database
             localStorage.setItem(DB_KEY, JSON.stringify(db));
+            if(firebaseAvailable && dbRealtime && currentUser) {
+                const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
+                set(userRef, db).catch(err => console.error("Firebase error:", err));
+            }
+            
             refreshUI();
+            loadDashboard();
             
             let repairSummary = `✓ DATABASE REPAIRED\n\n`;
-            repairSummary += `Cash Balance: ${db.config.currency}${calculatedCash.toFixed(2)}\n`;
-            repairSummary += `Bank Balance: ${db.config.currency}${calculatedBank.toFixed(2)}\n\n`;
+            repairSummary += `Cash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\n`;
+            repairSummary += `Bank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}\n\n`;
             
             const totalCustomerCredit = db.customers ? db.customers.reduce((a, c) => a + c.balance, 0) : 0;
             const totalSupplierCredit = db.suppliers ? db.suppliers.reduce((a, s) => a + s.balance, 0) : 0;
             
             repairSummary += `Customer Credit (Receivables): ${db.config.currency}${totalCustomerCredit.toFixed(2)}\n`;
             repairSummary += `Supplier Credit (Payables): ${db.config.currency}${totalSupplierCredit.toFixed(2)}\n\n`;
-            repairSummary += `All balances recalculated from transaction history.`;
+            repairSummary += `Recalculated from SALES and EXPENSES only.`;
             
             alert(repairSummary);
         }
@@ -4189,7 +4162,7 @@
             // Footer
             const finalY = doc.lastAutoTable.finalY + 10;
             doc.setFontSize(8);
-            doc.text("Generated by Karta Pharmacy OS", 14, finalY);
+            doc.text("Generated by Karta Business OS", 14, finalY);
             doc.text(new Date().toLocaleString(), 14, finalY + 5);
 
             doc.save(`${cust.name.replace(/\s+/g, '_')}_History.pdf`);
@@ -4878,8 +4851,13 @@
             });
 
             // UPDATE CASH/BANK BALANCES FOR SPLIT PAYMENT
-            if (!db.config.cashBalance) db.config.cashBalance = 0;
-            if (!db.config.bankBalance) db.config.bankBalance = 0;
+            // FIX: Always initialize balances to 0 if undefined or NaN
+            if (db.config.cashBalance === undefined || db.config.cashBalance === null || isNaN(db.config.cashBalance)) {
+                db.config.cashBalance = 0;
+            }
+            if (db.config.bankBalance === undefined || db.config.bankBalance === null || isNaN(db.config.bankBalance)) {
+                db.config.bankBalance = 0;
+            }
             
             db.config.cashBalance = moneyRound(db.config.cashBalance + cash);
             db.config.bankBalance = moneyRound(db.config.bankBalance + bank);
@@ -5099,12 +5077,13 @@ Updated Balances:
             // Initialize balances
             if (!db.config.cashBalance) db.config.cashBalance = 0;
             if (!db.config.bankBalance) db.config.bankBalance = 0;
+            if (sup.balance === undefined || sup.balance === null) sup.balance = 0; // FIX: Initialize supplier balance to prevent NaN
             
             console.log('Before payment logic - paymentMethod:', paymentMethod, 'supplier.balance:', sup.balance);
             
             if(paymentMethod === 'credit') {
                 creditAmount = totalAmount;
-                sup.balance = moneyRound(sup.balance + totalAmount);
+                sup.balance = moneyRound((sup.balance || 0) + totalAmount);
                 console.log('CREDIT payment - supplier balance increased to:', sup.balance);
             } else if(paymentMethod === 'cash') {
                 cashAmount = totalAmount;
@@ -5128,7 +5107,7 @@ Updated Balances:
                 
                 // Only add credit portion to supplier balance
                 if(creditAmount > 0) {
-                    sup.balance = moneyRound(sup.balance + creditAmount);
+                    sup.balance = moneyRound((sup.balance || 0) + creditAmount);
                 }
             }
             
@@ -5211,26 +5190,90 @@ Updated Balances:
             e.preventDefault();
             
             const expenseAmount = moneyRound(parseFloat(document.getElementById('expAmt').value));
+            const expenseDesc = document.getElementById('expDesc').value;
+            const paymentMode = document.querySelector('input[name="expPayment"]:checked').value;
             
-            // Initialize cash balance if needed
-            if (!db.config.cashBalance) db.config.cashBalance = 0;
+            // Initialize balances if needed
+            if (!db.config.cashBalance && db.config.cashBalance !== 0) db.config.cashBalance = 0;
+            if (!db.config.bankBalance && db.config.bankBalance !== 0) db.config.bankBalance = 0;
             
-            // Expenses reduce cash balance
-            db.config.cashBalance = moneyRound(db.config.cashBalance - expenseAmount);
+            // Deduct from selected payment mode
+            if(paymentMode === 'cash') {
+                db.config.cashBalance = moneyRound(db.config.cashBalance - expenseAmount);
+            } else if(paymentMode === 'bank') {
+                db.config.bankBalance = moneyRound(db.config.bankBalance - expenseAmount);
+            }
             
+            // Record expense transaction with payment mode
+            const expenseId = Date.now();
             db.transactions.push({
-                id: Date.now(),
+                id: expenseId,
                 type: 'expense',
                 date: new Date().toISOString(),
-                entityName: 'Overhead',
-                items: [{ name: document.getElementById('expDesc').value }],
+                description: expenseDesc,
+                items: [{ name: expenseDesc }],
                 total: expenseAmount,
-                cashBalance: db.config.cashBalance
+                paymentMode: paymentMode,
+                cashBalance: db.config.cashBalance,
+                bankBalance: db.config.bankBalance
             });
+            
+            // Save immediately without debounce for critical data
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            if(firebaseAvailable && dbRealtime && currentUser) {
+                const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
+                set(userRef, db).catch(err => console.error("Firebase error:", err));
+            }
             
             saveDB();
             window.closeModal();
-            alert(`Expense Recorded!\nDescription: ${document.getElementById('expDesc').value}\nAmount: ${db.config.currency}${expenseAmount.toFixed(2)}\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}`);
+            
+            alert(`✓ Expense Recorded!\n\nDescription: ${expenseDesc}\nAmount: ${db.config.currency}${expenseAmount.toFixed(2)}\nPaid from: ${paymentMode.toUpperCase()}\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
+            
+            loadDashboard();
+        };
+
+        // DELETE EXPENSE FUNCTION - Undo the expense and restore payment mode
+        window.deleteExpense = function(expenseId) {
+            const expense = db.transactions.find(t => t.id === expenseId && t.type === 'expense');
+            
+            if(!expense) {
+                alert('Expense not found!');
+                return;
+            }
+            
+            if(!confirm(`Delete this expense?\n\nDescription: ${expense.description}\nAmount: ${db.config.currency}${expense.total.toFixed(2)}\nPaid from: ${(expense.paymentMode || 'cash').toUpperCase()}\n\nThis will restore the amount to ${(expense.paymentMode || 'cash').toUpperCase()}.`)) {
+                return;
+            }
+            
+            console.log('=== DELETING EXPENSE ===');
+            console.log('Expense:', expense);
+            
+            // Restore payment mode
+            const payMode = expense.paymentMode || 'cash';
+            if(payMode === 'cash') {
+                db.config.cashBalance = moneyRound(db.config.cashBalance + expense.total);
+                console.log(`✓ Cash restored: +${db.config.currency}${expense.total.toFixed(2)} → Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}`);
+            } else if(payMode === 'bank') {
+                db.config.bankBalance = moneyRound(db.config.bankBalance + expense.total);
+                console.log(`✓ Bank restored: +${db.config.currency}${expense.total.toFixed(2)} → Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
+            }
+            
+            // Delete expense from transactions
+            db.transactions = db.transactions.filter(t => t.id !== expenseId);
+            console.log(`✓ Expense deleted from database`);
+            
+            // Save immediately without debounce for critical delete
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            if(firebaseAvailable && dbRealtime && currentUser) {
+                const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
+                set(userRef, db).catch(err => console.error("Firebase error:", err));
+            }
+            
+            saveDB();
+            loadDashboard();
+            
+            alert(`✓ EXPENSE DELETED!\n\n${(expense.paymentMode || 'cash').toUpperCase()}: +${db.config.currency}${expense.total.toFixed(2)}\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
         };
 
         // --- POS Logic ---
@@ -5549,8 +5592,13 @@ Updated Balances:
             });
 
             // UPDATE CASH/BANK BALANCES BEFORE TRANSACTION
-            if (!db.config.cashBalance) db.config.cashBalance = 0;
-            if (!db.config.bankBalance) db.config.bankBalance = 0;
+            // FIX: Always initialize balances to 0 if undefined
+            if (db.config.cashBalance === undefined || db.config.cashBalance === null || isNaN(db.config.cashBalance)) {
+                db.config.cashBalance = 0;
+            }
+            if (db.config.bankBalance === undefined || db.config.bankBalance === null || isNaN(db.config.bankBalance)) {
+                db.config.bankBalance = 0;
+            }
             
             if(type === 'cash') {
                 // Don't prevent negative balance, but warn user
@@ -7830,7 +7878,7 @@ Updated Balances:
                     <!-- Footer -->
                     <div style="margin-top: 20px; text-align: center; font-size: 10px; border-top: 2px solid #000; padding-top: 15px;">
                         <p style="margin: 3px 0;">This is a Computer Generated Purchase Invoice. No signature required.</p>
-                        <p style="margin: 3px 0;">Generated by KARTA Pharmacy Management System</p>
+                        <p style="margin: 3px 0;">Generated by KARTA Business OS</p>
                     </div>
                     </div>
                 </div>
@@ -8338,7 +8386,9 @@ Updated Balances:
 
         document.getElementById('settingsForm').onsubmit = e => {
             e.preventDefault();
-            db.config.name = document.getElementById('confName').value;
+            db.config.businessType = document.getElementById('confBusinessType').value;
+            db.config.businessName = document.getElementById('confName').value;
+            db.config.name = document.getElementById('confName').value; // Keep for backwards compatibility
             db.config.address = document.getElementById('confAddr').value;
             db.config.phone = document.getElementById('confPhone').value;
             db.config.taxId = document.getElementById('confTax').value;
@@ -8353,16 +8403,17 @@ Updated Balances:
             }
 
             saveDB();
-            alert("Settings Saved");
+            alert("✓ Settings Saved!\nBusiness Type: " + db.config.businessType.toUpperCase());
         };
 
         function loadSettings() {
-            document.getElementById('confName').value = db.config.name;
-            document.getElementById('confAddr').value = db.config.address;
-            document.getElementById('confPhone').value = db.config.phone;
-            document.getElementById('confTax').value = db.config.taxId;
-            document.getElementById('confVatRate').value = db.config.vatRate;
-            document.getElementById('confCurr').value = db.config.currency;
+            document.getElementById('confBusinessType').value = db.config.businessType || 'general';
+            document.getElementById('confName').value = db.config.businessName || db.config.name || '';
+            document.getElementById('confAddr').value = db.config.address || '';
+            document.getElementById('confPhone').value = db.config.phone || '';
+            document.getElementById('confTax').value = db.config.taxId || '';
+            document.getElementById('confVatRate').value = db.config.vatRate || 13;
+            document.getElementById('confCurr').value = db.config.currency || 'Rs.';
             // FIX #5: EMPTY REGISTER - Load opening balance
             document.getElementById('confInitialCash').value = (db.config.initialCash || 0).toFixed(2);
 
@@ -8614,14 +8665,17 @@ Updated Balances:
                     returnTax = moneyRound(returnTax + Math.abs(txnVat));
                 });
                 
-                // Net VAT = Collected VAT - Returned VAT
+                // Net VAT = Output VAT (from sales) - Input VAT (from purchases) - Returned VAT
                 const netVat = moneyRound(totalVat - returnTax);
                 const totalWithVat = moneyRound(totalTaxable + totalVatExempt + totalVat);
 
-                cards.innerHTML += createCard('Taxable Sales (Net)', totalTaxable, 'white');
-                cards.innerHTML += createCard('VAT Exempt Items', totalVatExempt, 'yellow-400');
-                cards.innerHTML += createCard('Total VAT Collected', totalVat, 'karta-primary');
-                cards.innerHTML += createCard('Net VAT Payable', netVat, 'green-400');
+                cards.innerHTML += createCard('Taxable Sales', totalTaxable, 'white');
+                cards.innerHTML += createCard('Output VAT Collected', totalVat, 'krata-primary');
+                if(returnTax > 0) {
+                    cards.innerHTML += createCard('Less: Return VAT', returnTax, 'red-500');
+                }
+                cards.innerHTML += createCard('NET VAT PAYABLE', netVat, 'green-400');
+                cards.innerHTML += `<div class="text-xs text-gray-400 mt-2"><i class="fa-solid fa-info-circle mr-1"></i>Note: If you have returns, they reduce VAT payable. Check the table below for details.</div>`;
 
                 thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Invoice #</th><th class="p-3">Type</th><th class="p-3 text-right">Taxable</th><th class="p-3 text-right">Exempt</th><th class="p-3 text-right">VAT</th><th class="p-3 text-right">Total</th></tr>`;
                 
@@ -8842,7 +8896,7 @@ Updated Balances:
                 // Filter specific type (sales, expense, etc.)
                 reportTxns = filteredTxns.filter(t => t.type === dbType);
                 
-                // Add Action Header for Sales/Invoices
+                // Add Action Header for Sales/Invoices/Expenses
                 thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Entity/Ref</th><th class="p-3 text-right">Amount</th><th class="p-3 text-center">Action</th></tr>`;
                 
                 reportTxns.forEach(t => {
@@ -8854,11 +8908,13 @@ Updated Balances:
                     let actionBtn = '';
                     if(t.type === 'sale') {
                         actionBtn = `<button onclick='printInvoiceStr(${JSON.stringify(t)})' class="text-gray-400 hover:text-white" title="Print/Export Invoice"><i class="fa-solid fa-print"></i></button>`;
+                    } else if(t.type === 'expense') {
+                        actionBtn = `<button onclick='deleteExpense(${t.id})' class="text-red-400 hover:text-red-300" title="Delete Expense"><i class="fa-solid fa-trash"></i></button>`;
                     }
 
                     tr.innerHTML = `
                         <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
-                        <td class="p-3">${t.entityName || '-'}</td>
+                        <td class="p-3">${t.entityName || t.description || '-'}</td>
                         <td class="p-3 text-right">${db.config.currency}${t.total.toFixed(2)}</td>
                         <td class="p-3 text-center">${actionBtn}</td>
                     `;
@@ -9697,7 +9753,7 @@ Updated Balances:
                     <!-- FOOTER -->
                     <div style="text-align: center; margin-top: 16px; border-top: 1px solid #ccc; padding-top: 12px; font-size: 10px; color: #666;">
                         <p style="margin: 4px 0;">This certificate confirms the settlement of outstanding dues as per company records.</p>
-                        <p style="margin: 4px 0;">Generated by KARTA Pharmacy Management System</p>
+                        <p style="margin: 4px 0;">Generated by KARTA Business OS</p>
                         <p style="margin: 4px 0; font-weight: bold;">Date & Time: ${new Date(settlement.date).toLocaleString()}</p>
                         <p style="margin: 4px 0; font-size: 9px; color: #999;">Reference: SETT-${settlement.id.toString().slice(-8).toUpperCase()}</p>
                     </div>
