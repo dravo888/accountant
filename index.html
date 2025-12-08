@@ -4924,7 +4924,8 @@
                 bankAmount: bank,
                 creditAmount: credit,
                 cashBalance: db.config.cashBalance,
-                bankBalance: db.config.bankBalance
+                bankBalance: db.config.bankBalance,
+                invoiceNumber: getNextInvoiceNumber()
             };
             db.transactions.push(txn);
             saveDB();
@@ -5667,7 +5668,8 @@ Updated Balances:
                 bankAmount: type === 'bank' ? total : 0,
                 creditAmount: type === 'credit' ? total : 0,
                 cashBalance: db.config.cashBalance,
-                bankBalance: db.config.bankBalance
+                bankBalance: db.config.bankBalance,
+                invoiceNumber: getNextInvoiceNumber()
             };
             db.transactions.push(txn);
             saveDB();
@@ -6188,7 +6190,8 @@ Updated Balances:
                     payType: refundMethod,
                     isReturn: true,
                     cashBalance: db.config.cashBalance,
-                    bankBalance: db.config.bankBalance
+                    bankBalance: db.config.bankBalance,
+                    invoiceNumber: getNextInvoiceNumber()
                 };
                 
                 // Add payment amounts based on refund method
@@ -6439,20 +6442,24 @@ Updated Balances:
             tbody.innerHTML = '';
             const search = document.getElementById('invoiceSearch').value.toLowerCase();
             const filterDate = document.getElementById('invoiceDateFilter').value;
-
-            // Get all sales transactions sorted by date (oldest first) to assign sequential numbers
+            
+            // Get all sales sorted by date for legacy numbering (assigns sequential numbers starting from config.invoiceStartNumber)
             const allSales = db.transactions.filter(t => t.type === 'sale').sort((a, b) => new Date(a.date) - new Date(b.date));
             
             db.transactions.slice().reverse().filter(t => t.type === 'sale').forEach(t => {
-                // Get sequential number based on position in all sales (0-based, so add 1)
                 let invoiceNum = t.invoiceNumber;
                 
-                // If invoice number not stored, assign it based on position
+                // For invoices created before invoiceNumber field was added:
+                // Assign number based on position in chronological order ONLY (not based on reset number)
                 if(!invoiceNum) {
                     const position = allSales.findIndex(s => s.id === t.id);
-                    const startNum = db.config.invoiceStartNumber || 1;
-                    // Position is 0-based, so position 0 = first invoice = startNum
-                    invoiceNum = 'INV-' + String(startNum + position).padStart(3, '0');
+                    // IMPORTANT: Use position directly, starting from 1
+                    // If you have invoices 1-10 already, they will always stay 1-10
+                    // Only NEW invoices will use the reset start number
+                    invoiceNum = 'INV-' + String(1 + position).padStart(3, '0');
+                    
+                    // Backfill the invoiceNumber into the transaction
+                    t.invoiceNumber = invoiceNum;
                 }
                 
                 // Check search term - search by invoice number or customer name
@@ -6481,6 +6488,9 @@ Updated Balances:
                 `;
                 tbody.appendChild(tr);
             });
+            
+            // Save backfilled invoiceNumbers
+            saveDB();
         }
         
         // Clear all filters
@@ -7302,12 +7312,11 @@ Updated Balances:
             // Invoice Details - Get the same invoice number as shown in list
             let invoiceNum = txn.invoiceNumber;
             if(!invoiceNum) {
-                // If not stored, calculate based on position
+                // For old invoices without invoiceNumber field, assign based on chronological position
                 const allSales = db.transactions.filter(t => t.type === 'sale').sort((a, b) => new Date(a.date) - new Date(b.date));
                 const position = allSales.findIndex(s => s.id === txn.id);
-                const startNum = db.config.invoiceStartNumber || 1;
-                // Position is 0-based, so position 0 = first invoice = startNum
-                invoiceNum = 'INV-' + String(startNum + position).padStart(3, '0');
+                // Use position directly, not reset number - keeps old invoices unchanged
+                invoiceNum = 'INV-' + String(1 + position).padStart(3, '0');
             }
             document.getElementById('invNo').innerText = invoiceNum;
             document.getElementById('invDate').innerText = new Date(txn.date).toLocaleDateString();
@@ -8511,13 +8520,16 @@ Updated Balances:
             
             const invNum = db.config.nextInvoiceNumber || 1;
             db.config.nextInvoiceNumber = (invNum + 1);
+            
+            const invoiceNum = 'INV-' + String(invNum).padStart(3, '0');
+            
             saveDB();
             
             // Update UI preview
             document.getElementById('nextInvoicePreview').innerText = db.config.nextInvoiceNumber;
-            document.getElementById('currentInvoiceNumber').value = 'INV-' + String(invNum).padStart(3, '0');
+            document.getElementById('currentInvoiceNumber').value = invoiceNum;
             
-            return 'INV-' + String(invNum).padStart(3, '0');
+            return invoiceNum;
         };
 
         window.resetInvoiceNumbering = function() {
