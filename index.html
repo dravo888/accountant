@@ -15,7 +15,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- jsPDF & AutoTable for PDF Export -->
@@ -1918,7 +1918,47 @@
                         </form>
                         
                         <div class="mt-10 pt-6 border-t border-gray-700 space-y-4">
-                            <h4 class="font-bold text-white">Data Management</h4>
+                            <h4 class="font-bold text-white">Invoice Settings</h4>
+                            
+                            <!-- INVOICE NUMBER MANAGEMENT -->
+                            <div class="p-4 bg-white/5 rounded border border-gray-700 mb-4">
+                                <h5 class="text-karta-primary font-bold mb-2"><i class="fa-solid fa-receipt"></i> Sales Invoice Numbering</h5>
+                                <p class="text-xs text-gray-400 mb-3">Control how your sales invoices are numbered.</p>
+                                
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs text-gray-400 mb-2">Current Invoice Number</label>
+                                        <div class="flex items-center gap-2">
+                                            <input type="text" id="currentInvoiceNumber" class="input-field flex-1" readonly>
+                                            <span class="text-xs text-gray-500">(Auto-generated)</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-400 mb-2">Reset Starting Number</label>
+                                            <input type="number" id="invoiceStartNumber" class="input-field" placeholder="e.g., 1001" value="1">
+                                        </div>
+                                        <div class="flex items-end">
+                                            <button type="button" onclick="resetInvoiceNumbering()" class="w-full bg-orange-700 text-white px-4 py-2 rounded text-xs hover:bg-orange-600 text-center">
+                                                <i class="fa-solid fa-redo"></i> Reset & Start Fresh
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center gap-2 p-2 bg-blue-900/20 rounded border border-blue-700/50">
+                                        <input type="checkbox" id="autoInvoiceNumber" class="w-4 h-4" checked>
+                                        <label for="autoInvoiceNumber" class="text-xs text-gray-300 cursor-pointer">Auto-increment invoice numbers (recommended)</label>
+                                    </div>
+                                    
+                                    <p class="text-xs text-gray-500 mt-2">
+                                        <i class="fa-solid fa-info-circle"></i> Next invoice will be #<span id="nextInvoicePreview">1</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mt-10 pt-6 border-t border-gray-700 space-y-4">
+                                <h4 class="font-bold text-white">Data Management</h4>
                             
                             <!-- FIREBASE CLOUD SYNC -->
                             <div class="p-4 bg-white/5 rounded border border-gray-700 mb-4">
@@ -6400,9 +6440,23 @@ Updated Balances:
             const search = document.getElementById('invoiceSearch').value.toLowerCase();
             const filterDate = document.getElementById('invoiceDateFilter').value;
 
+            // Get all sales transactions sorted by date (oldest first) to assign sequential numbers
+            const allSales = db.transactions.filter(t => t.type === 'sale').sort((a, b) => new Date(a.date) - new Date(b.date));
+            
             db.transactions.slice().reverse().filter(t => t.type === 'sale').forEach(t => {
-                // Check search term
-                if(search && !t.id.toString().includes(search) && !t.entityName.toLowerCase().includes(search)) {
+                // Get sequential number based on position in all sales (0-based, so add 1)
+                let invoiceNum = t.invoiceNumber;
+                
+                // If invoice number not stored, assign it based on position
+                if(!invoiceNum) {
+                    const position = allSales.findIndex(s => s.id === t.id);
+                    const startNum = db.config.invoiceStartNumber || 1;
+                    // Position is 0-based, so position 0 = first invoice = startNum
+                    invoiceNum = 'INV-' + String(startNum + position).padStart(3, '0');
+                }
+                
+                // Check search term - search by invoice number or customer name
+                if(search && !invoiceNum.toLowerCase().includes(search) && !t.entityName.toLowerCase().includes(search)) {
                     return;
                 }
                 
@@ -6416,7 +6470,7 @@ Updated Balances:
                 tr.className = "hover:bg-white/5 border-b border-gray-800";
                 tr.innerHTML = `
                     <td class="p-3 text-gray-400 text-xs">${new Date(t.date).toLocaleDateString()}</td>
-                    <td class="p-3 font-mono">#${t.id.toString().slice(-6)}</td>
+                    <td class="p-3 font-mono">${invoiceNum}</td>
                     <td class="p-3 font-bold text-white">${t.entityName}</td>
                     <td class="p-3 text-right text-green-400">${db.config.currency}${t.total.toFixed(2)}</td>
                     <td class="p-3 text-center"><span class="px-2 py-1 rounded text-xs ${t.payType==='credit' ? 'bg-yellow-900 text-yellow-300' : 'bg-green-900 text-green-300'} uppercase">${t.payType || 'cash'}</span></td>
@@ -6823,18 +6877,21 @@ Updated Balances:
         }
 
         window.deleteInvoice = function() {
-            if(!editTxnId || !confirm("Delete this invoice permanently? This will remove sold stock.")) return;
+            if(!editTxnId || !confirm("Delete this invoice permanently? This will restore stock and refund money.")) return;
             
             const oldTxn = db.transactions.find(t => t.id === editTxnId);
             
             // REVERSE ALL EFFECTS
-            // 1. REMOVE SOLD STOCK (delete batch products sold in this invoice)
+            // 1. RESTORE SOLD STOCK (add back quantity to inventory)
             oldTxn.items.forEach(i => {
                 const p = db.products.find(x => x.id === i.id);
                 if(p) {
-                    console.log(`✓ Deleting sold batch: ${i.qty} units of "${i.name}" (ID: ${i.id})`);
-                    // Remove this batch product completely
-                    db.products = db.products.filter(x => x.id !== i.id);
+                    console.log(`✓ Restocking: Adding ${i.qty} units of "${i.name}" back to inventory`);
+                    // Restore stock quantity
+                    p.stock = (p.stock || 0) + i.qty;
+                    console.log(`  New stock: ${p.stock} units`);
+                } else {
+                    console.warn(`⚠ Product not found: ${i.name} (ID: ${i.id})`);
                 }
             });
             
@@ -7242,8 +7299,17 @@ Updated Balances:
             document.getElementById('invCompTax').innerText = db.config.taxId || '123456789';
             document.getElementById('invCompRepName').innerText = db.config.name || 'Company';
             
-            // Invoice Details
-            document.getElementById('invNo').innerText = txn.id.toString().slice(-6);
+            // Invoice Details - Get the same invoice number as shown in list
+            let invoiceNum = txn.invoiceNumber;
+            if(!invoiceNum) {
+                // If not stored, calculate based on position
+                const allSales = db.transactions.filter(t => t.type === 'sale').sort((a, b) => new Date(a.date) - new Date(b.date));
+                const position = allSales.findIndex(s => s.id === txn.id);
+                const startNum = db.config.invoiceStartNumber || 1;
+                // Position is 0-based, so position 0 = first invoice = startNum
+                invoiceNum = 'INV-' + String(startNum + position).padStart(3, '0');
+            }
+            document.getElementById('invNo').innerText = invoiceNum;
             document.getElementById('invDate').innerText = new Date(txn.date).toLocaleDateString();
             document.getElementById('invSignDate').innerText = new Date(txn.date).toLocaleDateString();
             
@@ -8427,7 +8493,63 @@ Updated Balances:
                 clearLogo();
                 tempLogoBase64 = null; // Reset temp
             }
+
+            // Load Invoice Settings
+            db.config.invoiceStartNumber = db.config.invoiceStartNumber || 1;
+            db.config.nextInvoiceNumber = db.config.nextInvoiceNumber || 1;
+            db.config.autoInvoiceNumber = db.config.autoInvoiceNumber !== false; // Default true
+            
+            document.getElementById('invoiceStartNumber').value = db.config.invoiceStartNumber;
+            document.getElementById('currentInvoiceNumber').value = 'INV-' + String(db.config.nextInvoiceNumber).padStart(3, '0');
+            document.getElementById('autoInvoiceNumber').checked = db.config.autoInvoiceNumber;
+            document.getElementById('nextInvoicePreview').innerText = db.config.nextInvoiceNumber;
         }
+
+        // --- INVOICE NUMBERING FUNCTIONS ---
+        window.getNextInvoiceNumber = function() {
+            if(!db.config.autoInvoiceNumber) return null;
+            
+            const invNum = db.config.nextInvoiceNumber || 1;
+            db.config.nextInvoiceNumber = (invNum + 1);
+            saveDB();
+            
+            // Update UI preview
+            document.getElementById('nextInvoicePreview').innerText = db.config.nextInvoiceNumber;
+            document.getElementById('currentInvoiceNumber').value = 'INV-' + String(invNum).padStart(3, '0');
+            
+            return 'INV-' + String(invNum).padStart(3, '0');
+        };
+
+        window.resetInvoiceNumbering = function() {
+            const startNum = parseInt(document.getElementById('invoiceStartNumber').value) || 1;
+            
+            if(confirm(`Reset invoice numbering to start at #${startNum}? This will affect all future invoices.`)) {
+                db.config.invoiceStartNumber = startNum;
+                db.config.nextInvoiceNumber = startNum;
+                db.config.autoInvoiceNumber = document.getElementById('autoInvoiceNumber').checked;
+                saveDB();
+                
+                document.getElementById('currentInvoiceNumber').value = 'INV-' + String(startNum).padStart(3, '0');
+                document.getElementById('nextInvoicePreview').innerText = startNum;
+                
+                alert(`✓ Invoice numbering reset! Next invoice will be #${startNum}`);
+            }
+        };
+
+        window.setAutoInvoiceNumbering = function(enabled) {
+            db.config.autoInvoiceNumber = enabled;
+            saveDB();
+        };
+
+        // Auto-invoice checkbox event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            const autoCheckbox = document.getElementById('autoInvoiceNumber');
+            if(autoCheckbox) {
+                autoCheckbox.addEventListener('change', function() {
+                    setAutoInvoiceNumbering(this.checked);
+                });
+            }
+        });
 
         // --- Reports Export Logic ---
         window.exportReportCSV = function() {
