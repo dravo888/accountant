@@ -2317,7 +2317,7 @@
             
             <form id="purchForm" class="space-y-6">
                 <!-- Supplier Selection & Purchase Date -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="text-xs font-bold text-gray-400 mb-2 block uppercase tracking-wide">🏢 Select Supplier</label>
                         <select id="poSup" onchange="loadSupplierProducts()" class="input-field w-full" required>
@@ -2328,6 +2328,11 @@
                         <label class="text-xs font-bold text-gray-400 mb-2 block uppercase tracking-wide">📅 Purchase Date</label>
                         <input type="date" id="purchaseDate" class="input-field w-full" required>
                         <span class="help-text text-xs text-gray-500">Can be today, yesterday, or future date</span>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 mb-2 block uppercase tracking-wide">📋 Supplier Invoice #</label>
+                        <input type="text" id="supplierInvoiceNumber" class="input-field w-full" placeholder="e.g., INV-2025-001" required>
+                        <span class="help-text text-xs text-gray-500">Supplier's invoice number</span>
                     </div>
                 </div>
 
@@ -5168,6 +5173,7 @@ Updated Balances:
                 bankAmount: bankAmount,
                 creditAmount: creditAmount,
                 ref: ref,
+                supplierInvoiceNumber: document.getElementById('supplierInvoiceNumber').value,
                 cashBalance: db.config.cashBalance,
                 bankBalance: db.config.bankBalance,
                 purchaseDate: purchaseDate
@@ -5177,6 +5183,7 @@ Updated Balances:
             const purchaseInvoice = {
                 id: Date.now(),
                 ref: ref,
+                supplierInvoiceNumber: document.getElementById('supplierInvoiceNumber').value,
                 date: purchaseDate,
                 supplier: sup.name,
                 supplierId: supId,
@@ -6375,6 +6382,7 @@ Updated Balances:
                 const purchaseInvoice = {
                     id: txn.id,
                     ref: txn.ref || txn.id.toString().slice(-6),
+                    supplierInvoiceNumber: txn.supplierInvoiceNumber || null,
                     date: txn.date,
                     supplier: txn.entityName,
                     supplierId: txn.entityId,
@@ -6543,7 +6551,8 @@ Updated Balances:
             
             purchases.forEach(t => {
                 const invoiceDate = t.purchaseDate ? new Date(t.purchaseDate).toLocaleDateString() : new Date(t.date).toLocaleDateString();
-                const invoiceNo = t.ref || t.id.toString().slice(-6);
+                // Prefer supplier-provided invoice number; fallback to internal ref or id
+                const invoiceNo = t.supplierInvoiceNumber || t.ref || t.id.toString().slice(-6);
                 
                 const paymentColor = t.payType === 'credit' ? 'bg-yellow-900 text-yellow-300' : 'bg-green-900 text-green-300';
                 
@@ -7597,6 +7606,7 @@ Updated Balances:
             const purchaseInvoice = {
                 id: txn.id,
                 ref: txn.ref || txn.id.toString().slice(-6),
+                supplierInvoiceNumber: txn.supplierInvoiceNumber || null,
                 date: txn.purchaseDate || txn.date,
                 supplier: txn.entityName,
                 supplierId: txn.entityId,
@@ -7636,6 +7646,7 @@ Updated Balances:
             const purchaseInvoice = {
                 id: txn.id,
                 ref: txn.ref || txn.id.toString().slice(-6),
+                supplierInvoiceNumber: txn.supplierInvoiceNumber || null,
                 date: txn.purchaseDate || txn.date,
                 supplier: txn.entityName,
                 supplierId: txn.entityId,
@@ -7794,7 +7805,7 @@ Updated Balances:
                             <div style="text-align: center; border-left: 3px solid #000; padding-left: 20px; background: #f9f9f9; padding: 15px 20px; min-width: 220px;">
                                 <h2 id="purchInvTitle" style="font-size: 32px; font-weight: bold; color: #000; margin: 0 0 10px 0; letter-spacing: 2px;">PURCHASE</h2>
                                 <p style="font-size: 24px; font-weight: bold; color: #000; margin: 0 0 8px 0;">INVOICE</p>
-                                <p style="margin: 4px 0; font-size: 12px; font-weight: bold; border-top: 2px solid #000; padding-top: 10px;">Invoice: <span style="font-size: 14px;">#${purchaseInvoice.ref || purchaseInvoice.id.toString().slice(-6)}</span></p>
+                                <p style="margin: 4px 0; font-size: 12px; font-weight: bold; border-top: 2px solid #000; padding-top: 10px;">Invoice: <span style="font-size: 14px;">#${purchaseInvoice.supplierInvoiceNumber || purchaseInvoice.ref || purchaseInvoice.id.toString().slice(-6)}</span></p>
                                 <p style="margin: 4px 0; font-size: 11px;">Date: ${new Date(purchaseInvoice.date).toLocaleDateString()}</p>
                             </div>
                         </div>
@@ -8070,6 +8081,7 @@ Updated Balances:
                 const purchaseInvoice = {
                     id: transaction.id,
                     ref: transaction.ref || transaction.id.toString().slice(-6),
+                    supplierInvoiceNumber: transaction.supplierInvoiceNumber || null,
                     date: transaction.purchaseDate || transaction.date,
                     supplier: supplierName,
                     supplierId: transaction.entityId,
