@@ -2536,71 +2536,8 @@
             <h3 class="text-xl font-bold mb-4 text-karta-primary"><i class="fa-solid fa-percent mr-2"></i>Bulk Price Adjustment</h3>
             
             <div class="space-y-6">
-                <!-- TAB 1: ADJUST ALL PRODUCTS -->
-                <div class="border border-karta-border rounded-lg p-4">
-                    <h4 class="font-bold text-white mb-3"><i class="fa-solid fa-list"></i> Adjust All Products</h4>
-                    <p class="text-xs text-gray-400 mb-3">Apply percentage change to ALL product prices</p>
-                    
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-xs text-gray-400">Adjustment Type</label>
-                            <select id="priceAdjustType" class="input-field">
-                                <option value="retail">Retail Price Only</option>
-                                <option value="both">Both Retail & Wholesale</option>
-                                <option value="cost">Cost Price (affects profit margin)</option>
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="text-xs text-gray-400">Percentage Change (%)</label>
-                                <input type="number" id="pricePercentage" class="input-field" placeholder="e.g. 10 or -5" step="0.1">
-                            </div>
-                            <div class="bg-white/5 p-3 rounded border border-gray-700 flex items-end">
-                                <div>
-                                    <div class="text-xs text-gray-500">Preview:</div>
-                                    <div class="text-sm font-bold text-karta-primary" id="pricePreview">₹100 → ₹100</div>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" onclick="applyBulkPriceChange()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold text-sm">
-                            <i class="fa-solid fa-check mr-2"></i>Apply to All Products
-                        </button>
-                    </div>
-                </div>
-
-                <!-- TAB 2: ADJUST BY CATEGORY -->
-                <div class="border border-karta-border rounded-lg p-4">
-                    <h4 class="font-bold text-white mb-3"><i class="fa-solid fa-filter"></i> Adjust by Category</h4>
-                    <p class="text-xs text-gray-400 mb-3">Apply price change to specific category only</p>
-                    
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-xs text-gray-400">Select Category</label>
-                            <select id="priceCategoryFilter" class="input-field">
-                                <option value="">-- Select Category --</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-400">Adjustment Type</label>
-                            <select id="priceCategoryAdjustType" class="input-field">
-                                <option value="retail">Retail Price Only</option>
-                                <option value="both">Both Retail & Wholesale</option>
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="text-xs text-gray-400">Percentage Change (%)</label>
-                                <input type="number" id="priceCategoryPercentage" class="input-field" placeholder="e.g. 10 or -5" step="0.1">
-                            </div>
-                            <div class="text-xs text-gray-500">
-                                Products to update: <span class="font-bold text-white" id="categoryProductCount">0</span>
-                            </div>
-                        </div>
-                        <button type="button" onclick="applyBulkPriceChangeByCategory()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold text-sm">
-                            <i class="fa-solid fa-check mr-2"></i>Apply to Category
-                        </button>
-                    </div>
-                </div>
+                <!-- Only individual product adjustment is available now -->
+                <!-- TAB: INDIVIDUAL PRODUCT (kept) -->
 
                 <!-- TAB 3: INDIVIDUAL PRODUCT -->
                 <div class="border border-karta-border rounded-lg p-4">
@@ -3466,6 +3403,10 @@
                 if(id === 'purchModal') {
                     console.log('Loading purchase data');
                     loadPurchSelects();
+                }
+                else if(id === 'priceManagerModal') {
+                    console.log('Loading price manager data');
+                    loadPriceManagerData();
                 }
                 else if(id === 'prodModal') {
                     console.log('Loading supplier select for product');
@@ -4810,14 +4751,30 @@
         window.confirmSplitSales = function() {
             const totalText = document.getElementById('splitSalesTotal').innerText;
             const total = moneyRound(parseFloat(totalText.replace(db.config.currency, '')) || 0);
-            const cash = moneyRound(parseFloat(document.getElementById('splitSalesCash').value) || 0);
-            const bank = moneyRound(parseFloat(document.getElementById('splitSalesBank').value) || 0);
-            const credit = moneyRound(parseFloat(document.getElementById('splitSalesCredit').value) || 0);
-            const sum = moneyRound(cash + bank + credit);
+            let cash = moneyRound(parseFloat(document.getElementById('splitSalesCash').value) || 0);
+            let bank = moneyRound(parseFloat(document.getElementById('splitSalesBank').value) || 0);
+            let credit = moneyRound(parseFloat(document.getElementById('splitSalesCredit').value) || 0);
             
-            // Validate split payment integrity
-            if(Math.abs(sum - total) > 0.01) {
-                alert(`❌ SPLIT PAYMENT MISMATCH!\n\nTotal Amount: ${db.config.currency}${total.toFixed(2)}\nEntered Sum: ${db.config.currency}${sum.toFixed(2)}\nDifference: ${db.config.currency}${Math.abs(total - sum).toFixed(2)}\n\nPlease correct the amounts so they match the total exactly.`);
+            // Apply round-up to the overall total for split payments as well
+            const chargedTotal = Math.ceil(total);
+            const roundingDiff = moneyRound(chargedTotal - total);
+
+            // If rounding is needed, allocate it to cash first, then bank, then credit
+            if (roundingDiff > 0) {
+                if (cash > 0) {
+                    cash = moneyRound(cash + roundingDiff);
+                } else if (bank > 0) {
+                    bank = moneyRound(bank + roundingDiff);
+                } else {
+                    credit = moneyRound(credit + roundingDiff);
+                }
+            }
+
+            const sum = moneyRound(cash + bank + credit);
+
+            // Validate split payment integrity against chargedTotal
+            if(Math.abs(sum - chargedTotal) > 0.01) {
+                alert(`❌ SPLIT PAYMENT MISMATCH!\n\nTotal Amount: ${db.config.currency}${chargedTotal.toFixed(2)}\nEntered Sum: ${db.config.currency}${sum.toFixed(2)}\nDifference: ${db.config.currency}${Math.abs(chargedTotal - sum).toFixed(2)}\n\nPlease correct the amounts so they match the total exactly.`);
                 return;
             }
             
@@ -4920,7 +4877,7 @@
                 discountPercent: discountPercent,
                 freight: freightCost,
                 tax: tax,
-                total: total,  // Use validated split total
+                total: chargedTotal,  // Use rounded split total
                 payType: 'split',
                 splitCash: cash,
                 splitBank: bank,
@@ -4941,16 +4898,16 @@
             document.getElementById('posCustomerInput').value = '';
             window.closeModal();
             
-            alert(`Split Payment Sale Complete!
-Total: ${db.config.currency}${total.toFixed(2)}
+                        alert(`Split Payment Sale Complete!
+Total: ${db.config.currency}${chargedTotal.toFixed(2)}
 
-  Cash: ${db.config.currency}${cash.toFixed(2)}
-  Bank: ${db.config.currency}${bank.toFixed(2)}
-  Credit: ${db.config.currency}${credit.toFixed(2)}
+    Cash: ${db.config.currency}${cash.toFixed(2)}
+    Bank: ${db.config.currency}${bank.toFixed(2)}
+    Credit: ${db.config.currency}${credit.toFixed(2)}
 
 Updated Balances:
-  Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}
-  Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
+    Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}
+    Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
         };
 
         // Helper function for split payment display
@@ -5229,9 +5186,28 @@ Updated Balances:
                 message = `SPLIT PAYMENT PURCHASE saved!\nSupplier: ${sup.name}\nTotal: ${db.config.currency}${totalAmount.toFixed(2)}\n\nCash: ${db.config.currency}${cashAmount.toFixed(2)}\nBank: ${db.config.currency}${bankAmount.toFixed(2)}\nCredit: ${db.config.currency}${creditAmount.toFixed(2)}\nBalance Due: ${db.config.currency}${sup.balance.toFixed(2)}\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`;
             }
             
-            alert(message);
-            
+            // Show a non-blocking toast and open the print preview (print dialog)
+            try {
+                showToast(message, 'success');
+            } catch (e) {
+                // fallback to alert if toast is not available
+                try { alert(message); } catch (err) { console.log(message); }
+            }
+
             renderProducts();
+
+            // Automatically open print preview (browser print dialog)
+            try {
+                if (typeof printPurchaseInvoice === 'function') {
+                    // This function opens a new window and triggers print()
+                    printPurchaseInvoice(purchaseInvoice);
+                } else if (typeof displayPurchaseInvoiceModal === 'function') {
+                    // Fallback to modal preview if print function missing
+                    displayPurchaseInvoiceModal(purchaseInvoice);
+                }
+            } catch (err) {
+                console.error('Error opening purchase print preview:', err);
+            }
         };
 
         document.getElementById('expForm').onsubmit = e => {
@@ -5363,13 +5339,26 @@ Updated Balances:
             
             const grid = document.getElementById('posGrid');
             grid.innerHTML = '';
-            const search = document.getElementById('posSearch').value.toLowerCase();
+            const rawSearch = document.getElementById('posSearch').value || '';
+            const search = rawSearch.trim().toLowerCase();
+            const tokens = search.split(/\s+/).filter(Boolean);
 
             // Filter out zero-stock duplicates before displaying
             const displayProducts = filterDuplicateZeroStockProducts(db.products);
-            
-            displayProducts.filter(p => p.stock > 0 && (p.name.toLowerCase().includes(search) || p.sku.includes(search)))
-            .forEach(p => {
+
+            displayProducts.filter(p => {
+                if (!p || p.stock <= 0) return false;
+                // If no search query, include product
+                if (tokens.length === 0) return true;
+
+                const name = (p.name || '').toLowerCase();
+                const sku = (p.sku || '').toLowerCase();
+                const batch = (p.batch || '').toLowerCase();
+                const category = (p.category || '').toLowerCase();
+
+                // Require every token to match at least one searchable field (name, sku, batch, category)
+                return tokens.every(tok => name.includes(tok) || sku.includes(tok) || batch.includes(tok) || category.includes(tok));
+            }).forEach(p => {
                 const el = document.createElement('div');
                 el.className = "bg-karta-surface border border-karta-border p-3 rounded cursor-pointer hover:border-karta-primary transition";
                 // FIX: Use closure or string ID
@@ -5617,11 +5606,18 @@ Updated Balances:
             const tax = applyVat ? moneyRound(taxableAfterDiscount * (db.config.vatRate / 100)) : 0;
             const total = moneyRound(subtotalAfterDiscount + tax + freightCost);
 
+            // Compute chargedTotal (round-up) early so credit handling uses it as well
+            let chargedTotal = total;
+            if (type === 'cash' || type === 'bank' || type === 'credit') {
+                chargedTotal = Math.ceil(total);
+            }
+
             if(type === 'credit') {
                 if(!custId) return alert("Please select a registered customer for credit sales.");
                 const customer = db.customers.find(c => c.id === custId);
                 if(!customer) return alert("Customer not found.");
-                customer.balance = moneyRound(customer.balance + total);
+                // Credit sales are rounded up too
+                customer.balance = moneyRound(customer.balance + chargedTotal);
             }
 
             cart.forEach(item => {
@@ -5648,12 +5644,13 @@ Updated Balances:
                 db.config.bankBalance = 0;
             }
             
+            // Round-up behavior already computed earlier (chargedTotal). Example: 999.34 -> 1000
             if(type === 'cash') {
                 // Don't prevent negative balance, but warn user
-                db.config.cashBalance = moneyRound(db.config.cashBalance + total);
+                db.config.cashBalance = moneyRound(db.config.cashBalance + chargedTotal);
             } else if(type === 'bank') {
                 // Don't prevent negative balance, but warn user
-                db.config.bankBalance = moneyRound(db.config.bankBalance + total);
+                db.config.bankBalance = moneyRound(db.config.bankBalance + chargedTotal);
             }
             
             const txn = {
@@ -5669,11 +5666,11 @@ Updated Balances:
                 discountPercent: discountPercent,
                 freight: freightCost,
                 tax: tax,
-                total: total,
+                total: chargedTotal,
                 payType: type,
-                cashAmount: type === 'cash' ? total : 0,
-                bankAmount: type === 'bank' ? total : 0,
-                creditAmount: type === 'credit' ? total : 0,
+                cashAmount: type === 'cash' ? chargedTotal : 0,
+                bankAmount: type === 'bank' ? chargedTotal : 0,
+                creditAmount: type === 'credit' ? chargedTotal : 0,
                 cashBalance: db.config.cashBalance,
                 bankBalance: db.config.bankBalance,
                 invoiceNumber: getNextInvoiceNumber()
@@ -6899,10 +6896,15 @@ Updated Balances:
             if(!editTxnId || !confirm("Delete this invoice permanently? This will restore stock and refund money.")) return;
             
             const oldTxn = db.transactions.find(t => t.id === editTxnId);
-            
+            if(!oldTxn) {
+                alert('Invoice not found or already deleted.');
+                return;
+            }
+
             // REVERSE ALL EFFECTS
             // 1. RESTORE SOLD STOCK (add back quantity to inventory)
-            oldTxn.items.forEach(i => {
+            if (oldTxn.items && Array.isArray(oldTxn.items)) {
+                oldTxn.items.forEach(i => {
                 const p = db.products.find(x => x.id === i.id);
                 if(p) {
                     console.log(`✓ Restocking: Adding ${i.qty} units of "${i.name}" back to inventory`);
@@ -6912,7 +6914,8 @@ Updated Balances:
                 } else {
                     console.warn(`⚠ Product not found: ${i.name} (ID: ${i.id})`);
                 }
-            });
+                });
+            }
             
             // 2. Revert customer balance
             if(oldTxn.payType === 'credit' && oldTxn.entityId) {
@@ -9178,7 +9181,7 @@ Updated Balances:
         
         // Initialize price manager modal when opened
         function loadPriceManagerData() {
-            // Populate product list
+            // Populate product list for individual adjustment
             const prodSel = document.getElementById('priceProductSelect');
             prodSel.innerHTML = '<option value="">-- Select Product --</option>';
             if(db.products) {
@@ -9186,29 +9189,6 @@ Updated Balances:
                     prodSel.innerHTML += `<option value="${p.id}" data-name="${p.name}|${p.cost}|${p.retail}|${p.wholesale}">${p.name} (${p.sku})</option>`;
                 });
             }
-            
-            // Populate category list
-            const catSel = document.getElementById('priceCategoryFilter');
-            catSel.innerHTML = '<option value="">-- Select Category --</option>';
-            const categories = new Set();
-            if(db.products) {
-                db.products.forEach(p => {
-                    if(p.category) categories.add(p.category);
-                });
-            }
-            categories.forEach(cat => {
-                catSel.innerHTML += `<option value="${cat}">${cat}</option>`;
-            });
-            
-            // Setup percentage change preview
-            document.getElementById('pricePercentage').addEventListener('input', updatePricePreview);
-        }
-        
-        function updatePricePreview() {
-            const percent = parseFloat(document.getElementById('pricePercentage').value) || 0;
-            const original = 100;
-            const newPrice = moneyRound(original * (1 + percent / 100));
-            document.getElementById('pricePreview').innerText = `${db.config.currency}${original.toFixed(2)} → ${db.config.currency}${newPrice.toFixed(2)}`;
         }
         
         window.loadProductPriceFields = function() {
@@ -9229,17 +9209,26 @@ Updated Balances:
                 document.getElementById('priceProductRetail').value = prod.retail.toFixed(2);
                 document.getElementById('priceProductWholesale').value = (prod.wholesale || 0).toFixed(2);
                 
-                // Calculate margin
-                const margin = moneyRound((prod.retail - prod.cost) / prod.retail * 100);
-                document.getElementById('profitMarginDisplay').innerText = margin.toFixed(1) + '%';
-                
-                // Setup real-time margin calculation
-                document.getElementById('priceProductRetail').addEventListener('input', function() {
+                // Calculate margin (guard against division by zero)
+                const retailVal = parseFloat(prod.retail) || 0;
+                if (retailVal > 0) {
+                    const margin = moneyRound((retailVal - (parseFloat(prod.cost) || 0)) / retailVal * 100);
+                    document.getElementById('profitMarginDisplay').innerText = margin.toFixed(1) + '%';
+                } else {
+                    document.getElementById('profitMarginDisplay').innerText = '--';
+                }
+
+                // Setup real-time margin calculation (use oninput to avoid duplicate listeners)
+                document.getElementById('priceProductRetail').oninput = function() {
                     const cost = parseFloat(document.getElementById('priceProductCost').value) || 0;
                     const retail = parseFloat(this.value) || 0;
-                    const m = retail > 0 ? ((retail - cost) / retail * 100) : 0;
-                    document.getElementById('profitMarginDisplay').innerText = m.toFixed(1) + '%';
-                });
+                    if (retail > 0) {
+                        const m = ((retail - cost) / retail * 100);
+                        document.getElementById('profitMarginDisplay').innerText = moneyRound(m).toFixed(1) + '%';
+                    } else {
+                        document.getElementById('profitMarginDisplay').innerText = '--';
+                    }
+                };
             }
         }
         
@@ -9270,82 +9259,7 @@ Updated Balances:
             }
         }
         
-        window.applyBulkPriceChange = function() {
-            const percent = parseFloat(document.getElementById('pricePercentage').value);
-            const adjustType = document.getElementById('priceAdjustType').value;
-            
-            if(isNaN(percent)) return alert("Please enter a percentage");
-            if(!db.products) return;
-            
-            const affectedCount = db.products.length;
-            if(affectedCount === 0) return alert("No products to update");
-            
-            if(!confirm(`Apply ${percent > 0 ? '+' : ''}${percent}% to ${adjustType} prices for ${affectedCount} product(s)?\n\nThis cannot be undone!`)) return;
-            
-            let updateCount = 0;
-            db.products.forEach(p => {
-                if(adjustType === 'retail') {
-                    p.retail = moneyRound(p.retail * (1 + percent / 100));
-                    updateCount++;
-                } else if(adjustType === 'both') {
-                    p.retail = moneyRound(p.retail * (1 + percent / 100));
-                    if(p.wholesale) p.wholesale = moneyRound(p.wholesale * (1 + percent / 100));
-                    updateCount++;
-                } else if(adjustType === 'cost') {
-                    p.cost = moneyRound(p.cost * (1 + percent / 100));
-                    updateCount++;
-                }
-            });
-            
-            saveDB();
-            renderProducts();
-            
-            alert(`✅ Price Updated!\n${updateCount} product(s) updated with ${percent > 0 ? '+' : ''}${percent}% change`);
-            document.getElementById('pricePercentage').value = '';
-            updatePricePreview();
-        }
-        
-        window.applyBulkPriceChangeByCategory = function() {
-            const category = document.getElementById('priceCategoryFilter').value;
-            const percent = parseFloat(document.getElementById('priceCategoryPercentage').value);
-            const adjustType = document.getElementById('priceCategoryAdjustType').value;
-            
-            if(!category) return alert("Please select a category");
-            if(isNaN(percent)) return alert("Please enter a percentage");
-            if(!db.products) return;
-            
-            const categoryProducts = db.products.filter(p => p.category === category);
-            if(categoryProducts.length === 0) return alert("No products in this category");
-            
-            if(!confirm(`Apply ${percent > 0 ? '+' : ''}${percent}% to ${adjustType} prices for ${categoryProducts.length} product(s) in "${category}"?\n\nThis cannot be undone!`)) return;
-            
-            categoryProducts.forEach(p => {
-                if(adjustType === 'retail') {
-                    p.retail = moneyRound(p.retail * (1 + percent / 100));
-                } else if(adjustType === 'both') {
-                    p.retail = moneyRound(p.retail * (1 + percent / 100));
-                    if(p.wholesale) p.wholesale = moneyRound(p.wholesale * (1 + percent / 100));
-                }
-            });
-            
-            saveDB();
-            renderProducts();
-            
-            alert(`✅ Prices Updated!\n${categoryProducts.length} product(s) in "${category}" updated with ${percent > 0 ? '+' : ''}${percent}% change`);
-            document.getElementById('priceCategoryFilter').value = '';
-            document.getElementById('priceCategoryPercentage').value = '';
-            document.getElementById('categoryProductCount').innerText = '0';
-        }
-        
-        // Update product count when category selected
-        document.addEventListener('change', function(e) {
-            if(e.target.id === 'priceCategoryFilter') {
-                const category = e.target.value;
-                if(!db.products) return;
-                const count = db.products.filter(p => p.category === category).length;
-                document.getElementById('categoryProductCount').innerText = count;
-            }
-        });
+        // Individual product update handlers remain
         
         // --- Init ---
         document.getElementById('invSearch').addEventListener('input', renderProducts);
