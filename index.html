@@ -5681,9 +5681,13 @@ Updated Balances:
             // Refresh POS grid instantly to hide sold-out items
             loadPOS();
             
-            if(type === 'cash' || type === 'bank') {
+            if(type === 'cash' || type === 'bank' || type === 'credit') {
                 printInvoice(txn);
-                alert(`✅ Sale Recorded!\nAmount: ${db.config.currency}${total.toFixed(2)}\nPayment: ${type.toUpperCase()}\n\n💰 Cash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\n🏦 Bank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
+                if(type === 'cash' || type === 'bank') {
+                    alert(`✅ Sale Recorded!\nAmount: ${db.config.currency}${total.toFixed(2)}\nPayment: ${type.toUpperCase()}\n\n💰 Cash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\n🏦 Bank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
+                } else {
+                    alert(`✅ Sale Recorded Successfully!\nPayment: ${type.toUpperCase()}\nAmount: ${db.config.currency}${total.toFixed(2)}`);
+                }
             } else {
                 alert(`✅ Sale Recorded Successfully!\nPayment: ${type.toUpperCase()}\nAmount: ${db.config.currency}${total.toFixed(2)}`);
             }
