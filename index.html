@@ -1086,21 +1086,25 @@
                 <section id="pos" class="hidden h-full flex flex-col md:flex-row gap-4 pb-20 md:pb-0">
                     <!-- Left: Catalog -->
                     <div class="w-full md:w-2/3 flex flex-col gap-4 h-auto md:h-full order-2 md:order-1">
-                        <div class="bg-karta-surface p-3 rounded-lg border border-karta-border flex flex-col md:flex-row gap-3">
+                        <div class="bg-karta-surface p-3 rounded-lg border border-karta-border flex flex-col md:flex-row items-center gap-3">
                             <div class="relative flex-1">
                                 <i class="fa-solid fa-search absolute left-3 top-3 text-gray-500"></i>
                                 <input type="text" id="posSearch" placeholder="Scan Barcode or Search..." class="input-field pl-10 h-10 md:h-full">
                             </div>
-                            <div class="flex gap-3 h-10 md:h-full">
+                            <div class="flex items-center gap-3">
                                 <div class="w-24">
-                                    <input type="number" id="posQtyInput" value="1" min="1" class="input-field text-center h-full" placeholder="Qty">
+                                    <input type="number" id="posQtyInput" value="1" min="1" class="input-field text-center h-10" placeholder="Qty">
                                 </div>
-                                <select id="posCatFilter" class="input-field w-full md:w-40 h-full">
+                                <select id="posCatFilter" class="input-field md:w-40 h-10">
                                     <option value="all">All Cats</option>
                                 </select>
+                                <div class="flex items-center bg-gray-800/30 px-2 py-1 rounded border border-gray-700">
+                                    <i class="fa-solid fa-calendar-days text-gray-300 mr-2"></i>
+                                    <input type="date" id="posManualDate" class="bg-transparent text-xs text-gray-200 focus:outline-none" title="Optional: set a custom date for this invoice">
+                                </div>
                             </div>
                         </div>
-                        <div class="flex-1 md:overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 content-start pr-1 min-h-[300px]" id="posGrid">
+                        <div class="flex-1 md:overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start pr-1 min-h-[300px] auto-rows-max" id="posGrid">
                             <!-- Products JS -->
                         </div>
                     </div>
@@ -1117,6 +1121,7 @@
                                 <input list="custDataList" id="posCustomerInput" placeholder="Guest Customer (Walk-in)" class="input-field text-xs">
                                 <datalist id="custDataList"></datalist>
                             </div>
+                            
                             <!-- Price Type Selector -->
                             <div class="flex gap-2 mb-2">
                                 <label class="flex-1 flex items-center justify-center px-2 py-1 rounded border border-karta-border bg-karta-primary/20 text-xs cursor-pointer" title="Retail/Customer Price">
@@ -1134,9 +1139,9 @@
                                     <span class="text-xs text-gray-400">%</span>
                                 </div>
                             </div>
-                            <!-- Freight Cost Input (Optional) -->
+                            <!-- Freight Charge Input (Optional) -->
                             <div class="flex gap-2 items-center">
-                                <label class="text-xs text-gray-400 flex-1">Freight Cost</label>
+                                <label class="text-xs text-gray-400 flex-1">Freight Charge</label>
                                 <div class="flex items-center gap-1 flex-1">
                                     <input type="number" id="posFreight" value="0" min="0" step="0.01" class="input-field text-right text-xs" onchange="renderCart()" onkeyup="renderCart()" placeholder="Transport cost">
                                     <span class="text-xs text-gray-400">Rs.</span>
@@ -1149,6 +1154,29 @@
                             <div class="flex h-full items-center justify-center text-gray-600 flex-col py-8 md:py-0">
                                 <i class="fa-solid fa-basket-shopping text-4xl mb-2"></i>
                                 <p>Cart is empty</p>
+                            </div>
+                        </div>
+
+                        <!-- EDIT PRICE MODAL -->
+                        <div id="editPriceModal" class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-sm">
+                            <h3 class="text-lg font-bold mb-4 text-white">Edit Item Price</h3>
+                            <div class="bg-white/5 p-3 rounded mb-4 border border-gray-700">
+                                <div class="text-sm text-gray-400 mb-1">Product: <span id="editPriceItemName" class="text-white font-bold">-</span></div>
+                                <div class="text-sm text-gray-400">Original Price: <span id="editPriceOriginal" class="text-yellow-400 font-bold">-</span></div>
+                            </div>
+                            <div class="space-y-3 mb-6">
+                                <div>
+                                    <label class="text-xs text-gray-400 font-bold block mb-2">Retail Price</label>
+                                    <input type="number" id="editPriceInput" class="input-field w-full" min="0" step="0.01" placeholder="Enter retail price">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400 font-bold block mb-2">Wholesale Price</label>
+                                    <input type="number" id="editPriceWholesaleInput" class="input-field w-full" min="0" step="0.01" placeholder="Enter wholesale price">
+                                </div>
+                            </div>
+                            <div class="flex gap-3 justify-end">
+                                <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm transition">Cancel</button>
+                                <button type="button" onclick="applyEditPrice()" class="px-4 py-2 bg-karta-primary hover:bg-green-600 text-black font-bold rounded text-sm transition"><i class="fa-solid fa-save mr-1"></i>Save Price</button>
                             </div>
                         </div>
 
@@ -2803,7 +2831,7 @@
                         </tr>
                         <tr id="invFreightRowInSummary" style="display: none; border-top: 1px solid #000;">
                             <td style="padding: 8px; text-align: right; border-right: 1px solid #000;">
-                                <strong>Freight Cost:</strong>
+                                <strong>Freight Charge:</strong>
                             </td>
                             <td style="padding: 8px; text-align: right;">
                                 <span id="invFreightAmount">0.00</span>
@@ -2828,7 +2856,7 @@
                 <!-- Payment & Notes Section -->
                 <div style="border: 1px solid #000; padding: 10px; margin-bottom: 15px; font-size: 11px;">
                     <p style="margin: 0 0 5px 0;"><strong>Payment Method:</strong> <span id="invPayMethod">Cash</span></p>
-                    <p id="invFreightRow" style="margin: 0 0 5px 0; display: none;"><strong>Freight Cost:</strong> <span id="invFreight">0.00</span></p>
+                    <p id="invFreightRow" style="margin: 0 0 5px 0; display: none;"><strong>Freight Charge:</strong> <span id="invFreight">0.00</span></p>
                     <p style="margin: 0;"><strong>Notes:</strong> <span id="invNotes">Thank you for your business. Get well soon!</span></p>
                 </div>
 
@@ -4074,11 +4102,14 @@
 
                     // Type styling
                     const typeColor = t.type === 'sale' ? 'text-blue-400' : (t.type === 'payment' ? 'text-green-400' : 'text-gray-400');
-                    
+
+                    // Use invoiceNumber if available, otherwise fall back to ref or last 6 of id
+                    const invoiceNum = t.invoiceNumber || t.ref || t.id.toString().slice(-6);
+
                     tr.innerHTML = `
                         <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
                         <td class="p-3 uppercase text-xs font-bold ${typeColor}">${t.type}</td>
-                        <td class="p-3 font-mono text-xs">#${t.id.toString().slice(-6)}</td>
+                        <td class="p-3 font-mono text-xs">#${invoiceNum}</td>
                         <td class="p-3 text-xs text-gray-400 max-w-[150px] truncate">${itemsStr}</td>
                         <td class="p-3 text-right font-bold">${db.config.currency}${t.total.toFixed(2)}</td>
                     `;
@@ -4128,13 +4159,16 @@
             doc.text(`Total Lifetime Spend: ${db.config.currency} ${txns.filter(t=>t.type==='sale').reduce((a,x)=>a+x.total,0).toFixed(2)}`, 140, yPos + 33);
 
             // Table
-            const tableData = txns.map(t => [
-                new Date(t.date).toLocaleDateString(),
-                t.type.toUpperCase(),
-                `#${t.id.toString().slice(-6)}`,
-                t.type === 'sale' ? t.items.map(i => `${i.qty}x ${i.name}`).join(', ') : 'Payment Received',
-                `${db.config.currency} ${t.total.toFixed(2)}`
-            ]);
+            const tableData = txns.map(t => {
+                const invoiceNum = t.invoiceNumber || t.ref || t.id.toString().slice(-6);
+                return [
+                    new Date(t.date).toLocaleDateString(),
+                    t.type.toUpperCase(),
+                    `#${invoiceNum}`,
+                    t.type === 'sale' ? t.items.map(i => `${i.qty}x ${i.name}`).join(', ') : 'Payment Received',
+                    `${db.config.currency} ${t.total.toFixed(2)}`
+                ];
+            });
 
             doc.autoTable({
                 startY: yPos + 45,
@@ -4864,10 +4898,14 @@
             db.config.cashBalance = moneyRound(db.config.cashBalance + cash);
             db.config.bankBalance = moneyRound(db.config.bankBalance + bank);
 
+            // Allow manual override of sale date via POS date picker (optional)
+            const manualDateVal = document.getElementById('posManualDate')?.value;
+            const txnDate = manualDateVal ? new Date(manualDateVal + 'T00:00:00').toISOString() : new Date().toISOString();
+
             const txn = {
                 id: Date.now(),
                 type: 'sale',
-                date: new Date().toISOString(),
+                date: txnDate,
                 entityId: custId,
                 entityName: custName,
                 items: itemsWithCost,
@@ -5018,7 +5056,7 @@ Updated Balances:
                 db.products.push({
                     id: newProductId,
                     name: origProd.name,
-                    sku: origProd.sku + '-' + (item.batch ? item.batch.substring(0, 3).toUpperCase() : Date.now().toString().slice(-3)),
+                    sku: origProd.sku,
                     category: origProd.category,
                     batch: item.batch || 'N/A',
                     expiry: item.expiry || 'N/A',
@@ -5360,20 +5398,20 @@ Updated Balances:
                 return tokens.every(tok => name.includes(tok) || sku.includes(tok) || batch.includes(tok) || category.includes(tok));
             }).forEach(p => {
                 const el = document.createElement('div');
-                el.className = "bg-karta-surface border border-karta-border p-3 rounded cursor-pointer hover:border-karta-primary transition";
+                el.className = "bg-gradient-to-br from-karta-surface to-gray-900 border-2 border-karta-border p-4 rounded-lg cursor-pointer hover:border-karta-primary hover:shadow-lg hover:shadow-karta-primary/30 transition-all transform hover:scale-105 flex flex-col h-full min-h-[200px]";
                 // FIX: Use closure or string ID
                 el.onclick = () => addToCart(p);
                 el.innerHTML = `
-                    <div class="flex justify-between mb-1">
-                        <span class="text-xs bg-gray-800 px-1 rounded text-gray-400">${p.sku}</span>
-                        <span class="text-xs font-bold text-karta-primary">Qty: ${p.stock}</span>
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs bg-karta-primary text-black px-2 py-1 rounded font-bold">${p.sku}</span>
+                        <span class="text-sm font-bold text-karta-primary bg-gray-800 px-2 py-1 rounded">Stock: ${p.stock}</span>
                     </div>
-                    <div class="font-bold text-white text-sm truncate">${p.name}</div>
-                    <div class="text-xs text-gray-500 mt-1">
-                        ${p.batch ? `<div>Batch: <span class="text-white">${p.batch}</span></div>` : ''}
-                        ${p.expiry ? `<div>Exp: <span class="text-white">${p.expiry}</span></div>` : ''}
+                    <div class="font-bold text-white text-base mb-2 leading-snug flex-1">${p.name}</div>
+                    <div class="text-xs text-gray-400 space-y-1 mb-3 border-t border-gray-700 pt-2">
+                        <div><span class="text-gray-500">Batch:</span> <span class="${p.batch && p.batch !== 'N/A' ? 'text-white font-semibold' : 'text-gray-500'}">${p.batch || 'N/A'}</span></div>
+                        <div><span class="text-gray-500">Expires:</span> <span class="${p.expiry && p.expiry !== 'N/A' ? 'text-yellow-400 font-semibold' : 'text-gray-500'}">${p.expiry || 'N/A'}</span></div>
                     </div>
-                    <div class="text-karta-primary font-bold mt-2">${db.config.currency}${p.retail}</div>
+                    <div class="text-karta-primary font-bold text-lg mt-auto">${db.config.currency}${p.retail}</div>
                 `;
                 grid.appendChild(el);
             });
@@ -5423,6 +5461,39 @@ Updated Balances:
             }
         }
 
+        let editPriceIdx = null;
+        window.openEditPriceModal = function(idx) {
+            if(idx < 0 || idx >= cart.length) return;
+            editPriceIdx = idx;
+            const item = cart[idx];
+            document.getElementById('editPriceItemName').innerText = item.name;
+            document.getElementById('editPriceOriginal').innerText = `${db.config.currency}${item.retail.toFixed(2)}`;
+            document.getElementById('editPriceInput').value = item.retail;
+            document.getElementById('editPriceWholesaleInput').value = item.wholesale || item.retail;
+            window.openModal('editPriceModal');
+        }
+
+        window.applyEditPrice = function() {
+            if(editPriceIdx === null || editPriceIdx < 0 || editPriceIdx >= cart.length) return;
+            const newRetailPrice = parseFloat(document.getElementById('editPriceInput').value);
+            const newWholesalePrice = parseFloat(document.getElementById('editPriceWholesaleInput').value);
+            
+            if(isNaN(newRetailPrice) || newRetailPrice < 0) {
+                alert('Please enter a valid retail price');
+                return;
+            }
+            if(isNaN(newWholesalePrice) || newWholesalePrice < 0) {
+                alert('Please enter a valid wholesale price');
+                return;
+            }
+            
+            cart[editPriceIdx].retail = newRetailPrice;
+            cart[editPriceIdx].wholesale = newWholesalePrice;
+            renderCart();
+            closeModal();
+            editPriceIdx = null;
+        }
+
         window.renderCart = function() {
             const body = document.getElementById('posCartBody');
             body.innerHTML = '';
@@ -5466,6 +5537,7 @@ Updated Balances:
                                 <button onclick="updateCartQty(${idx}, 1)" class="w-5 h-5 bg-gray-700 rounded hover:bg-gray-600 text-[10px]">+</button>
                             </div>
                             <div class="font-bold mr-2 w-14 text-right">${db.config.currency}${itemTotal.toFixed(2)}</div>
+                            <button onclick="openEditPriceModal(${idx})" class="text-blue-400 hover:text-blue-300 transition p-1 text-[10px]" title="Edit Price"><i class="fa-solid fa-edit"></i></button>
                             <button onclick="removeFromCart(${idx})" class="text-red-500 hover:text-red-400 transition p-1 text-[10px]"><i class="fa-solid fa-trash"></i></button>
                         </div>
                         <div class="mt-1 flex items-center gap-2">
@@ -5478,7 +5550,7 @@ Updated Balances:
                 });
             }
 
-            // Get freight cost
+            // Get Freight Charge
             const freightCost = parseFloat(document.getElementById('posFreight').value) || 0;
             
             // Calculate discount amount
@@ -5488,7 +5560,7 @@ Updated Balances:
             // Calculate tax only on taxable items
             const tax = applyVat ? moneyRound(subtotalAfterDiscount * (taxableAmount / sub) * (db.config.vatRate / 100)) : 0;
             
-            // Calculate final total with freight cost
+            // Calculate final total with Freight Charge
             const finalTotal = moneyRound(subtotalAfterDiscount + tax + freightCost);
             
             document.getElementById('posSubTotal').innerText = `${db.config.currency}${sub.toFixed(2)}`;
@@ -5578,7 +5650,7 @@ Updated Balances:
             // Get discount percentage
             const discountPercent = parseFloat(document.getElementById('posDiscount').value) || 0;
             
-            // Get freight cost
+            // Get Freight Charge
             const freightCost = parseFloat(document.getElementById('posFreight').value) || 0;
 
             // Recalculate based on current price type, discount, and VAT toggle
@@ -5653,10 +5725,14 @@ Updated Balances:
                 db.config.bankBalance = moneyRound(db.config.bankBalance + chargedTotal);
             }
             
+            // Allow manual override of sale date via POS date picker (optional)
+            const manualDateVal = document.getElementById('posManualDate')?.value;
+            const txnDate = manualDateVal ? new Date(manualDateVal + 'T00:00:00').toISOString() : new Date().toISOString();
+
             const txn = {
                 id: Date.now(),
                 type: 'sale',
-                date: new Date().toISOString(),
+                date: txnDate,
                 entityId: custId,
                 entityName: custName,
                 items: itemsWithCost,
@@ -7427,7 +7503,7 @@ Updated Balances:
                 discountRow.style.display = 'none';
             }
             
-            // Show freight cost if applicable
+            // Show Freight Charge if applicable
             const freightRow = document.getElementById('invFreightRow');
             if(txn.freight && txn.freight > 0) {
                 freightRow.style.display = 'block';
@@ -7436,7 +7512,7 @@ Updated Balances:
                 freightRow.style.display = 'none';
             }
             
-            // Show freight cost in summary table if applicable
+            // Show Freight Charge in summary table if applicable
             const freightRowInSummary = document.getElementById('invFreightRowInSummary');
             if(txn.freight && txn.freight > 0) {
                 freightRowInSummary.style.display = 'table-row';
@@ -7865,8 +7941,8 @@ Updated Balances:
                                             <td style="padding: 8px; text-align: center; border-right: 1px solid #000;"><strong>${item.qty || 0}</strong></td>
                                             <td style="padding: 8px; text-align: right; border-right: 1px solid #000;">${db.config.currency} ${(item.unitPrice || 0).toFixed(2)}</td>
                                             <td style="padding: 8px; text-align: right; border-right: 1px solid #000;"><strong>${db.config.currency} ${itemTotal.toFixed(2)}</strong></td>
-                                            <td style="padding: 8px; text-align: center; border-right: 1px solid #000;"><strong>${item.batch || 'N/A'}</strong></td>
-                                            <td style="padding: 8px; text-align: center; border-right: 1px solid #000;"><strong>${item.expiry || 'N/A'}</strong></td>
+                                            <td style="padding: 8px; text-align: center; border-right: 1px solid #000;">${item.batch || 'N/A'}</td>
+                                            <td style="padding: 8px; text-align: center; border-right: 1px solid #000;">${item.expiry || 'N/A'}</td>
                                             <td style="padding: 8px; text-align: right;"><strong>${vatDisplay}</strong></td>
                                         </tr>
                                     `;
