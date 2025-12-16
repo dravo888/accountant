@@ -23,6 +23,23 @@
     <!-- jsPDF & AutoTable for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <!-- Nepali Date Converter -->
+    <script src="https://cdn.jsdelivr.net/npm/nepali-date-converter@latest/dist/nepali-date-converter.umd.js"></script>
+    <!-- Nepali Date Picker -->
+    <link href="https://cdn.jsdelivr.net/npm/@anuz-pandey/nepali-date-picker@latest/dist/nepali-date-picker.min.css"
+        rel="stylesheet">
+    <script
+        src="https://cdn.jsdelivr.net/npm/@anuz-pandey/nepali-date-picker@latest/dist/nepali-date-picker.bundle.min.js"></script>
+    <script>
+        // Compatibility fix for NepaliDate UMD export
+        // This runs immediately to catch the constructor before any code uses it.
+        (function () {
+            if (window.NepaliDate && typeof window.NepaliDate !== 'function' && window.NepaliDate.default) {
+                window.NepaliDate = window.NepaliDate.default;
+                console.log('Fixed NepaliDate global export (immediate)');
+            }
+        })();
+    </script>
 
     <script>
         // ===== ANTI-COPY & CODE PROTECTION =====
@@ -812,12 +829,79 @@
             animation: pulse 2s infinite;
         }
 
+        /* ===== MOVABLE CALENDAR STYLES ===== */
+        .ap-card {
+            z-index: 9999 !important;
+            padding-top: 0 !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+            overflow: hidden !important;
+            cursor: grab;
+            /* Indicate draggable */
+        }
+
+        .ap-card:active {
+            cursor: grabbing;
+        }
+
+        .calendar-drag-handle {
+            background: #27272a;
+            color: #bdc3c7;
+            padding: 8px 12px;
+            border-bottom: 1px solid #3f3f46;
+            cursor: grab;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .calendar-drag-handle:active {
+            cursor: grabbing;
+            background: #3f3f46;
+        }
+
+        .calendar-drag-handle.locked {
+            background: #7f1d1d;
+            color: #fecaca;
+            cursor: default;
+            border-bottom-color: #991b1b;
+        }
+
+        .calendar-lock-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .calendar-lock-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
         .status-indicator.offline::before {
             content: '';
             width: 8px;
             height: 8px;
             background: #ef4444;
             border-radius: 50%;
+        }
+
+        /* Fix Nepali Date Picker Z-Index & Positioning */
+        .ndp-popup,
+        .ndp-container {
+            z-index: 99999 !important;
+            margin-top: 40px !important;
+            /* Force drop-down below input */
+            /* Reverting large offset/scale request to match English behavior */
         }
 
         /* Responsive Table Fixes */
@@ -1366,9 +1450,12 @@
                                 </select>
                                 <div class="flex items-center bg-gray-800/30 px-2 py-1 rounded border border-gray-700">
                                     <i class="fa-solid fa-calendar-days text-gray-300 mr-2"></i>
-                                    <input type="date" id="posManualDate"
-                                        class="bg-transparent text-xs text-gray-200 focus:outline-none"
-                                        title="Optional: set a custom date for this invoice">
+                                    <!-- Dual inputs -->
+                                    <input type="date" id="posManualDate" title="AD Date"
+                                        class="bg-transparent text-xs text-gray-200 focus:outline-none w-24">
+                                    <input type="text" id="posManualDateNep" placeholder="YYYY-MM-DD (BS)"
+                                        class="bg-transparent text-xs text-karta-primary focus:outline-none w-24 hidden"
+                                        title="BS Date">
                                 </div>
                             </div>
                         </div>
@@ -1533,6 +1620,9 @@
                                     class="input-field flex-1" onkeyup="loadInvoices()">
                                 <input type="date" id="invoiceDateFilter" class="input-field md:w-48"
                                     onchange="loadInvoices()" title="Filter by Date">
+                                <input type="text" id="invoiceDateFilterNep"
+                                    class="input-field md:w-48 hidden text-karta-primary" placeholder="Filter Date (BS)"
+                                    title="Filter by Date (BS)">
                                 <button onclick="clearInvoiceFilters()"
                                     class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded font-bold text-xs whitespace-nowrap">Clear
                                     All</button>
@@ -1574,10 +1664,20 @@
                     <div id="tabContentPurchase" class="space-y-6 hidden">
                         <div class="flex flex-col gap-4">
                             <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-end">
-                                <input type="date" id="purchInvFromDate" class="input-field flex-1 md:w-48"
-                                    placeholder="From Date" title="Filter from this date">
-                                <input type="date" id="purchInvToDate" class="input-field flex-1 md:w-48"
-                                    placeholder="To Date" title="Filter to this date">
+                                <div class="flex-1">
+                                    <input type="date" id="purchInvFromDate" class="input-field w-full"
+                                        placeholder="From Date" title="Filter from this date (AD)">
+                                    <input type="text" id="purchInvFromDateNep"
+                                        class="input-field w-full mt-1 hidden text-karta-primary"
+                                        placeholder="From Date (BS)" title="Filter from this date (BS)">
+                                </div>
+                                <div class="flex-1">
+                                    <input type="date" id="purchInvToDate" class="input-field w-full"
+                                        placeholder="To Date" title="Filter to this date (AD)">
+                                    <input type="text" id="purchInvToDateNep"
+                                        class="input-field w-full mt-1 hidden text-karta-primary"
+                                        placeholder="To Date (BS)" title="Filter to this date (BS)">
+                                </div>
                                 <button onclick="filterPurchaseInvoices()"
                                     class="flex-1 md:flex-none bg-karta-primary hover:bg-karta-primaryDark text-black px-4 py-2 rounded font-bold text-xs transition-all"><i
                                         class="fa-solid fa-filter mr-1"></i>Filter</button>
@@ -2247,11 +2347,15 @@
                         <div class="flex flex-col md:flex-row gap-4 items-end">
                             <div class="w-full md:w-auto">
                                 <label class="text-xs text-gray-400">From Date</label>
-                                <input type="date" id="repFrom" class="input-field">
+                                <input type="date" id="repFrom" class="input-field" title="Adjust date (AD)">
+                                <input type="text" id="repFromNep" class="input-field hidden text-karta-primary mt-1"
+                                    placeholder="YYYY-MM-DD (BS)" title="Adjust date (BS)">
                             </div>
                             <div class="w-full md:w-auto">
                                 <label class="text-xs text-gray-400">To Date</label>
-                                <input type="date" id="repTo" class="input-field">
+                                <input type="date" id="repTo" class="input-field" title="Adjust date (AD)">
+                                <input type="text" id="repToNep" class="input-field hidden text-karta-primary mt-1"
+                                    placeholder="YYYY-MM-DD (BS)" title="Adjust date (BS)">
                             </div>
                             <div class="w-full md:flex-1 flex justify-end gap-2">
                                 <button onclick="exportReportCSV()"
@@ -2375,110 +2479,120 @@
                                     <input type="text" id="confCurr" class="input-field">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Initial Cash on Hand (Opening
+                                Balance)</label>
+                            <input type="number" id="confInitialCash" step="0.01" class="input-field"
+                                placeholder="0.00">
+                            <p class="text-xs text-gray-500 mt-1">Amount of cash at business start. Used in balance
+                                sheet calculations.</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Date System</label>
+                            <select id="confDateMode" class="input-field">
+                                <option value="english">English (AD)</option>
+                                <option value="nepali">Nepali (BS)</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Choose your preferred calendar system for invoices and
+                                reports.</p>
+                        </div>
+                    </div>
+                    <button type="submit"
+                        class="w-full md:w-auto bg-karta-primary text-black font-bold py-2 px-6 rounded hover:bg-green-600">Save
+                        Changes</button>
+                    </form>
+
+                    <div class="mt-10 pt-6 border-t border-gray-700 space-y-4">
+                        <h4 class="font-bold text-white">Invoice Settings</h4>
+
+                        <!-- INVOICE NUMBER MANAGEMENT -->
+                        <div class="p-4 bg-white/5 rounded border border-gray-700 mb-4">
+                            <h5 class="text-karta-primary font-bold mb-2"><i class="fa-solid fa-receipt"></i>
+                                Sales
+                                Invoice Numbering</h5>
+                            <p class="text-xs text-gray-400 mb-3">Control how your sales invoices are numbered.
+                            </p>
+
+                            <div class="space-y-3">
                                 <div>
-                                    <label class="block text-xs text-gray-400 mb-1">Initial Cash on Hand (Opening
-                                        Balance)</label>
-                                    <input type="number" id="confInitialCash" step="0.01" class="input-field"
-                                        placeholder="0.00">
-                                    <p class="text-xs text-gray-500 mt-1">Amount of cash at business start. Used in
-                                        balance sheet calculations.</p>
+                                    <label class="block text-xs text-gray-400 mb-2">Current Invoice
+                                        Number</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" id="currentInvoiceNumber" class="input-field flex-1"
+                                            readonly>
+                                        <span class="text-xs text-gray-500">(Auto-generated)</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <button type="submit"
-                                class="w-full md:w-auto bg-karta-primary text-black font-bold py-2 px-6 rounded hover:bg-green-600">Save
-                                Changes</button>
-                        </form>
 
-                        <div class="mt-10 pt-6 border-t border-gray-700 space-y-4">
-                            <h4 class="font-bold text-white">Invoice Settings</h4>
-
-                            <!-- INVOICE NUMBER MANAGEMENT -->
-                            <div class="p-4 bg-white/5 rounded border border-gray-700 mb-4">
-                                <h5 class="text-karta-primary font-bold mb-2"><i class="fa-solid fa-receipt"></i>
-                                    Sales
-                                    Invoice Numbering</h5>
-                                <p class="text-xs text-gray-400 mb-3">Control how your sales invoices are numbered.
-                                </p>
-
-                                <div class="space-y-3">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
-                                        <label class="block text-xs text-gray-400 mb-2">Current Invoice
+                                        <label class="block text-xs text-gray-400 mb-2">Reset Starting
                                             Number</label>
-                                        <div class="flex items-center gap-2">
-                                            <input type="text" id="currentInvoiceNumber" class="input-field flex-1"
-                                                readonly>
-                                            <span class="text-xs text-gray-500">(Auto-generated)</span>
-                                        </div>
+                                        <input type="number" id="invoiceStartNumber" class="input-field"
+                                            placeholder="e.g., 1001" value="1">
                                     </div>
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <div>
-                                            <label class="block text-xs text-gray-400 mb-2">Reset Starting
-                                                Number</label>
-                                            <input type="number" id="invoiceStartNumber" class="input-field"
-                                                placeholder="e.g., 1001" value="1">
-                                        </div>
-                                        <div class="flex items-end">
-                                            <button type="button" onclick="resetInvoiceNumbering()"
-                                                class="w-full bg-orange-700 text-white px-4 py-2 rounded text-xs hover:bg-orange-600 text-center">
-                                                <i class="fa-solid fa-redo"></i> Reset & Start Fresh
-                                            </button>
-                                        </div>
+                                    <div class="flex items-end">
+                                        <button type="button" onclick="resetInvoiceNumbering()"
+                                            class="w-full bg-orange-700 text-white px-4 py-2 rounded text-xs hover:bg-orange-600 text-center">
+                                            <i class="fa-solid fa-redo"></i> Reset & Start Fresh
+                                        </button>
                                     </div>
-
-                                    <div
-                                        class="flex items-center gap-2 p-2 bg-blue-900/20 rounded border border-blue-700/50">
-                                        <input type="checkbox" id="autoInvoiceNumber" class="w-4 h-4" checked>
-                                        <label for="autoInvoiceNumber"
-                                            class="text-xs text-gray-300 cursor-pointer">Auto-increment invoice
-                                            numbers
-                                            (recommended)</label>
-                                    </div>
-
-                                    <p class="text-xs text-gray-500 mt-2">
-                                        <i class="fa-solid fa-info-circle"></i> Next invoice will be #<span
-                                            id="nextInvoicePreview">1</span>
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="mt-10 pt-6 border-t border-gray-700 space-y-4">
-                                <h4 class="font-bold text-white">Data Management</h4>
-
-                                <!-- FIREBASE CLOUD SYNC -->
-                                <div class="p-4 bg-white/5 rounded border border-gray-700 mb-4">
-                                    <h5 class="text-karta-primary font-bold mb-2"><i class="fa-solid fa-cloud"></i>
-                                        Private Database</h5>
-                                    <p class="text-xs text-gray-400 mb-3">You are connected to your private isolated
-                                        database. Data is synced in real-time only to your account.</p>
-                                    <div class="text-xs text-green-500"><i class="fa-solid fa-check-circle"></i>
-                                        Status:
-                                        Secured & Synced</div>
-                                    <div class="mt-2 text-xs text-gray-500">Database ID: <span id="dbIdDisplay"
-                                            class="font-mono text-white">...</span></div>
                                 </div>
 
-                                <div class="flex flex-col md:flex-row gap-4">
-                                    <button onclick="exportDB()"
-                                        class="bg-gray-700 text-white px-4 py-2 rounded text-xs hover:bg-gray-600 text-center"><i
-                                            class="fa-solid fa-download"></i> Backup (Export File)</button>
-                                    <label
-                                        class="bg-gray-700 text-white px-4 py-2 rounded text-xs hover:bg-gray-600 cursor-pointer text-center">
-                                        <i class="fa-solid fa-upload"></i> Restore (Import File)
-                                        <input type="file" id="importFile" class="hidden" onchange="importDB(this)">
-                                    </label>
-                                    <button onclick="repairCashAndBankBalances()"
-                                        class="bg-orange-700 text-white px-4 py-2 rounded text-xs hover:bg-orange-600 text-center"><i
-                                            class="fa-solid fa-wrench"></i> Repair Balances</button>
+                                <div
+                                    class="flex items-center gap-2 p-2 bg-blue-900/20 rounded border border-blue-700/50">
+                                    <input type="checkbox" id="autoInvoiceNumber" class="w-4 h-4" checked>
+                                    <label for="autoInvoiceNumber"
+                                        class="text-xs text-gray-300 cursor-pointer">Auto-increment invoice
+                                        numbers
+                                        (recommended)</label>
                                 </div>
-                                <div class="mt-4">
-                                    <button onclick="resetData()"
-                                        class="text-red-500 text-xs hover:text-red-400 underline">Danger: Wipe My
-                                        Data</button>
-                                </div>
+
+                                <p class="text-xs text-gray-500 mt-2">
+                                    <i class="fa-solid fa-info-circle"></i> Next invoice will be #<span
+                                        id="nextInvoicePreview">1</span>
+                                </p>
                             </div>
                         </div>
+
+                        <div class="mt-10 pt-6 border-t border-gray-700 space-y-4">
+                            <h4 class="font-bold text-white">Data Management</h4>
+
+                            <!-- FIREBASE CLOUD SYNC -->
+                            <div class="p-4 bg-white/5 rounded border border-gray-700 mb-4">
+                                <h5 class="text-karta-primary font-bold mb-2"><i class="fa-solid fa-cloud"></i>
+                                    Private Database</h5>
+                                <p class="text-xs text-gray-400 mb-3">You are connected to your private isolated
+                                    database. Data is synced in real-time only to your account.</p>
+                                <div class="text-xs text-green-500"><i class="fa-solid fa-check-circle"></i>
+                                    Status:
+                                    Secured & Synced</div>
+                                <div class="mt-2 text-xs text-gray-500">Database ID: <span id="dbIdDisplay"
+                                        class="font-mono text-white">...</span></div>
+                            </div>
+
+                            <div class="flex flex-col md:flex-row gap-4">
+                                <button onclick="exportDB()"
+                                    class="bg-gray-700 text-white px-4 py-2 rounded text-xs hover:bg-gray-600 text-center"><i
+                                        class="fa-solid fa-download"></i> Backup (Export File)</button>
+                                <label
+                                    class="bg-gray-700 text-white px-4 py-2 rounded text-xs hover:bg-gray-600 cursor-pointer text-center">
+                                    <i class="fa-solid fa-upload"></i> Restore (Import File)
+                                    <input type="file" id="importFile" class="hidden" onchange="importDB(this)">
+                                </label>
+                                <button onclick="repairCashAndBankBalances()"
+                                    class="bg-orange-700 text-white px-4 py-2 rounded text-xs hover:bg-orange-600 text-center"><i
+                                        class="fa-solid fa-wrench"></i> Repair Balances</button>
+                            </div>
+                            <div class="mt-4">
+                                <button onclick="resetData()"
+                                    class="text-red-500 text-xs hover:text-red-400 underline">Danger: Wipe My
+                                    Data</button>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
             </div>
@@ -2565,8 +2679,7 @@
                     <button type="button" onclick="closeModal()"
                         class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
                     <button type="submit"
-                        class="px-4 py-2 bg-karta-primary text-black font-bold rounded hover:bg-karta-primaryDark transition">Save
-                        Product</button>
+                        class="px-4 py-2 bg-karta-primary text-black font-bold rounded hover:bg-karta-primaryDark transition">Save</button>
                 </div>
             </form>
         </div>
@@ -2892,6 +3005,8 @@
                             Purchase
                             Date</label>
                         <input type="date" id="purchaseDate" class="input-field w-full" required>
+                        <input type="text" id="purchaseDateNep" class="input-field w-full hidden text-karta-primary"
+                            required placeholder="Purchase Date (BS)">
                         <span class="help-text text-xs text-gray-500">Can be today, yesterday, or future date</span>
                     </div>
                     <div>
@@ -3603,6 +3718,206 @@
         let dbUnsubscribe = null; // Store listener to detach on logout
         let DB_KEY = ''; // DYNAMIC KEY: Will be set to 'karta_db_UID'
 
+        // --- DATE CONVERSION HELPERS ---
+        window.formatDate = function (isoDateString) {
+            if (!isoDateString) return '-';
+
+            // Handle special values
+            if (isoDateString === 'N/A' || isoDateString === '-') return isoDateString;
+
+            const date = new Date(isoDateString);
+
+            // Check if date is valid
+            if (isNaN(date.getTime())) {
+                return isoDateString; // Return original string if invalid
+            }
+
+            if (db.config.dateMode === 'nepali' && window.NepaliDate) {
+                try {
+                    // Lazy fix for UMD export issue
+                    if (window.NepaliDate && typeof window.NepaliDate !== 'function' && window.NepaliDate.default) {
+                        window.NepaliDate = window.NepaliDate.default;
+                    }
+
+                    // Check if date is within valid Nepali calendar range (2000-2090 AD)
+                    const year = date.getFullYear();
+                    if (year < 2000 || year > 2090) {
+                        // Date outside valid range, return English format
+                        return date.toLocaleDateString();
+                    }
+
+                    // Convert JS Date to Nepali Date
+                    const nd = new NepaliDate(date);
+                    return nd.format('YYYY-MM-DD');
+                } catch (e) {
+                    // Silently fall back to English format on error
+                    return date.toLocaleDateString();
+                }
+            } else {
+                return date.toLocaleDateString();
+            }
+        };
+
+        window.convertEngToNep = function (isoDateString) {
+            if (!isoDateString || !window.NepaliDate) return '';
+            try {
+                if (window.NepaliDate && typeof window.NepaliDate !== 'function' && window.NepaliDate.default) {
+                    window.NepaliDate = window.NepaliDate.default;
+                }
+                const nd = new NepaliDate(new Date(isoDateString));
+                return nd.format('YYYY-MM-DD');
+            } catch (e) {
+                return '';
+            }
+        };
+
+        window.convertNepToEng = function (nepDateString) {
+            if (!nepDateString || !window.NepaliDate) return '';
+            try {
+                if (window.NepaliDate && typeof window.NepaliDate !== 'function' && window.NepaliDate.default) {
+                    window.NepaliDate = window.NepaliDate.default;
+                }
+                // NepaliDate constructor accepts 'YYYY-MM-DD' string
+                const nd = new NepaliDate(nepDateString);
+                const engDate = nd.toJsDate();
+                return engDate.toISOString().split('T')[0];
+            } catch (e) {
+                return '';
+            }
+        };
+
+        // --- NEPALI DATE PICKER INITIALIZATION ---
+        window.initializeNepaliDatePicker = function (elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            // Wait for library to load if not ready
+            if (!window.NepaliDate || !el.nepaliDatePicker) {
+                // If the library attaches itself to prototype or global, we might not need explicit check if we trust CDN
+                // The library used operates by instantiating or attaching.
+                // Based on standard usage: var picker = new NepaliDatePicker(el, options);
+            }
+
+            try {
+                /* Initialize using the library's expected syntax.
+                   The library @anuz-pandey/nepali-date-picker attaches to elements using a specific constructor or selector.
+                   Based on docs: it auto-initializes if data attributes are present, or we can force it.
+                   Let's assume standard initialization:
+                */
+                if (window.NepaliDatePicker) {
+                    const picker = new NepaliDatePicker(el, {
+                        format: 'YYYY-MM-DD',
+                        closeOnDateSelect: true,
+                        onChange: function (date) {
+                            // Manually trigger change event for sync logic
+                            const event = new Event('change', { bubbles: true });
+                            el.dispatchEvent(event);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Failed to init Nepali Date Picker:', e);
+            }
+        };
+
+        // --- DUAL MODE INPUT HANDLER ---
+        window.enableDualDateInput = function (engInputId, nepInputId) {
+            // Robust checks for NepaliDate library
+            if (window.NepaliDate && typeof window.NepaliDate !== 'function' && window.NepaliDate.default) {
+                window.NepaliDate = window.NepaliDate.default;
+            }
+
+            const engInput = document.getElementById(engInputId);
+            const nepInput = document.getElementById(nepInputId);
+
+            if (!engInput || !nepInput) return;
+
+            // Initialize Visual Picker for Nepali Input
+            if (window.NepaliDatePicker) {
+                // Check if already initialized to prevent double-init crash
+                if (nepInput.dataset.nepaliDatePickerInitialized) return;
+                nepInput.dataset.nepaliDatePickerInitialized = 'true';
+
+                setTimeout(() => {
+                    try {
+                        /* The library initializes on the element.
+                           We need to hook into its selection to trigger our sync.
+                        */
+                        new window.NepaliDatePicker("#" + nepInputId, {
+                            format: 'YYYY-MM-DD',
+                            ndpYear: true,
+                            ndpMonth: true,
+                            disableAfter: '2099-12-30',
+                            onChange: function (e) {
+                                // Force trigger change for our sync listener
+                                nepInput.dispatchEvent(new Event('change'));
+                            }
+                        });
+                    } catch (err) {
+                        console.warn('NepaliDatePicker init warning:', err);
+                    }
+                }, 100);
+            }
+
+            // Sync: English -> Nepali
+            engInput.addEventListener('change', function () {
+                if (this.value) {
+                    nepInput.value = window.convertEngToNep(this.value);
+                } else {
+                    nepInput.value = '';
+                }
+            });
+
+            // Sync: Nepali -> English
+            nepInput.addEventListener('change', function () {
+                if (this.value) {
+                    const engDate = window.convertNepToEng(this.value);
+                    if (engDate) {
+                        engInput.value = engDate;
+                    }
+                } else {
+                    engInput.value = '';
+                }
+            });
+
+            // Initial sync (if English has value)
+            if (engInput.value) {
+                nepInput.value = window.convertEngToNep(engInput.value);
+            }
+        };
+
+        window.updateDateModeVisibility = function () {
+            const isNepali = db.config.dateMode === 'nepali';
+
+            // Pairs of [English ID, Nepali ID]
+            const pairs = [
+                ['posManualDate', 'posManualDateNep'],
+                ['purchInvFromDate', 'purchInvFromDateNep'],
+                ['purchInvToDate', 'purchInvToDateNep'],
+                ['repFrom', 'repFromNep'],
+                ['repTo', 'repToNep'],
+                ['purchaseDate', 'purchaseDateNep'],
+                ['invoiceDateFilter', 'invoiceDateFilterNep']
+            ];
+
+            pairs.forEach(([engId, nepId]) => {
+                const engEl = document.getElementById(engId);
+                const nepEl = document.getElementById(nepId);
+
+                if (engEl && nepEl) {
+                    if (isNepali) {
+                        // Nepali Mode: Hide English, Show Nepali
+                        engEl.classList.add('hidden');
+                        nepEl.classList.remove('hidden');
+                    } else {
+                        // English Mode: Show English, Hide Nepali
+                        engEl.classList.remove('hidden');
+                        nepEl.classList.add('hidden');
+                    }
+                }
+            });
+        };
+
         /** CORE INITIAL STATE - No data loaded yet **/
         const APP_STATE = {
             config: {
@@ -3615,7 +3930,9 @@
                 currency: 'Rs.',
                 logo: null,
                 cashBalance: 0,
-                bankBalance: 0
+                cashBalance: 0,
+                bankBalance: 0,
+                dateMode: 'english' // 'english' (AD) or 'nepali' (BS)
             },
             products: [],
             customers: [],
@@ -4393,9 +4710,9 @@
             e.preventDefault();
             const supplierId = document.getElementById('pSupplier').value || null;
             const supplierName = supplierId ? (db.suppliers.find(s => s.id === parseInt(supplierId))?.name || '') : null;
+            const existingId = document.getElementById('prodId').value;
 
-            const p = {
-                id: Date.now(),
+            const pData = {
                 name: document.getElementById('pName').value,
                 sku: document.getElementById('pSku').value,
                 category: document.getElementById('pCat').value,
@@ -4409,12 +4726,73 @@
                 supplierId: supplierId ? parseInt(supplierId) : null,
                 supplierName: supplierName
             };
-            db.products.push(p);
+
+            if (existingId) {
+                // EDIT MODE
+                const prodIndex = db.products.findIndex(p => p.id == existingId);
+                if (prodIndex > -1) {
+                    // Start with existing product to keep other fields safe, then overwrite with form data
+                    // Ensure ID remains an integer/original format
+                    const originalId = db.products[prodIndex].id;
+                    db.products[prodIndex] = {
+                        ...db.products[prodIndex],
+                        ...pData,
+                        id: originalId
+                    };
+                    alert("✅ Product Updated Successfully!");
+                }
+            } else {
+                // CREATE MODE
+                const newProduct = {
+                    id: Date.now(),
+                    ...pData
+                };
+                db.products.push(newProduct);
+                alert("✅ New Product Added!");
+            }
+
             saveDB();
             renderProducts();
             loadDashboard();
             window.closeModal();
         };
+
+        window.editProduct = function (id) {
+            const prod = db.products.find(p => p.id === id);
+            if (!prod) return;
+
+            // Populate hidden ID
+            document.getElementById('prodId').value = prod.id;
+
+            // Populate fields
+            document.getElementById('pName').value = prod.name;
+            document.getElementById('pSku').value = prod.sku;
+            document.getElementById('pCat').value = prod.category || '';
+            document.getElementById('pBatch').value = prod.batch || '';
+            document.getElementById('pExpiry').value = prod.expiry || '';
+            document.getElementById('pCost').value = prod.cost;
+            document.getElementById('pRetail').value = prod.retail;
+            document.getElementById('pWhole').value = prod.wholesale || '';
+            document.getElementById('pStock').value = prod.stock;
+            document.getElementById('pReorder').value = prod.reorder || '10';
+
+            // Handle Supplier Select
+            // We need to ensure the select options are loaded first
+            if (window.loadSupplierSelectForProduct) {
+                window.loadSupplierSelectForProduct();
+                // Small delay to let options render if not synchronous (though it is sync currently)
+                setTimeout(() => {
+                    if (prod.supplierId) {
+                        document.getElementById('pSupplier').value = prod.supplierId;
+                    }
+                }, 0);
+            }
+
+            // Change Modal Title or styling if desired (Optional)
+            // document.querySelector('#prodModal h3').innerText = "Edit Product"; 
+
+            window.openModal('prodModal');
+        }
 
         function renderProducts() {
             // AUTO-CLEAN: Remove old stock products with 0 qty if newer stock exists
@@ -4477,7 +4855,7 @@
                     if (p.batch || p.expiry) {
                         batchInfo = `
                         <div class="text-xs text-gray-400">Batch: <span class="text-white">${p.batch || '-'}</span></div>
-                        <div class="text-[10px] text-gray-500">Exp: ${p.expiry || '-'}</div>
+                        <div class="text-[10px] text-gray-500">Exp: ${p.expiry ? window.formatDate(p.expiry) : '-'}</div>
                     `;
                     }
 
@@ -4489,8 +4867,9 @@
                     <td class="p-3 text-right font-bold ${p.stock <= p.reorder ? 'text-red-500' : 'text-green-500'}">${p.stock}</td>
                     <td class="p-3 text-right text-gray-500">${db.config.currency} ${p.cost}</td>
                     <td class="p-3 text-right text-white">${db.config.currency} ${p.retail}</td>
-                    <td class="p-3 text-center">
-                        <button onclick="delProd(${p.id})" class="text-red-500 hover:text-white"><i class="fa-solid fa-trash"></i></button>
+                    <td class="p-3 text-center flex gap-1 justify-center">
+                        <button onclick="editProduct(${p.id})" class="text-blue-400 hover:text-blue-300 w-8 h-8 rounded hover:bg-white/10 transition" title="Edit Product"><i class="fa-solid fa-edit"></i></button>
+                        <button onclick="delProd(${p.id})" class="text-red-500 hover:text-red-400 w-8 h-8 rounded hover:bg-white/10 transition" title="Delete Product"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 `;
                     tbody.appendChild(tr);
@@ -4929,7 +5308,7 @@
                     const invoiceNum = t.invoiceNumber || t.ref || t.id.toString().slice(-6);
 
                     tr.innerHTML = `
-                        <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3">${window.formatDate(t.date)}</td>
                         <td class="p-3 uppercase text-xs font-bold ${typeColor}">${t.type}</td>
                         <td class="p-3 font-mono text-xs">#${invoiceNum}</td>
                         <td class="p-3 text-xs text-gray-400 max-w-[150px] truncate">${itemsStr}</td>
@@ -4984,7 +5363,7 @@
             const tableData = txns.map(t => {
                 const invoiceNum = t.invoiceNumber || t.ref || t.id.toString().slice(-6);
                 return [
-                    new Date(t.date).toLocaleDateString(),
+                    window.formatDate(t.date),
                     t.type.toUpperCase(),
                     `#${invoiceNum}`,
                     t.type === 'sale' ? t.items.map(i => `${i.qty}x ${i.name}`).join(', ') : 'Payment Received',
@@ -5005,7 +5384,7 @@
             const finalY = doc.lastAutoTable.finalY + 10;
             doc.setFontSize(8);
             doc.text("Generated by Karta Business OS", 14, finalY);
-            doc.text(new Date().toLocaleString(), 14, finalY + 5);
+            doc.text(window.formatDate(new Date().toISOString()), 14, finalY + 5);
 
             doc.save(`${cust.name.replace(/\s+/g, '_')}_History.pdf`);
         }
@@ -5100,7 +5479,7 @@
                     const amountSign = t.type === 'payment_out' ? '-' : '';
 
                     tr.innerHTML = `
-                        <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3">${window.formatDate(t.date)}</td>
                         <td class="p-3 uppercase text-xs font-bold ${typeColor}">${t.type === 'payment_out' ? 'Payment' : 'Purchase'}</td>
                         <td class="p-3 text-xs text-gray-500">${t.ref || '-'}</td>
                         <td class="p-3 text-xs text-gray-400 max-w-[150px] truncate">${itemsStr}</td>
@@ -5202,7 +5581,7 @@
             doc.text(`${balanceStatus}: ${db.config.currency} ${Math.abs(sup.balance).toFixed(2)}`, 140, yPos + 28);
 
             const tableData = txns.map(t => [
-                new Date(t.date).toLocaleDateString(),
+                window.formatDate(t.date),
                 t.type === 'payment_out' ? 'PAYMENT SENT' : 'PURCHASE',
                 t.ref || '-',
                 t.type === 'purchase' ? (t.items && t.items[0] ? t.items.map(i => `${i.qty}x ${i.name}`).join(', ') : '-') : 'Payment to Supplier',
@@ -5855,7 +6234,46 @@ Updated Balances:
             let subtotalAmount = 0;
             let totalVAT = 0;
             const txnItems = [];
-            const purchaseDate = new Date(purchaseDateInput).toISOString().split('T')[0];
+            // COMPREHENSIVE DATE HANDLING FOR PURCHASE: Check both English and Nepali fields
+            const purchaseDateEngVal = document.getElementById('purchaseDate')?.value;
+            const purchaseDateNepVal = document.getElementById('purchaseDateNep')?.value;
+            const isNepaliMode = db.config.dateMode === 'nepali';
+
+            let purchaseDate;
+
+            console.log('=== PURCHASE ORDER DATE DEBUG ===');
+            console.log('Date Mode:', db.config.dateMode);
+            console.log('English Date Field Value:', purchaseDateEngVal);
+            console.log('Nepali Date Field Value:', purchaseDateNepVal);
+
+            // Determine which date to use based on mode and which field has a value
+            if (isNepaliMode && purchaseDateNepVal) {
+                // Nepali mode with Nepali date selected
+                console.log('Using Nepali date field for purchase');
+                const convertedEngDate = window.convertNepToEng(purchaseDateNepVal);
+                console.log('Converted to English date:', convertedEngDate);
+
+                if (convertedEngDate) {
+                    purchaseDate = convertedEngDate; // Already in YYYY-MM-DD format
+                    console.log('Purchase Date set to:', purchaseDate);
+                } else {
+                    console.warn('Nepali date conversion failed, using current date');
+                    purchaseDate = new Date().toISOString().split('T')[0];
+                }
+            } else if (purchaseDateEngVal) {
+                // English mode or English date is available
+                console.log('Using English date field for purchase');
+                purchaseDate = purchaseDateEngVal;
+                console.log('Purchase Date set to:', purchaseDate);
+            } else {
+                // No manual date selected, use current date
+                console.log('No manual date selected, using current date');
+                purchaseDate = new Date().toISOString().split('T')[0];
+            }
+
+            console.log('Final Purchase Date:', purchaseDate);
+            console.log('Formatted for display:', window.formatDate(purchaseDate));
+            console.log('==================================');
             const vatRate = db.config.vatRate || 13;
             const discountPercent = parseFloat(document.getElementById('purchDiscount').value) || 0;
 
@@ -6233,7 +6651,7 @@ Updated Balances:
                     <div class="font-bold text-white text-base mb-2 leading-snug flex-1">${p.name}</div>
                     <div class="text-xs text-gray-400 space-y-1 mb-3 border-t border-gray-700 pt-2">
                         <div><span class="text-gray-500">Batch:</span> <span class="${p.batch && p.batch !== 'N/A' ? 'text-white font-semibold' : 'text-gray-500'}">${p.batch || 'N/A'}</span></div>
-                        <div><span class="text-gray-500">Expires:</span> <span class="${p.expiry && p.expiry !== 'N/A' ? 'text-yellow-400 font-semibold' : 'text-gray-500'}">${p.expiry || 'N/A'}</span></div>
+                        <div><span class="text-gray-500">Expires:</span> <span class="${p.expiry && p.expiry !== 'N/A' ? 'text-yellow-400 font-semibold' : 'text-gray-500'}">${p.expiry ? window.formatDate(p.expiry) : 'N/A'}</span></div>
                     </div>
                     <div class="text-karta-primary font-bold text-lg mt-auto">${db.config.currency}${p.retail}</div>
                 `;
@@ -6550,8 +6968,60 @@ Updated Balances:
             }
 
             // Allow manual override of sale date via POS date picker (optional)
-            const manualDateVal = document.getElementById('posManualDate')?.value;
-            const txnDate = manualDateVal ? new Date(manualDateVal + 'T00:00:00').toISOString() : new Date().toISOString();
+            // COMPREHENSIVE DATE HANDLING: Check both English and Nepali fields
+            const manualDateEngVal = document.getElementById('posManualDate')?.value;
+            const manualDateNepVal = document.getElementById('posManualDateNep')?.value;
+            const isNepaliMode = db.config.dateMode === 'nepali';
+
+            let txnDate;
+            let selectedDateForDisplay = '';
+
+            console.log('=== POS CHECKOUT DATE DEBUG ===');
+            console.log('Date Mode:', db.config.dateMode);
+            console.log('English Date Field Value:', manualDateEngVal);
+            console.log('Nepali Date Field Value:', manualDateNepVal);
+
+            // Determine which date to use based on mode and which field has a value
+            if (isNepaliMode && manualDateNepVal) {
+                // Nepali mode with Nepali date selected
+                console.log('Using Nepali date field');
+                // Convert Nepali date to English date
+                const convertedEngDate = window.convertNepToEng(manualDateNepVal);
+                console.log('Converted to English date:', convertedEngDate);
+
+                if (convertedEngDate) {
+                    const dateParts = convertedEngDate.split('-');
+                    const year = parseInt(dateParts[0]);
+                    const month = parseInt(dateParts[1]) - 1;
+                    const day = parseInt(dateParts[2]);
+                    const localDate = new Date(year, month, day, 0, 0, 0, 0);
+                    txnDate = localDate.toISOString();
+                    selectedDateForDisplay = manualDateNepVal; // Store the Nepali date for logging
+                    console.log('Created ISO date:', txnDate);
+                } else {
+                    console.warn('Nepali date conversion failed, using current date');
+                    txnDate = new Date().toISOString();
+                }
+            } else if (manualDateEngVal) {
+                // English mode or English date is available
+                console.log('Using English date field');
+                const dateParts = manualDateEngVal.split('-');
+                const year = parseInt(dateParts[0]);
+                const month = parseInt(dateParts[1]) - 1;
+                const day = parseInt(dateParts[2]);
+                const localDate = new Date(year, month, day, 0, 0, 0, 0);
+                txnDate = localDate.toISOString();
+                selectedDateForDisplay = manualDateEngVal;
+                console.log('Created ISO date:', txnDate);
+            } else {
+                // No manual date selected, use current date
+                console.log('No manual date selected, using current date');
+                txnDate = new Date().toISOString();
+            }
+
+            console.log('Final ISO Date:', txnDate);
+            console.log('Formatted for display:', window.formatDate(txnDate));
+            console.log('===============================');
 
             const txn = {
                 id: Date.now(),
@@ -7518,7 +7988,7 @@ Updated Balances:
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-white/5 border-b border-gray-800";
                 tr.innerHTML = `
-                    <td class="p-3 text-gray-400 text-xs">${new Date(t.date).toLocaleDateString()}</td>
+                    <td class="p-3 text-gray-400 text-xs">${window.formatDate(t.date)}</td>
                     <td class="p-3 font-mono">${invoiceNum}</td>
                     <td class="p-3 font-bold text-white">${t.entityName}</td>
                     <td class="p-3 text-right text-green-400">${db.config.currency}${t.total.toFixed(2)}</td>
@@ -7584,7 +8054,7 @@ Updated Balances:
             }
 
             purchases.forEach(t => {
-                const invoiceDate = t.purchaseDate ? new Date(t.purchaseDate).toLocaleDateString() : new Date(t.date).toLocaleDateString();
+                const invoiceDate = t.purchaseDate ? window.formatDate(t.purchaseDate) : window.formatDate(t.date);
                 // Prefer supplier-provided invoice number; fallback to internal ref or id
                 const invoiceNo = t.supplierInvoiceNumber || t.ref || t.id.toString().slice(-6);
 
@@ -8139,7 +8609,7 @@ Updated Balances:
                     }
                 }
 
-                const purchaseDate = batch.purchaseDate ? new Date(batch.purchaseDate).toLocaleDateString() : 'N/A';
+                const purchaseDate = batch.purchaseDate ? window.formatDate(batch.purchaseDate) : 'N/A';
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-white/5 border-b border-gray-800";
@@ -8440,8 +8910,8 @@ Updated Balances:
                 invoiceNum = 'INV-' + String(1 + position).padStart(3, '0');
             }
             document.getElementById('invNo').innerText = invoiceNum;
-            document.getElementById('invDate').innerText = new Date(txn.date).toLocaleDateString();
-            document.getElementById('invSignDate').innerText = new Date(txn.date).toLocaleDateString();
+            document.getElementById('invDate').innerText = window.formatDate(txn.date);
+            document.getElementById('invSignDate').innerText = window.formatDate(txn.date);
 
             // Customer Info - Enhanced with full details
             const customer = db.customers.find(c => c.id === txn.entityId) || {};
@@ -8631,7 +9101,7 @@ Updated Balances:
                 doc.setFontSize(10);
                 doc.text(`Invoice #: ${txn.id.toString().slice(-6)}`, 14, yPos);
                 yPos += 5;
-                doc.text(`Date: ${new Date(txn.date).toLocaleDateString()}`, 14, yPos);
+                doc.text(`Date: ${window.formatDate(txn.date)}`, 14, yPos);
                 yPos += 5;
                 doc.text(`Customer: ${txn.entityName}`, 14, yPos);
 
@@ -8918,7 +9388,7 @@ Updated Balances:
                                 <h2 id="purchInvTitle" style="font-size: 32px; font-weight: bold; color: #000; margin: 0 0 10px 0; letter-spacing: 2px;">PURCHASE</h2>
                                 <p style="font-size: 24px; font-weight: bold; color: #000; margin: 0 0 8px 0;">INVOICE</p>
                                 <p style="margin: 4px 0; font-size: 12px; font-weight: bold; border-top: 2px solid #000; padding-top: 10px;">Invoice: <span style="font-size: 14px;">#${purchaseInvoice.supplierInvoiceNumber || purchaseInvoice.ref || purchaseInvoice.id.toString().slice(-6)}</span></p>
-                                <p style="margin: 4px 0; font-size: 11px;">Date: ${new Date(purchaseInvoice.date).toLocaleDateString()}</p>
+                                <p style="margin: 4px 0; font-size: 11px;">Date: ${window.formatDate(purchaseInvoice.date)}</p>
                             </div>
                         </div>
                     </div>                    <!-- Supplier Information Box -->
@@ -9231,7 +9701,7 @@ Updated Balances:
                 
                 <div style="margin-bottom: 20px;">
                     <h2 style="font-size: 16px; font-weight: 600; margin: 0 0 5px 0; color: #222;">${currentReportTitle}</h2>
-                    <p style="font-size: 10px; color: #999; margin: 0;">${new Date().toLocaleDateString()} • ${currentReportData.length} records</p>
+                    <p style="font-size: 10px; color: #999; margin: 0;">${window.formatDate(new Date().toISOString())} • ${currentReportData.length} records</p>
                 </div>
             `;
 
@@ -9339,7 +9809,7 @@ Updated Balances:
 
                                     if (firstRow) {
                                         html += `<tr style="border-bottom: 1px solid #f0f0f0;">
-                                            <td style="padding: 8px; font-size: 10px;">${new Date(t.date).toLocaleDateString()}</td>
+                                            <td style="padding: 8px; font-size: 10px;">${window.formatDate(t.date)}</td>
                                             <td style="padding: 8px; font-weight: 600; color: #0066cc;">#${t.id.toString().slice(-6)}</td>
                                             <td style="padding: 8px; font-weight: 500;">${t.entityName || '-'}</td>
                                             <td style="padding: 8px; color: #333;">${item.productName || item.name || '-'}</td>
@@ -9526,7 +9996,7 @@ Updated Balances:
                 yPos += 6;
 
                 doc.setFontSize(8);
-                doc.text(new Date().toLocaleString(), margin, yPos);
+                doc.text(window.formatDate(new Date().toISOString()), margin, yPos);
                 yPos += 10;
 
                 // Build table from data
@@ -9535,7 +10005,7 @@ Updated Balances:
                     tableData.push(['Date', 'Invoice', 'Taxable', 'VAT', 'Total']);
                     currentReportData.forEach(t => {
                         tableData.push([
-                            new Date(t.date).toLocaleDateString(),
+                            window.formatDate(t.date),
                             '#' + t.id.toString().slice(-6),
                             db.config.currency + (t.sub || 0).toFixed(2),
                             db.config.currency + (t.tax || 0).toFixed(2),
@@ -9546,7 +10016,7 @@ Updated Balances:
                     tableData.push(['Date', 'Type', 'Reference', 'Amount']);
                     currentReportData.forEach(t => {
                         tableData.push([
-                            new Date(t.date).toLocaleDateString(),
+                            window.formatDate(t.date),
                             t.type.toUpperCase(),
                             t.entityName || '-',
                             db.config.currency + t.total.toFixed(2)
@@ -9568,7 +10038,7 @@ Updated Balances:
                 // Footer
                 yPos = doc.lastAutoTable.finalY + 10;
                 doc.setFontSize(7);
-                doc.text('Generated by KARTA System • ' + new Date().toLocaleString(), pageWidth / 2, yPos, { align: 'center' });
+                doc.text('Generated by KARTA System • ' + window.formatDate(new Date().toISOString()), pageWidth / 2, yPos, { align: 'center' });
 
                 // Save
                 const filename = `Report_${currentReportTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -9620,8 +10090,12 @@ Updated Balances:
             db.config.taxId = document.getElementById('confTax').value;
             db.config.vatRate = parseFloat(document.getElementById('confVatRate').value);
             db.config.currency = document.getElementById('confCurr').value;
+            db.config.currency = document.getElementById('confCurr').value;
             // FIX #5: EMPTY REGISTER - Add opening balance
             db.config.initialCash = moneyRound(parseFloat(document.getElementById('confInitialCash').value) || 0);
+
+            // Save Date Mode
+            db.config.dateMode = document.getElementById('confDateMode').value;
 
             // Save Logo if changed
             if (tempLogoBase64 !== null) {
@@ -9642,6 +10116,9 @@ Updated Balances:
             document.getElementById('confCurr').value = db.config.currency || 'Rs.';
             // FIX #5: EMPTY REGISTER - Load opening balance
             document.getElementById('confInitialCash').value = (db.config.initialCash || 0).toFixed(2);
+
+            // Load Date Mode
+            document.getElementById('confDateMode').value = db.config.dateMode || 'english';
 
             // Load Logo
             if (db.config.logo) {
@@ -9728,7 +10205,7 @@ Updated Balances:
             // Add Data Rows
             currentReportData.forEach(t => {
                 rows.push([
-                    new Date(t.date).toLocaleDateString(),
+                    window.formatDate(t.date),
                     t.type,
                     t.entityName || '-',
                     t.total.toFixed(2)
@@ -9995,7 +10472,7 @@ Updated Balances:
                     const typeLabel = 'SALE';
                     tr.className = `border-b border-gray-800 text-gray-300`;
                     tr.innerHTML = `
-                        <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3">${window.formatDate(t.date)}</td>
                         <td class="p-3 font-mono text-xs">#${t.id.toString().slice(-6)}</td>
                         <td class="p-3 text-xs font-bold text-green-400">${typeLabel}</td>
                         <td class="p-3 text-right">${db.config.currency}${taxableAfterDiscount.toFixed(2)}</td>
@@ -10033,7 +10510,7 @@ Updated Balances:
                     const tr = document.createElement('tr');
                     tr.className = `border-b border-gray-800 text-gray-300 bg-red-900/20`;
                     tr.innerHTML = `
-                        <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3">${window.formatDate(t.date)}</td>
                         <td class="p-3 font-mono text-xs">#${t.id.toString().slice(-6)}</td>
                         <td class="p-3 text-xs font-bold text-red-400">RETURN</td>
                         <td class="p-3 text-right">${db.config.currency}${taxableAfterDiscount.toFixed(2)}</td>
@@ -10069,7 +10546,7 @@ Updated Balances:
                     tr.className = `border-b border-gray-800 text-gray-300${bgClass}`;
                     let typeLabel = t.type.toUpperCase();
                     if (t.isReturn) typeLabel += ' (RETURN)';
-                    tr.innerHTML = `<td class="p-3">${new Date(t.date).toLocaleDateString()}</td><td class="p-3 uppercase text-xs font-bold">${typeLabel}</td><td class="p-3">${t.entityName || t.items[0]?.name || '-'}</td><td class="p-3 text-right ${color}">${db.config.currency}${t.total.toFixed(2)}</td>`;
+                    tr.innerHTML = `<td class="p-3">${window.formatDate(t.date)}</td><td class="p-3 uppercase text-xs font-bold">${typeLabel}</td><td class="p-3">${t.entityName || t.items[0]?.name || '-'}</td><td class="p-3 text-right ${color}">${db.config.currency}${t.total.toFixed(2)}</td>`;
                     tbody.appendChild(tr);
                 });
                 // Summary for daily
@@ -10198,7 +10675,7 @@ Updated Balances:
                     }
 
                     tr.innerHTML = `
-                        <td class="p-3">${new Date(t.date).toLocaleDateString()}</td>
+                        <td class="p-3">${window.formatDate(t.date)}</td>
                         <td class="p-3">${t.entityName || t.description || '-'}</td>
                         <td class="p-3 text-right">${db.config.currency}${t.total.toFixed(2)}</td>
                         <td class="p-3 text-center">${actionBtn}</td>
@@ -10284,7 +10761,11 @@ Updated Balances:
             renderProducts();
             renderCustomers();
             renderSuppliers();
+            renderSuppliers();
             loadSettings();
+
+            // Update Date Mode Visibility
+            if (window.updateDateModeVisibility) window.updateDateModeVisibility();
 
             // Update Dashboard if visible
             if (!sectionId || sectionId === 'dashboard') {
@@ -10299,7 +10780,7 @@ Updated Balances:
             if (ph) {
                 ph.innerHTML = '';
                 txns.filter(t => t.type === 'purchase').slice().reverse().slice(0, 5).forEach(t => {
-                    ph.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white text-sm">${t.entityName}</div><div class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString()}</div></div><div class="text-red-400 font-bold text-sm">-${t.total.toFixed(2)}</div></div>`;
+                    ph.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white text-sm">${t.entityName}</div><div class="text-xs text-gray-500">${window.formatDate(t.date)}</div></div><div class="text-red-400 font-bold text-sm">-${t.total.toFixed(2)}</div></div>`;
                 });
             }
 
@@ -10308,7 +10789,7 @@ Updated Balances:
             if (eh) {
                 eh.innerHTML = '';
                 txns.filter(t => t.type === 'expense').slice().reverse().slice(0, 5).forEach(t => {
-                    eh.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white text-sm">${t.items?.[0]?.name || 'Expense'}</div><div class="text-xs text-gray-500">${new Date(t.date).toLocaleDateString()}</div></div><div class="text-red-400 font-bold text-sm">-${t.total.toFixed(2)}</div></div>`;
+                    eh.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white text-sm">${t.items?.[0]?.name || 'Expense'}</div><div class="text-xs text-gray-500">${window.formatDate(t.date)}</div></div><div class="text-red-400 font-bold text-sm">-${t.total.toFixed(2)}</div></div>`;
                 });
             }
         }
@@ -10405,7 +10886,7 @@ Updated Balances:
 
         setInterval(() => {
             document.getElementById('clock').innerText = new Date().toLocaleTimeString();
-            document.getElementById('date').innerText = new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+            document.getElementById('date').innerText = window.formatDate(new Date().toISOString());
         }, 1000);
 
         window.onload = () => {
@@ -10712,7 +11193,7 @@ Updated Balances:
                         : '<span class="px-2 py-1 bg-orange-900/30 text-orange-300 text-xs rounded"><i class="fa-solid fa-truck mr-1"></i>Supplier</span>';
 
                     tr.innerHTML = `
-                    <td class="p-3">${new Date(s.date).toLocaleDateString()}</td>
+                    <td class="p-3">${window.formatDate(s.date)}</td>
                     <td class="p-3">${typeBadge}</td>
                     <td class="p-3 font-bold text-white">${s.entityName}</td>
                     <td class="p-3 text-right text-karta-primary font-bold">${db.config.currency}${s.settlementAmount.toFixed(2)}</td>
@@ -10813,7 +11294,7 @@ Updated Balances:
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; font-size: 12px;">
                             <div>
                                 <p style="margin: 0; font-weight: bold; font-size: 10px; color: #666; text-transform: uppercase;">Settlement Date</p>
-                                <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: bold;">${new Date(settlement.date).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })}</p>
+                                <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: bold;">${window.formatDate(settlement.date)}</p>
                             </div>
                             <div>
                                 <p style="margin: 0; font-weight: bold; font-size: 10px; color: #666; text-transform: uppercase;">Settlement ID</p>
@@ -10871,7 +11352,7 @@ Updated Balances:
                                 ${settlement.chequeDate ? `
                                 <tr style="border-bottom: 1px solid #ddd;">
                                     <td style="padding: 4px 0; font-weight: bold;">Cheque Date:</td>
-                                    <td style="padding: 4px 0; text-align: right;">${new Date(settlement.chequeDate).toLocaleDateString()}</td>
+                                    <td style="padding: 4px 0; text-align: right;">${window.formatDate(settlement.chequeDate)}</td>
                                 </tr>
                                 ` : ''}
                                 ${settlement.bankName ? `
@@ -10882,7 +11363,7 @@ Updated Balances:
                                 ` : ''}
                                 <tr>
                                     <td style="padding: 6px 0; font-weight: bold; color: #000;">Settlement Date:</td>
-                                    <td style="padding: 6px 0; text-align: right; font-weight: bold;">${new Date(settlement.date).toLocaleDateString()}</td>
+                                    <td style="padding: 6px 0; text-align: right; font-weight: bold;">${window.formatDate(settlement.date)}</td>
                                 </tr>
                             </table>
                         </div>
@@ -10950,7 +11431,7 @@ Updated Balances:
                     <div style="text-align: center; margin-top: 16px; border-top: 1px solid #ccc; padding-top: 12px; font-size: 10px; color: #666;">
                         <p style="margin: 4px 0;">This certificate confirms the settlement of outstanding dues as per company records.</p>
                         <p style="margin: 4px 0;">Generated by KARTA Business OS</p>
-                        <p style="margin: 4px 0; font-weight: bold;">Date & Time: ${new Date(settlement.date).toLocaleString()}</p>
+                        <p style="margin: 4px 0; font-weight: bold;">Date & Time: ${window.formatDate(settlement.date)}</p>
                         <p style="margin: 4px 0; font-size: 9px; color: #999;">Reference: SETT-${settlement.id.toString().slice(-8).toUpperCase()}</p>
                     </div>
                 </div>
@@ -11001,7 +11482,7 @@ Updated Balances:
                 doc.setFontSize(12);
                 doc.text(`${s.type === 'customer' ? 'Customer' : 'Supplier'}: ${s.entityName}`, 14, yPos + 28);
                 doc.setFontSize(10);
-                doc.text(`Date: ${new Date(s.date).toLocaleDateString()}`, 14, yPos + 33);
+                doc.text(`Date: ${window.formatDate(s.date)}`, 14, yPos + 33);
                 doc.text(`Settlement ID: ${s.id.toString().slice(-8)}`, 14, yPos + 38);
 
                 doc.setFontSize(11);
@@ -11039,6 +11520,243 @@ Updated Balances:
             originalConsole.log('%c🔐 KARTA Application Protected', 'color: #00c853; font-size: 14px; font-weight: bold;');
             originalConsole.log('%cRight-click, copying, and developer tools are disabled for security.', 'color: #888; font-size: 12px;');
         }, 1000);
+
+        // --- INIT DUAL DATE INPUTS ---
+        setTimeout(() => {
+            if (window.enableDualDateInput) {
+                window.enableDualDateInput('posManualDate', 'posManualDateNep');
+                window.enableDualDateInput('purchInvFromDate', 'purchInvFromDateNep');
+                window.enableDualDateInput('purchInvToDate', 'purchInvToDateNep');
+                window.enableDualDateInput('repFrom', 'repFromNep');
+                window.enableDualDateInput('repTo', 'repToNep');
+
+                // NEW: Purchase Entry & Invoice Filter
+                window.enableDualDateInput('purchaseDate', 'purchaseDateNep');
+                window.enableDualDateInput('invoiceDateFilter', 'invoiceDateFilterNep');
+
+                // Init visibility based on stored config
+                if (db.config.dateMode === 'nepali') {
+                    document.getElementById('posManualDateNep')?.classList.remove('hidden');
+                    document.getElementById('purchInvFromDateNep')?.classList.remove('hidden');
+                    document.getElementById('purchInvToDateNep')?.classList.remove('hidden');
+                    document.getElementById('repFromNep')?.classList.remove('hidden');
+                    document.getElementById('repToNep')?.classList.remove('hidden');
+                }
+            }
+        }, 500);
+
+        // ===== MOVABLE NEPALI CALENDAR LOGIC =====
+        function initMovableCalendar() {
+            console.log('Initializing Movable Nepali Calendar...');
+
+            // Configuration key
+            const CONFIG_KEY = 'nepaliCalendarConfig';
+
+            // Load config or default
+            function getConfig() {
+                const stored = localStorage.getItem(CONFIG_KEY);
+                return stored ? JSON.parse(stored) : { x: 0, y: 0, isLocked: false };
+            }
+
+            // Save config
+            function saveConfig(config) {
+                localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+            }
+
+            // Global State
+            let isDragging = false;
+            let currentX;
+            let currentY;
+            let initialX;
+            let initialY;
+            let xOffset = 0;
+            let yOffset = 0;
+            let activeDragItem = null;
+
+            // Watch for the calendar popup being added to DOM
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1 && (node.classList.contains('ap-card') || node.querySelector && node.querySelector('.ap-card'))) {
+                            const params = node.classList.contains('ap-card') ? node : node.querySelector('.ap-card');
+                            enhanceCalendar(params);
+                        }
+                    });
+                });
+
+                // Also check existing if missed
+                const existing = document.querySelectorAll('.ap-card');
+                existing.forEach(enhanceCalendar);
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            // Also run once immediately
+            setTimeout(() => {
+                document.querySelectorAll('.ap-card').forEach(enhanceCalendar);
+            }, 1000);
+
+            function enhanceCalendar(el) {
+                if (el.dataset.enhanced === 'true') {
+                    // Check if position enforcement is needed even if already enhanced
+                    const config = getConfig();
+                    if (config.isLocked) {
+                        enforcePosition(el, config);
+                    }
+                    return;
+                }
+
+                console.log('Enhancing calendar popup:', el);
+                el.dataset.enhanced = 'true';
+
+                // Inject Header
+                const header = document.createElement('div');
+                header.className = 'calendar-drag-handle';
+                header.innerHTML = `
+                    <span><i class="fa-solid fa-calendar-days mr-2"></i>Nepali Calendar</span>
+                    <button class="calendar-lock-btn" title="Lock Position">
+                        <i class="fa-solid fa-lock-open"></i>
+                    </button>
+                `;
+
+                el.prepend(header);
+
+                const lockBtn = header.querySelector('.calendar-lock-btn');
+                const lockIcon = lockBtn.querySelector('i');
+
+                // Initial State Apply
+                const config = getConfig();
+                updateLockUI(config.isLocked);
+
+                if (config.isLocked) {
+                    enforcePosition(el, config);
+                }
+
+                // Enforce lock persistence against library updates
+                const styleObserver = new MutationObserver((mutations) => {
+                    const cfg = getConfig();
+                    if (cfg.isLocked) {
+                        // If style changed, force it back
+                        // We must disconnect comfortably to avoid infinite loop
+                        styleObserver.disconnect();
+                        enforcePosition(el, cfg);
+                        styleObserver.observe(el, { attributes: true, attributeFilter: ['style'] });
+                    }
+                });
+
+                styleObserver.observe(el, { attributes: true, attributeFilter: ['style'] });
+
+                function enforcePosition(element, cfg) {
+                    element.style.position = 'fixed'; // Ensure fixed if locked
+                    element.style.top = cfg.y + 'px';
+                    element.style.left = cfg.x + 'px';
+
+                    // Override any subsequent library updates
+                    // We use a small timeout loop or RequestAnimationFrame to fight library positioning if needed
+                    // But for now, we just set it. 
+                }
+
+                function updateLockUI(locked) {
+                    if (locked) {
+                        header.classList.add('locked');
+                        lockIcon.className = 'fa-solid fa-lock';
+                        lockBtn.title = "Unlock Position";
+                        header.style.cursor = 'default';
+                    } else {
+                        header.classList.remove('locked');
+                        lockIcon.className = 'fa-solid fa-lock-open';
+                        lockBtn.title = "Lock Position";
+                        header.style.cursor = 'grab';
+                    }
+                }
+
+                // Lock Toggle Handler
+                lockBtn.addEventListener('mousedown', (e) => {
+                    e.stopPropagation(); // Prevent drag start
+                });
+
+                lockBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const currentConfig = getConfig();
+                    const newLockedState = !currentConfig.isLocked;
+
+                    // If locking, save current position
+                    if (newLockedState) {
+                        const rect = el.getBoundingClientRect();
+                        currentConfig.x = rect.left;
+                        currentConfig.y = rect.top;
+                    }
+
+                    currentConfig.isLocked = newLockedState;
+                    saveConfig(currentConfig);
+                    updateLockUI(newLockedState);
+
+                    if (newLockedState) {
+                        enforcePosition(el, currentConfig);
+                    }
+                });
+
+                // Drag Logic - Allow dragging from ANYWHERE on the card
+                // But preventing it when clicking interactive elements like buttons
+                el.addEventListener('mousedown', dragStart);
+
+                function dragStart(e) {
+                    const currentConfig = getConfig();
+                    if (currentConfig.isLocked) return;
+
+                    // prevent drag if clicking on buttons (dates, arrows, year/month select)
+                    if (e.target.tagName.toLowerCase() === 'button' || e.target.closest('button') || e.target.tagName.toLowerCase() === 'select') {
+                        return;
+                    }
+
+                    initialX = e.clientX - el.getBoundingClientRect().left;
+                    initialY = e.clientY - el.getBoundingClientRect().top;
+
+                    activeDragItem = el;
+                    isDragging = true;
+
+                    el.style.position = 'fixed';
+
+                    document.addEventListener('mousemove', drag);
+                    document.addEventListener('mouseup', dragEnd);
+                }
+
+                function drag(e) {
+                    if (isDragging && activeDragItem === el) {
+                        e.preventDefault();
+                        const x = e.clientX - initialX;
+                        const y = e.clientY - initialY;
+
+                        setTranslate(x, y, activeDragItem);
+                    }
+                }
+
+                function dragEnd(e) {
+                    if (!isDragging) return;
+
+                    initialX = currentX;
+                    initialY = currentY;
+                    isDragging = false;
+
+                    activeDragItem = null;
+                    document.removeEventListener('mousemove', drag);
+                    document.removeEventListener('mouseup', dragEnd);
+
+                    // Optionally save last known position even if unlocked?
+                    // User might expect it to stay there until closed. 
+                    // But if unlocked, it might reset on next open.
+                    // Let's NOT save to config.isLocked=false state unless needed.
+                }
+
+                function setTranslate(xPos, yPos, el) {
+                    el.style.left = xPos + "px";
+                    el.style.top = yPos + "px";
+                }
+            }
+        }
+
+        // Initialize
+        initMovableCalendar();
     </script>
 </body>
 
