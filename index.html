@@ -11348,11 +11348,9 @@ Updated Balances:
         }
 
         window.clearLogo = function () {
-            if (confirm("Remove company logo?")) {
-                db.config.logo = null;
-                document.getElementById('confLogoInput').value = '';
-                if (window.loadSettings) window.loadSettings(); // Refresh view
-            }
+            db.config.logo = null;
+            document.getElementById('confLogoInput').value = '';
+            if (window.loadSettings) window.loadSettings(); // Refresh view
         };
 
         // --- Reports Export Logic ---
@@ -12334,12 +12332,12 @@ Updated Balances:
                 const netChange = (dSales + dPayIn) - (dExp + dPurch + dAsset + dPayOut + dReturnOut);
 
                 cards.innerHTML += createCard('Sales', dSales, 'green-400');
-                cards.innerHTML += createCard('Inflows (Pay)', dPayIn, 'green-200');
-                cards.innerHTML += createCard('Purchases', dPurch, 'white');
-                cards.innerHTML += createCard('Assets', dAsset, 'purple-400');
+                if (dPayIn !== 0) cards.innerHTML += createCard('Inflows (Pay)', dPayIn, 'green-200');
+                if (dPurch !== 0) cards.innerHTML += createCard('Purchases', dPurch, 'white');
+                if (dAsset !== 0) cards.innerHTML += createCard('Assets', dAsset, 'purple-400');
                 cards.innerHTML += createCard('Expenses', dExp, 'red-400');
-                cards.innerHTML += createCard('Outflows (Pay)', dPayOut, 'red-200');
-                cards.innerHTML += createCard('Returns (Out)', dReturnOut, 'red-500');
+                if (dPayOut !== 0) cards.innerHTML += createCard('Outflows (Pay)', dPayOut, 'red-200');
+                if (dReturnOut !== 0) cards.innerHTML += createCard('Returns (Out)', dReturnOut, 'red-500');
                 cards.innerHTML += createCard('Net Cash Flow', netChange, 'karta-primary');
             } else if (type === 'purchase') {
                 // PURCHASE REPORT WITH DETAILED INVOICE INFORMATION
@@ -12716,368 +12714,374 @@ Updated Balances:
 
         // Monitor for source map attacks
         window.addEventListener('error', function (e) {
-            // --- CREDIT SETTLEMENT FUNCTIONS ---
-            let currentSettlementData = null;
+            // Just log errors, don't put application code here
+            if (e.message && e.message.includes('sourceMap')) {
+                console.warn('Source map error detected');
+            }
+        });
 
-            window.loadSettlementEntities = function () {
-                const type = document.querySelector('input[name="settlementType"]:checked').value;
-                const entitySelect = document.getElementById('settlementEntity');
-                entitySelect.innerHTML = '<option value="">-- Choose --</option>';
+        // --- CREDIT SETTLEMENT FUNCTIONS ---
+        let currentSettlementData = null;
 
+        window.loadSettlementEntities = function () {
+            const type = document.querySelector('input[name="settlementType"]:checked').value;
+            const entitySelect = document.getElementById('settlementEntity');
+            entitySelect.innerHTML = '<option value="">-- Choose --</option>';
+
+            if (type === 'customer') {
+                if (!db.customers) db.customers = [];
+                db.customers.filter(c => c.balance > 0).forEach(c => {
+                    entitySelect.innerHTML += `<option value="${c.id}|${c.name}|${c.balance}">${c.name} (Due: ${db.config.currency}${c.balance.toFixed(2)})</option>`;
+                });
+            } else {
+                if (!db.suppliers) db.suppliers = [];
+                db.suppliers.filter(s => s.balance > 0).forEach(s => {
+                    entitySelect.innerHTML += `<option value="${s.id}|${s.name}|${s.balance}">${s.name} (Due: ${db.config.currency}${s.balance.toFixed(2)})</option>`;
+                });
+            }
+        };
+
+        window.updateSettlementAmount = function () {
+            const entityOption = document.getElementById('settlementEntity').value;
+            if (!entityOption) {
+                document.getElementById('settlementDueAmount').innerText = '$0.00';
+                document.getElementById('settlementAmount').value = '';
+                return;
+            }
+
+            const [id, name, balance] = entityOption.split('|');
+            const balanceAmount = parseFloat(balance) || 0;
+            document.getElementById('settlementDueAmount').innerText = `${db.config.currency}${balanceAmount.toFixed(2)}`;
+            document.getElementById('settlementAmount').max = balanceAmount;
+            document.getElementById('settlementAmount').value = balanceAmount;
+            updateSettlementDisplay();
+        };
+
+        window.updateSettlementDisplay = function () {
+            const amount = parseFloat(document.getElementById('settlementAmount').value) || 0;
+            document.getElementById('settlementDisplayAmount').innerText = `${db.config.currency}${amount.toFixed(2)}`;
+        };
+
+        window.toggleChequeInput = function () {
+            const paymentMethod = document.querySelector('input[name="settlementPayment"]:checked').value;
+            const chequeDiv = document.getElementById('chequeDetailsDiv');
+
+            if (paymentMethod === 'bank') {
+                chequeDiv.classList.remove('hidden');
+            } else {
+                chequeDiv.classList.add('hidden');
+            }
+        };
+
+        document.getElementById('settlementForm').onsubmit = function (e) {
+            e.preventDefault();
+
+            const type = document.querySelector('input[name="settlementType"]:checked').value;
+            const entityOption = document.getElementById('settlementEntity').value;
+            const amount = parseFloat(document.getElementById('settlementAmount').value);
+            const paymentMethod = document.querySelector('input[name="settlementPayment"]:checked').value;
+            const chequeNo = document.getElementById('settlementChequeNo').value;
+            const chequeDate = document.getElementById('settlementChequeDate').value;
+            const bankName = document.getElementById('settlementBankName').value;
+            const notes = document.getElementById('settlementNotes').value;
+
+            if (!entityOption || !amount) {
+                alert('Please select entity and amount');
+                return;
+            }
+
+            const [id, name, balance] = entityOption.split('|');
+            const entityId = parseInt(id);
+
+            if (paymentMethod === 'bank' && !chequeNo && !bankName) {
+                alert('Please provide Cheque Number or Bank Name for bank payment');
+                return;
+            }
+
+            // Create settlement record
+            if (!db.settlements) db.settlements = [];
+
+            // CRITICAL: Initialize config and balances if they don't exist
+            if (!db.config) db.config = APP_STATE.config;
+            if (db.config.cashBalance === undefined || db.config.cashBalance === null) db.config.cashBalance = 0;
+            if (db.config.bankBalance === undefined || db.config.bankBalance === null) db.config.bankBalance = 0;
+
+            console.log(`INITIAL db.config:`, JSON.stringify(db.config));
+
+            const settlement = {
+                id: Date.now(),
+                date: new Date().toISOString(),
+                type: type,
+                entityId: entityId,
+                entityName: name,
+                dueAmount: parseFloat(balance),
+                settlementAmount: moneyRound(amount),
+                paymentMethod: paymentMethod,
+                chequeNo: chequeNo || null,
+                chequeDate: chequeDate || null,
+                bankName: bankName || null,
+                notes: notes,
+                status: 'settled'
+            };
+
+            db.settlements.push(settlement);
+
+            // Update customer/supplier balance
+            if (type === 'customer') {
+                const cust = db.customers.find(c => c.id === entityId);
+                if (cust) {
+                    cust.balance = moneyRound(cust.balance - amount);
+                }
+            } else {
+                const sup = db.suppliers.find(s => s.id === entityId);
+                if (sup) {
+                    sup.balance = moneyRound(sup.balance - amount);
+                }
+            }
+
+            // Update cash/bank balance based on payment method and settlement type
+            console.log(`DEBUG: type=${type}, paymentMethod=${paymentMethod}, amount=${amount}`);
+            console.log(`BEFORE Settlement: Cash=${db.config.cashBalance}, Bank=${db.config.bankBalance}, Type of Cash=${typeof db.config.cashBalance}`);
+
+            let balanceChanged = false;
+
+            if (paymentMethod === 'cash') {
                 if (type === 'customer') {
-                    if (!db.customers) db.customers = [];
-                    db.customers.filter(c => c.balance > 0).forEach(c => {
-                        entitySelect.innerHTML += `<option value="${c.id}|${c.name}|${c.balance}">${c.name} (Due: ${db.config.currency}${c.balance.toFixed(2)})</option>`;
-                    });
+                    // Customer settlement in cash: INCREASE cash (customer paying us)
+                    const newCash = db.config.cashBalance + amount;
+                    db.config.cashBalance = moneyRound(newCash);
+                    balanceChanged = true;
+                    console.log(`Customer CASH settlement: +${amount}, Calculation: ${db.config.cashBalance} + ${amount} = ${newCash}, Rounded: ${db.config.cashBalance}`);
                 } else {
-                    if (!db.suppliers) db.suppliers = [];
-                    db.suppliers.filter(s => s.balance > 0).forEach(s => {
-                        entitySelect.innerHTML += `<option value="${s.id}|${s.name}|${s.balance}">${s.name} (Due: ${db.config.currency}${s.balance.toFixed(2)})</option>`;
-                    });
+                    // Supplier settlement in cash: DECREASE cash (we paying supplier)
+                    const newCash = db.config.cashBalance - amount;
+                    db.config.cashBalance = moneyRound(newCash);
+                    balanceChanged = true;
+                    console.log(`Supplier CASH settlement: -${amount}, Calculation: ${db.config.cashBalance} - ${amount} = ${newCash}, Rounded: ${db.config.cashBalance}`);
                 }
-            };
-
-            window.updateSettlementAmount = function () {
-                const entityOption = document.getElementById('settlementEntity').value;
-                if (!entityOption) {
-                    document.getElementById('settlementDueAmount').innerText = '$0.00';
-                    document.getElementById('settlementAmount').value = '';
-                    return;
-                }
-
-                const [id, name, balance] = entityOption.split('|');
-                const balanceAmount = parseFloat(balance) || 0;
-                document.getElementById('settlementDueAmount').innerText = `${db.config.currency}${balanceAmount.toFixed(2)}`;
-                document.getElementById('settlementAmount').max = balanceAmount;
-                document.getElementById('settlementAmount').value = balanceAmount;
-                updateSettlementDisplay();
-            };
-
-            window.updateSettlementDisplay = function () {
-                const amount = parseFloat(document.getElementById('settlementAmount').value) || 0;
-                document.getElementById('settlementDisplayAmount').innerText = `${db.config.currency}${amount.toFixed(2)}`;
-            };
-
-            window.toggleChequeInput = function () {
-                const paymentMethod = document.querySelector('input[name="settlementPayment"]:checked').value;
-                const chequeDiv = document.getElementById('chequeDetailsDiv');
-
-                if (paymentMethod === 'bank') {
-                    chequeDiv.classList.remove('hidden');
+            } else if (paymentMethod === 'bank') {
+                if (type === 'customer') {
+                    // Customer settlement in bank: INCREASE bank (customer paying us)
+                    const newBank = db.config.bankBalance + amount;
+                    db.config.bankBalance = moneyRound(newBank);
+                    balanceChanged = true;
+                    console.log(`Customer BANK settlement: +${amount}, Calculation: ${db.config.bankBalance} + ${amount} = ${newBank}, Rounded: ${db.config.bankBalance}`);
                 } else {
-                    chequeDiv.classList.add('hidden');
+                    // Supplier settlement in bank: DECREASE bank (we paying supplier)
+                    const newBank = db.config.bankBalance - amount;
+                    db.config.bankBalance = moneyRound(newBank);
+                    balanceChanged = true;
+                    console.log(`Supplier BANK settlement: -${amount}, Calculation: ${db.config.bankBalance} - ${amount} = ${newBank}, Rounded: ${db.config.bankBalance}`);
                 }
-            };
+            }
 
-            document.getElementById('settlementForm').onsubmit = function (e) {
+            if (!balanceChanged) {
+                console.warn(`WARNING: Balance was NOT changed! type=${type}, paymentMethod=${paymentMethod}`);
+            }
+
+            console.log(`AFTER Settlement: Cash=${db.config.cashBalance}, Bank=${db.config.bankBalance}`);
+
+            // Record transaction
+            if (!db.transactions) db.transactions = [];
+            db.transactions.push({
+                id: Date.now(),
+                type: type === 'customer' ? 'payment' : 'payment_out',
+                date: new Date().toISOString(),
+                entityId: entityId,
+                entityName: name,
+                items: [],
+                total: amount,
+                paymentMethod: paymentMethod,
+                chequeNo: chequeNo,
+                settlementId: settlement.id,
+                cashBalance: db.config.cashBalance,
+                bankBalance: db.config.bankBalance
+            });
+
+            saveDB();
+            console.log(`SAVED db.config.cashBalance=${db.config.cashBalance}, db.config.bankBalance=${db.config.bankBalance}`);
+            window.closeModal();
+            alert(`Settlement Recorded\nEntity: ${name}\nAmount: ${db.config.currency}${amount.toFixed(2)}\nMethod: ${paymentMethod.toUpperCase()}${chequeNo ? '\nCheque: ' + chequeNo : ''}\n\nCash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
+            renderSettlements();
+            loadDashboard();
+            refreshUI();
+        };
+
+        // --- EXPENSE FORM HANDLER ---
+        const expForm = document.getElementById('expForm');
+        if (expForm) {
+            expForm.onsubmit = function (e) {
                 e.preventDefault();
 
-                const type = document.querySelector('input[name="settlementType"]:checked').value;
-                const entityOption = document.getElementById('settlementEntity').value;
-                const amount = parseFloat(document.getElementById('settlementAmount').value);
-                const paymentMethod = document.querySelector('input[name="settlementPayment"]:checked').value;
-                const chequeNo = document.getElementById('settlementChequeNo').value;
-                const chequeDate = document.getElementById('settlementChequeDate').value;
-                const bankName = document.getElementById('settlementBankName').value;
-                const notes = document.getElementById('settlementNotes').value;
+                const desc = document.getElementById('expDesc').value;
+                const amount = parseFloat(document.getElementById('expAmt').value);
+                const paymentMethod = document.querySelector('input[name="expPayment"]:checked').value;
 
-                if (!entityOption || !amount) {
-                    alert('Please select entity and amount');
+                if (!desc || !amount) {
+                    alert('Please fill in all required fields');
                     return;
                 }
 
-                const [id, name, balance] = entityOption.split('|');
-                const entityId = parseInt(id);
-
-                if (paymentMethod === 'bank' && !chequeNo && !bankName) {
-                    alert('Please provide Cheque Number or Bank Name for bank payment');
-                    return;
-                }
-
-                // Create settlement record
-                if (!db.settlements) db.settlements = [];
-
-                // CRITICAL: Initialize config and balances if they don't exist
-                if (!db.config) db.config = APP_STATE.config;
-                if (db.config.cashBalance === undefined || db.config.cashBalance === null) db.config.cashBalance = 0;
-                if (db.config.bankBalance === undefined || db.config.bankBalance === null) db.config.bankBalance = 0;
-
-                console.log(`INITIAL db.config:`, JSON.stringify(db.config));
-
-                const settlement = {
-                    id: Date.now(),
-                    date: new Date().toISOString(),
-                    type: type,
-                    entityId: entityId,
-                    entityName: name,
-                    dueAmount: parseFloat(balance),
-                    settlementAmount: moneyRound(amount),
-                    paymentMethod: paymentMethod,
-                    chequeNo: chequeNo || null,
-                    chequeDate: chequeDate || null,
-                    bankName: bankName || null,
-                    notes: notes,
-                    status: 'settled'
-                };
-
-                db.settlements.push(settlement);
-
-                // Update customer/supplier balance
-                if (type === 'customer') {
-                    const cust = db.customers.find(c => c.id === entityId);
-                    if (cust) {
-                        cust.balance = moneyRound(cust.balance - amount);
-                    }
-                } else {
-                    const sup = db.suppliers.find(s => s.id === entityId);
-                    if (sup) {
-                        sup.balance = moneyRound(sup.balance - amount);
-                    }
-                }
-
-                // Update cash/bank balance based on payment method and settlement type
-                console.log(`DEBUG: type=${type}, paymentMethod=${paymentMethod}, amount=${amount}`);
-                console.log(`BEFORE Settlement: Cash=${db.config.cashBalance}, Bank=${db.config.bankBalance}, Type of Cash=${typeof db.config.cashBalance}`);
-
-                let balanceChanged = false;
-
+                // Update Balance
                 if (paymentMethod === 'cash') {
-                    if (type === 'customer') {
-                        // Customer settlement in cash: INCREASE cash (customer paying us)
-                        const newCash = db.config.cashBalance + amount;
-                        db.config.cashBalance = moneyRound(newCash);
-                        balanceChanged = true;
-                        console.log(`Customer CASH settlement: +${amount}, Calculation: ${db.config.cashBalance} + ${amount} = ${newCash}, Rounded: ${db.config.cashBalance}`);
-                    } else {
-                        // Supplier settlement in cash: DECREASE cash (we paying supplier)
-                        const newCash = db.config.cashBalance - amount;
-                        db.config.cashBalance = moneyRound(newCash);
-                        balanceChanged = true;
-                        console.log(`Supplier CASH settlement: -${amount}, Calculation: ${db.config.cashBalance} - ${amount} = ${newCash}, Rounded: ${db.config.cashBalance}`);
-                    }
-                } else if (paymentMethod === 'bank') {
-                    if (type === 'customer') {
-                        // Customer settlement in bank: INCREASE bank (customer paying us)
-                        const newBank = db.config.bankBalance + amount;
-                        db.config.bankBalance = moneyRound(newBank);
-                        balanceChanged = true;
-                        console.log(`Customer BANK settlement: +${amount}, Calculation: ${db.config.bankBalance} + ${amount} = ${newBank}, Rounded: ${db.config.bankBalance}`);
-                    } else {
-                        // Supplier settlement in bank: DECREASE bank (we paying supplier)
-                        const newBank = db.config.bankBalance - amount;
-                        db.config.bankBalance = moneyRound(newBank);
-                        balanceChanged = true;
-                        console.log(`Supplier BANK settlement: -${amount}, Calculation: ${db.config.bankBalance} - ${amount} = ${newBank}, Rounded: ${db.config.bankBalance}`);
-                    }
+                    db.config.cashBalance = moneyRound(db.config.cashBalance - amount);
+                } else {
+                    db.config.bankBalance = moneyRound(db.config.bankBalance - amount);
                 }
 
-                if (!balanceChanged) {
-                    console.warn(`WARNING: Balance was NOT changed! type=${type}, paymentMethod=${paymentMethod}`);
-                }
-
-                console.log(`AFTER Settlement: Cash=${db.config.cashBalance}, Bank=${db.config.bankBalance}`);
-
-                // Record transaction
-                if (!db.transactions) db.transactions = [];
-                db.transactions.push({
+                // Record Transaction
+                const expenseTxn = {
                     id: Date.now(),
-                    type: type === 'customer' ? 'payment' : 'payment_out',
                     date: new Date().toISOString(),
-                    entityId: entityId,
-                    entityName: name,
-                    items: [],
+                    type: 'expense',
+                    entityName: desc, // Using entityName to store description
+                    category: 'General', // Default category
+                    items: [{ name: desc, qty: 1, cost: amount, total: amount }],
                     total: amount,
-                    paymentMethod: paymentMethod,
-                    chequeNo: chequeNo,
-                    settlementId: settlement.id,
+                    payType: paymentMethod,
                     cashBalance: db.config.cashBalance,
                     bankBalance: db.config.bankBalance
-                });
+                };
+
+                if (!db.transactions) db.transactions = [];
+                db.transactions.push(expenseTxn);
 
                 saveDB();
-                console.log(`SAVED db.config.cashBalance=${db.config.cashBalance}, db.config.bankBalance=${db.config.bankBalance}`);
                 window.closeModal();
-                alert(`Settlement Recorded\nEntity: ${name}\nAmount: ${db.config.currency}${amount.toFixed(2)}\nMethod: ${paymentMethod.toUpperCase()}${chequeNo ? '\nCheque: ' + chequeNo : ''}\n\nCash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
-                renderSettlements();
-                loadDashboard();
+                alert('Expense Recorded Successfully');
                 refreshUI();
+
+                // Reset form
+                expForm.reset();
             };
+        }
 
-            // --- EXPENSE FORM HANDLER ---
-            const expForm = document.getElementById('expForm');
-            if (expForm) {
-                expForm.onsubmit = function (e) {
-                    e.preventDefault();
+        // --- DELETE EXPENSE FUNCTION ---
+        window.deleteExpense = function (id) {
+            if (!confirm('Are you sure you want to delete this expense?')) return;
 
-                    const desc = document.getElementById('expDesc').value;
-                    const amount = parseFloat(document.getElementById('expAmt').value);
-                    const paymentMethod = document.querySelector('input[name="expPayment"]:checked').value;
+            const idx = db.transactions.findIndex(t => t.id === id);
+            if (idx === -1) return;
 
-                    if (!desc || !amount) {
-                        alert('Please fill in all required fields');
-                        return;
-                    }
+            const t = db.transactions[idx];
 
-                    // Update Balance
-                    if (paymentMethod === 'cash') {
-                        db.config.cashBalance = moneyRound(db.config.cashBalance - amount);
-                    } else {
-                        db.config.bankBalance = moneyRound(db.config.bankBalance - amount);
-                    }
-
-                    // Record Transaction
-                    const expenseTxn = {
-                        id: Date.now(),
-                        date: new Date().toISOString(),
-                        type: 'expense',
-                        entityName: desc, // Using entityName to store description
-                        category: 'General', // Default category
-                        items: [{ name: desc, qty: 1, cost: amount, total: amount }],
-                        total: amount,
-                        payType: paymentMethod,
-                        cashBalance: db.config.cashBalance,
-                        bankBalance: db.config.bankBalance
-                    };
-
-                    if (!db.transactions) db.transactions = [];
-                    db.transactions.push(expenseTxn);
-
-                    saveDB();
-                    window.closeModal();
-                    alert('Expense Recorded Successfully');
-                    refreshUI();
-
-                    // Reset form
-                    expForm.reset();
-                };
+            // Refund Amount (Reverse the expense)
+            if (t.payType === 'cash') {
+                db.config.cashBalance = moneyRound(db.config.cashBalance + t.total);
+            } else {
+                db.config.bankBalance = moneyRound(db.config.bankBalance + t.total);
             }
 
-            // --- DELETE EXPENSE FUNCTION ---
-            window.deleteExpense = function (id) {
-                if (!confirm('Are you sure you want to delete this expense?')) return;
+            db.transactions.splice(idx, 1);
+            saveDB();
+            alert('Expense deleted and amount refunded to ' + t.payType.toUpperCase());
+            refreshUI();
+        };
 
-                const idx = db.transactions.findIndex(t => t.id === id);
-                if (idx === -1) return;
+        // --- ASSET PURCHASE FORM HANDLER ---
+        const assetForm = document.getElementById('assetForm');
+        if (assetForm) {
+            assetForm.onsubmit = function (e) {
+                e.preventDefault();
 
-                const t = db.transactions[idx];
+                const assetName = document.getElementById('assetName').value.trim();
+                const assetType = document.getElementById('assetType').value;
+                const cost = parseFloat(document.getElementById('assetCost').value);
+                const paymentMethod = document.querySelector('input[name="assetPayment"]:checked').value;
+                const supplier = document.getElementById('assetSupplier').value.trim();
+                const description = document.getElementById('assetDescription').value.trim();
 
-                // Refund Amount (Reverse the expense)
-                if (t.payType === 'cash') {
-                    db.config.cashBalance = moneyRound(db.config.cashBalance + t.total);
-                } else {
-                    db.config.bankBalance = moneyRound(db.config.bankBalance + t.total);
-                }
-
-                db.transactions.splice(idx, 1);
-                saveDB();
-                alert('Expense deleted and amount refunded to ' + t.payType.toUpperCase());
-                refreshUI();
-            };
-
-            // --- ASSET PURCHASE FORM HANDLER ---
-            const assetForm = document.getElementById('assetForm');
-            if (assetForm) {
-                assetForm.onsubmit = function (e) {
-                    e.preventDefault();
-
-                    const assetName = document.getElementById('assetName').value.trim();
-                    const assetType = document.getElementById('assetType').value;
-                    const cost = parseFloat(document.getElementById('assetCost').value);
-                    const paymentMethod = document.querySelector('input[name="assetPayment"]:checked').value;
-                    const supplier = document.getElementById('assetSupplier').value.trim();
-                    const description = document.getElementById('assetDescription').value.trim();
-
-                    if (!assetName || !assetType || !cost) {
-                        alert('Please fill in all required fields');
-                        return;
-                    }
-
-                    // Update Balance
-                    if (paymentMethod === 'cash') {
-                        if (db.config.cashBalance < cost) {
-                            if (!confirm(`Insufficient cash balance (${db.config.currency}${db.config.cashBalance.toFixed(2)}). Continue anyway?`)) {
-                                return;
-                            }
-                        }
-                        db.config.cashBalance = moneyRound(db.config.cashBalance - cost);
-                    } else if (paymentMethod === 'bank') {
-                        if (db.config.bankBalance < cost) {
-                            if (!confirm(`Insufficient bank balance (${db.config.currency}${db.config.bankBalance.toFixed(2)}). Continue anyway?`)) {
-                                return;
-                            }
-                        }
-                        db.config.bankBalance = moneyRound(db.config.bankBalance - cost);
-                    }
-                    // For credit, no immediate balance change
-
-                    // Record Asset
-                    const assetObj = {
-                        id: Date.now(),
-                        date: new Date().toISOString(),
-                        assetName: assetName,
-                        assetType: assetType,
-                        cost: cost,
-                        payType: paymentMethod,
-                        supplierName: supplier || 'N/A',
-                        description: description || '',
-                        cashBalance: db.config.cashBalance,
-                        bankBalance: db.config.bankBalance
-                    };
-
-                    if (!db.assets) db.assets = [];
-                    db.assets.push(assetObj);
-
-                    // Also create a transaction for journal purposes
-                    const assetTxn = {
-                        id: Date.now() + 1, // Slightly different ID
-                        date: new Date().toISOString(),
-                        type: 'asset_purchase',
-                        assetName: assetName,
-                        assetType: assetType,
-                        total: cost,
-                        payType: paymentMethod,
-                        supplierName: supplier || 'N/A',
-                        description: description || '',
-                        cashBalance: db.config.cashBalance,
-                        bankBalance: db.config.bankBalance
-                    };
-
-                    if (!db.transactions) db.transactions = [];
-                    db.transactions.push(assetTxn);
-
-                    saveDB();
-                    window.closeModal();
-                    alert(`Asset "${assetName}" purchased successfully for ${db.config.currency}${cost.toFixed(2)}`);
-                    refreshUI();
-
-                    // Reset form
-                    assetForm.reset();
-                };
-            }
-
-            // --- RENDER ASSETS FUNCTION ---
-            window.renderAssets = function () {
-                const container = document.getElementById('assetHistory');
-                if (!container) return;
-
-                if (!db.assets || db.assets.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">No assets purchased yet</p>';
+                if (!assetName || !assetType || !cost) {
+                    alert('Please fill in all required fields');
                     return;
                 }
 
-                let html = '';
-                db.assets.slice().reverse().forEach(asset => {
-                    const typeLabels = {
-                        'furniture': 'Furniture',
-                        'equipment': 'Equipment',
-                        'vehicle': 'Vehicle',
-                        'building': 'Property',
-                        'computer': 'IT Equipment',
-                        'other': 'Other'
-                    };
-                    const typeLabel = typeLabels[asset.assetType] || asset.assetType;
+                // Update Balance
+                if (paymentMethod === 'cash') {
+                    if (db.config.cashBalance < cost) {
+                        if (!confirm(`Insufficient cash balance (${db.config.currency}${db.config.cashBalance.toFixed(2)}). Continue anyway?`)) {
+                            return;
+                        }
+                    }
+                    db.config.cashBalance = moneyRound(db.config.cashBalance - cost);
+                } else if (paymentMethod === 'bank') {
+                    if (db.config.bankBalance < cost) {
+                        if (!confirm(`Insufficient bank balance (${db.config.currency}${db.config.bankBalance.toFixed(2)}). Continue anyway?`)) {
+                            return;
+                        }
+                    }
+                    db.config.bankBalance = moneyRound(db.config.bankBalance - cost);
+                }
+                // For credit, no immediate balance change
 
-                    html += `
+                // Record Asset
+                const assetObj = {
+                    id: Date.now(),
+                    date: new Date().toISOString(),
+                    assetName: assetName,
+                    assetType: assetType,
+                    cost: cost,
+                    payType: paymentMethod,
+                    supplierName: supplier || 'N/A',
+                    description: description || '',
+                    cashBalance: db.config.cashBalance,
+                    bankBalance: db.config.bankBalance
+                };
+
+                if (!db.assets) db.assets = [];
+                db.assets.push(assetObj);
+
+                // Also create a transaction for journal purposes
+                const assetTxn = {
+                    id: Date.now() + 1, // Slightly different ID
+                    date: new Date().toISOString(),
+                    type: 'asset_purchase',
+                    assetName: assetName,
+                    assetType: assetType,
+                    total: cost,
+                    payType: paymentMethod,
+                    supplierName: supplier || 'N/A',
+                    description: description || '',
+                    cashBalance: db.config.cashBalance,
+                    bankBalance: db.config.bankBalance
+                };
+
+                if (!db.transactions) db.transactions = [];
+                db.transactions.push(assetTxn);
+
+                saveDB();
+                window.closeModal();
+                alert(`Asset "${assetName}" purchased successfully for ${db.config.currency}${cost.toFixed(2)}`);
+                refreshUI();
+
+                // Reset form
+                assetForm.reset();
+            };
+        }
+
+        // --- RENDER ASSETS FUNCTION ---
+        window.renderAssets = function () {
+            const container = document.getElementById('assetHistory');
+            if (!container) return;
+
+            if (!db.assets || db.assets.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">No assets purchased yet</p>';
+                return;
+            }
+
+            let html = '';
+            db.assets.slice().reverse().forEach(asset => {
+                const typeLabels = {
+                    'furniture': 'Furniture',
+                    'equipment': 'Equipment',
+                    'vehicle': 'Vehicle',
+                    'building': 'Property',
+                    'computer': 'IT Equipment',
+                    'other': 'Other'
+                };
+                const typeLabel = typeLabels[asset.assetType] || asset.assetType;
+
+                html += `
                         <div class="bg-gray-800 border border-gray-700 rounded p-3 hover:bg-gray-750 transition">
                             <div class="flex justify-between items-start mb-2">
                                 <div class="flex-1">
@@ -13106,122 +13110,193 @@ Updated Balances:
                             ` : ''}
                         </div>
                     `;
+            });
+
+            container.innerHTML = html;
+        };
+
+        // --- DELETE ASSET FUNCTION ---
+        window.deleteAsset = function (id) {
+            if (!confirm('Are you sure you want to delete this asset? The amount will be refunded.')) return;
+
+            const idx = db.assets.findIndex(a => a.id === id);
+            if (idx === -1) {
+                alert('Asset not found');
+                return;
+            }
+
+            const asset = db.assets[idx];
+
+            // Refund Amount
+            if (asset.payType === 'cash') {
+                db.config.cashBalance = moneyRound(db.config.cashBalance + asset.cost);
+            } else if (asset.payType === 'bank') {
+                db.config.bankBalance = moneyRound(db.config.bankBalance + asset.cost);
+            }
+            // For credit, no balance change
+
+            // Also remove from transactions
+            const txnIdx = db.transactions.findIndex(t => t.type === 'asset_purchase' && t.assetName === asset.assetName && Math.abs(t.total - asset.cost) < 0.01);
+            if (txnIdx !== -1) {
+                db.transactions.splice(txnIdx, 1);
+            }
+
+            db.assets.splice(idx, 1);
+            saveDB();
+            alert(`Asset deleted and ${db.config.currency}${asset.cost.toFixed(2)} refunded to ${asset.payType.toUpperCase()}`);
+            refreshUI();
+        };
+
+        // --- LOAD BATCHES FUNCTION ---
+        window.loadBatches = function () {
+            const tbody = document.getElementById('batchBody');
+            if (!tbody) return;
+
+            // Collect all batch data from purchase transactions
+            const batches = [];
+
+            if (db.transactions && Array.isArray(db.transactions)) {
+                db.transactions.forEach(txn => {
+                    if (txn.type === 'purchase' && txn.items && Array.isArray(txn.items)) {
+                        txn.items.forEach(item => {
+                            // Only add items that have batch or expiry information
+                            if (item.batch || item.expiry) {
+                                batches.push({
+                                    productName: item.name || 'Unknown Product',
+                                    batch: item.batch || 'N/A',
+                                    expiry: item.expiry || 'N/A',
+                                    qty: item.qty || 0,
+                                    cost: item.cost || 0,
+                                    purchaseDate: txn.date || new Date().toISOString(),
+                                    supplierName: txn.entityName || 'Unknown Supplier'
+                                });
+                            }
+                        });
+                    }
                 });
+            }
 
-                container.innerHTML = html;
-            };
+            // Clear table
+            tbody.innerHTML = '';
 
-            // --- DELETE ASSET FUNCTION ---
-            window.deleteAsset = function (id) {
-                if (!confirm('Are you sure you want to delete this asset? The amount will be refunded.')) return;
+            // If no batches, show empty message
+            if (batches.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-gray-500 text-sm">
+                            <i class="fa-solid fa-box-open text-4xl mb-3 block text-gray-700"></i>
+                            No batch records found. Batches are created when you add batch/expiry info during purchase.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
 
-                const idx = db.assets.findIndex(a => a.id === id);
-                if (idx === -1) {
-                    alert('Asset not found');
-                    return;
-                }
+            // Sort by purchase date (newest first)
+            batches.sort((a, b) => new Date(b.purchaseDate) - new Date(a.purchaseDate));
 
-                const asset = db.assets[idx];
+            // Populate table
+            batches.forEach(batch => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/5 transition';
 
-                // Refund Amount
-                if (asset.payType === 'cash') {
-                    db.config.cashBalance = moneyRound(db.config.cashBalance + asset.cost);
-                } else if (asset.payType === 'bank') {
-                    db.config.bankBalance = moneyRound(db.config.bankBalance + asset.cost);
-                }
-                // For credit, no balance change
+                const expiryDate = batch.expiry !== 'N/A' ? window.formatDate(batch.expiry) : 'N/A';
+                const purchaseDate = window.formatDate(batch.purchaseDate);
 
-                // Also remove from transactions
-                const txnIdx = db.transactions.findIndex(t => t.type === 'asset_purchase' && t.assetName === asset.assetName && Math.abs(t.total - asset.cost) < 0.01);
-                if (txnIdx !== -1) {
-                    db.transactions.splice(txnIdx, 1);
-                }
+                tr.innerHTML = `
+                    <td class="p-3 text-white font-medium">${batch.productName}</td>
+                    <td class="p-3 text-gray-300 font-mono text-xs">${batch.batch}</td>
+                    <td class="p-3 text-gray-400">${expiryDate}</td>
+                    <td class="p-3 text-right text-white font-bold">${batch.qty}</td>
+                    <td class="p-3 text-right text-karta-primary">${db.config.currency}${batch.cost.toFixed(2)}</td>
+                    <td class="p-3 text-gray-400">${purchaseDate}</td>
+                    <td class="p-3 text-gray-300">${batch.supplierName}</td>
+                `;
 
-                db.assets.splice(idx, 1);
-                saveDB();
-                alert(`Asset deleted and ${db.config.currency}${asset.cost.toFixed(2)} refunded to ${asset.payType.toUpperCase()}`);
-                refreshUI();
-            };
+                tbody.appendChild(tr);
+            });
+        };
 
-            window.renderSettlements = function () {
-                // CRITICAL: Ensure settlements array exists with proper default
-                if (!db || !db.settlements || !Array.isArray(db.settlements)) {
-                    console.warn('WARNING: db.settlements is missing or invalid! Reinitializing...');
-                    if (!db) db = JSON.parse(JSON.stringify(APP_STATE));
-                    if (!db.settlements) db.settlements = [];
-                }
 
-                console.log('===== RENDERING SETTLEMENTS =====');
-                console.log('Total settlements in db:', db.settlements.length);
-                console.log('All settlement records:', JSON.stringify(db.settlements, null, 2));
-                console.log('Local storage key:', DB_KEY);
-                const localStorageData = localStorage.getItem(DB_KEY);
-                console.log('LocalStorage settlements count:', localStorageData ? JSON.parse(localStorageData).settlements.length : 'N/A');
-                console.log('==================================');
+        window.renderSettlements = function () {
+            // CRITICAL: Ensure settlements array exists with proper default
+            if (!db || !db.settlements || !Array.isArray(db.settlements)) {
+                console.warn('WARNING: db.settlements is missing or invalid! Reinitializing...');
+                if (!db) db = JSON.parse(JSON.stringify(APP_STATE));
+                if (!db.settlements) db.settlements = [];
+            }
 
-                const search = document.getElementById('settlementSearch') ? document.getElementById('settlementSearch').value.toLowerCase() : '';
-                const typeFilter = document.getElementById('settlementTypeFilter') ? document.getElementById('settlementTypeFilter').value : '';
+            console.log('===== RENDERING SETTLEMENTS =====');
+            console.log('Total settlements in db:', db.settlements.length);
+            console.log('All settlement records:', JSON.stringify(db.settlements, null, 2));
+            console.log('Local storage key:', DB_KEY);
+            const localStorageData = localStorage.getItem(DB_KEY);
+            console.log('LocalStorage settlements count:', localStorageData ? JSON.parse(localStorageData).settlements.length : 'N/A');
+            console.log('==================================');
 
-                let filtered = db.settlements.filter(s => {
-                    const matchesSearch = !search || (s.entityName && s.entityName.toLowerCase().includes(search));
-                    const matchesType = !typeFilter || s.type === typeFilter;
-                    return matchesSearch && matchesType;
-                });
+            const search = document.getElementById('settlementSearch') ? document.getElementById('settlementSearch').value.toLowerCase() : '';
+            const typeFilter = document.getElementById('settlementTypeFilter') ? document.getElementById('settlementTypeFilter').value : '';
 
-                console.log('Filtered settlements after search/type:', filtered.length);
+            let filtered = db.settlements.filter(s => {
+                const matchesSearch = !search || (s.entityName && s.entityName.toLowerCase().includes(search));
+                const matchesType = !typeFilter || s.type === typeFilter;
+                return matchesSearch && matchesType;
+            });
 
-                // Update summary cards
-                let cashTotal = 0, bankTotal = 0;
-                db.settlements.forEach(s => {
-                    if (s.paymentMethod === 'cash') cashTotal += s.settlementAmount;
-                    else if (s.paymentMethod === 'bank') bankTotal += s.settlementAmount;
-                });
+            console.log('Filtered settlements after search/type:', filtered.length);
 
-                const countEl = document.getElementById('settlementCount');
-                const cashEl = document.getElementById('settlementCashTotal');
-                const bankEl = document.getElementById('settlementBankTotal');
+            // Update summary cards
+            let cashTotal = 0, bankTotal = 0;
+            db.settlements.forEach(s => {
+                if (s.paymentMethod === 'cash') cashTotal += s.settlementAmount;
+                else if (s.paymentMethod === 'bank') bankTotal += s.settlementAmount;
+            });
 
-                if (countEl) countEl.innerText = db.settlements.length;
-                if (cashEl) cashEl.innerText = `${db.config.currency}${cashTotal.toFixed(2)}`;
-                if (bankEl) bankEl.innerText = `${db.config.currency}${bankTotal.toFixed(2)}`;
+            const countEl = document.getElementById('settlementCount');
+            const cashEl = document.getElementById('settlementCashTotal');
+            const bankEl = document.getElementById('settlementBankTotal');
 
-                // Find pending dues
-                let pendingCount = 0;
-                if (db.customers) {
-                    pendingCount += db.customers.filter(c => c.balance > 0).length;
-                }
-                if (db.suppliers) {
-                    pendingCount += db.suppliers.filter(s => s.balance > 0).length;
-                }
-                const pendingEl = document.getElementById('settlementPendingCount');
-                if (pendingEl) pendingEl.innerText = pendingCount;
+            if (countEl) countEl.innerText = db.settlements.length;
+            if (cashEl) cashEl.innerText = `${db.config.currency}${cashTotal.toFixed(2)}`;
+            if (bankEl) bankEl.innerText = `${db.config.currency}${bankTotal.toFixed(2)}`;
 
-                // Render table
-                const tbody = document.getElementById('settlementBody');
-                if (!tbody) {
-                    console.error('ERROR: settlementBody element not found!');
-                    return;
-                }
-                tbody.innerHTML = '';
+            // Find pending dues
+            let pendingCount = 0;
+            if (db.customers) {
+                pendingCount += db.customers.filter(c => c.balance > 0).length;
+            }
+            if (db.suppliers) {
+                pendingCount += db.suppliers.filter(s => s.balance > 0).length;
+            }
+            const pendingEl = document.getElementById('settlementPendingCount');
+            if (pendingEl) pendingEl.innerText = pendingCount;
 
-                if (filtered.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="p-8"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-handshake"></i></div><div class="empty-state-title">No Settlements Found</div><div class="empty-state-text">Create a settlement or adjust filters</div></div></td></tr>`;
-                    return;
-                }
+            // Render table
+            const tbody = document.getElementById('settlementBody');
+            if (!tbody) {
+                console.error('ERROR: settlementBody element not found!');
+                return;
+            }
+            tbody.innerHTML = '';
 
-                filtered.forEach(s => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-white/5 border-b border-gray-800';
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-8"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-handshake"></i></div><div class="empty-state-title">No Settlements Found</div><div class="empty-state-text">Create a settlement or adjust filters</div></div></td></tr>`;
+                return;
+            }
 
-                    const paymentBadge = s.paymentMethod === 'cash'
-                        ? '<span class="px-3 py-1 bg-green-900/40 text-green-300 rounded text-xs font-bold"><i class="fa-solid fa-money-bill mr-1"></i>Cash</span>'
-                        : '<span class="px-3 py-1 bg-blue-900/40 text-blue-300 rounded text-xs font-bold"><i class="fa-solid fa-university mr-1"></i>Bank</span>';
+            filtered.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/5 border-b border-gray-800';
 
-                    const typeBadge = s.type === 'customer'
-                        ? '<span class="px-2 py-1 bg-blue-900/30 text-blue-300 text-xs rounded"><i class="fa-solid fa-user mr-1"></i>Customer</span>'
-                        : '<span class="px-2 py-1 bg-orange-900/30 text-orange-300 text-xs rounded"><i class="fa-solid fa-truck mr-1"></i>Supplier</span>';
+                const paymentBadge = s.paymentMethod === 'cash'
+                    ? '<span class="px-3 py-1 bg-green-900/40 text-green-300 rounded text-xs font-bold"><i class="fa-solid fa-money-bill mr-1"></i>Cash</span>'
+                    : '<span class="px-3 py-1 bg-blue-900/40 text-blue-300 rounded text-xs font-bold"><i class="fa-solid fa-university mr-1"></i>Bank</span>';
 
-                    tr.innerHTML = `
+                const typeBadge = s.type === 'customer'
+                    ? '<span class="px-2 py-1 bg-blue-900/30 text-blue-300 text-xs rounded"><i class="fa-solid fa-user mr-1"></i>Customer</span>'
+                    : '<span class="px-2 py-1 bg-orange-900/30 text-orange-300 text-xs rounded"><i class="fa-solid fa-truck mr-1"></i>Supplier</span>';
+
+                tr.innerHTML = `
                     <td class="p-3">${window.formatDate(s.date)}</td>
                     <td class="p-3">${typeBadge}</td>
                     <td class="p-3 font-bold text-white">${s.entityName}</td>
@@ -13234,61 +13309,61 @@ Updated Balances:
                         <button onclick="printSettlementInvoiceQuick(${s.id})" class="text-white hover:text-gray-300" title="Print"><i class="fa-solid fa-print"></i></button>
                     </td>
                 `;
-                    tbody.appendChild(tr);
-                });
-            };
+                tbody.appendChild(tr);
+            });
+        };
 
-            // Debug function to diagnose settlement issues
-            window.debugSettlements = function () {
-                console.clear();
-                console.log('========== SETTLEMENT DEBUG INFO ==========');
-                console.log('Current User:', currentUser ? currentUser.email : 'Not logged in');
-                console.log('DB_KEY:', DB_KEY);
-                console.log('');
+        // Debug function to diagnose settlement issues
+        window.debugSettlements = function () {
+            console.clear();
+            console.log('========== SETTLEMENT DEBUG INFO ==========');
+            console.log('Current User:', currentUser ? currentUser.email : 'Not logged in');
+            console.log('DB_KEY:', DB_KEY);
+            console.log('');
 
-                console.log('DATABASE STATE (db object):');
-                console.log('  db.settlements length:', db.settlements ? db.settlements.length : 'UNDEFINED');
-                console.log('  db.settlements:', JSON.stringify(db.settlements || [], null, 2));
-                console.log('');
+            console.log('DATABASE STATE (db object):');
+            console.log('  db.settlements length:', db.settlements ? db.settlements.length : 'UNDEFINED');
+            console.log('  db.settlements:', JSON.stringify(db.settlements || [], null, 2));
+            console.log('');
 
-                console.log('LOCAL STORAGE:');
-                if (DB_KEY && localStorage.getItem(DB_KEY)) {
-                    const stored = JSON.parse(localStorage.getItem(DB_KEY));
-                    console.log('  Settlements in localStorage:', stored.settlements ? stored.settlements.length : 'NONE');
-                    console.log('  First settlement:', stored.settlements && stored.settlements.length > 0 ? JSON.stringify(stored.settlements[0], null, 2) : 'NO DATA');
-                } else {
-                    console.log('  No data in localStorage');
-                }
-                console.log('');
+            console.log('LOCAL STORAGE:');
+            if (DB_KEY && localStorage.getItem(DB_KEY)) {
+                const stored = JSON.parse(localStorage.getItem(DB_KEY));
+                console.log('  Settlements in localStorage:', stored.settlements ? stored.settlements.length : 'NONE');
+                console.log('  First settlement:', stored.settlements && stored.settlements.length > 0 ? JSON.stringify(stored.settlements[0], null, 2) : 'NO DATA');
+            } else {
+                console.log('  No data in localStorage');
+            }
+            console.log('');
 
-                console.log('DOM ELEMENTS:');
-                console.log('  settlementBody exists:', !!document.getElementById('settlementBody'));
-                console.log('  settlementCount exists:', !!document.getElementById('settlementCount'));
-                console.log('  settlementBody innerHTML length:', document.getElementById('settlementBody')?.innerHTML.length || 0);
-                console.log('');
+            console.log('DOM ELEMENTS:');
+            console.log('  settlementBody exists:', !!document.getElementById('settlementBody'));
+            console.log('  settlementCount exists:', !!document.getElementById('settlementCount'));
+            console.log('  settlementBody innerHTML length:', document.getElementById('settlementBody')?.innerHTML.length || 0);
+            console.log('');
 
-                console.log('========== END DEBUG INFO ==========');
-                alert('Debug info logged to console (F12). Check the browser console for details.');
-            };
+            console.log('========== END DEBUG INFO ==========');
+            alert('Debug info logged to console (F12). Check the browser console for details.');
+        };
 
-            window.viewSettlementInvoice = function (settlementId) {
-                const settlement = db.settlements.find(s => s.id === settlementId);
-                if (!settlement) return;
+        window.viewSettlementInvoice = function (settlementId) {
+            const settlement = db.settlements.find(s => s.id === settlementId);
+            if (!settlement) return;
 
-                currentSettlementData = settlement;
-                const content = generateSettlementInvoiceHTML(settlement);
-                document.getElementById('settlementInvoiceContent').innerHTML = content;
-                openModal('settlementViewModal');
-            };
+            currentSettlementData = settlement;
+            const content = generateSettlementInvoiceHTML(settlement);
+            document.getElementById('settlementInvoiceContent').innerHTML = content;
+            openModal('settlementViewModal');
+        };
 
-            function generateSettlementInvoiceHTML(settlement) {
-                const entity = settlement.type === 'customer'
-                    ? db.customers.find(c => c.id === settlement.entityId)
-                    : db.suppliers.find(s => s.id === settlement.entityId);
+        function generateSettlementInvoiceHTML(settlement) {
+            const entity = settlement.type === 'customer'
+                ? db.customers.find(c => c.id === settlement.entityId)
+                : db.suppliers.find(s => s.id === settlement.entityId);
 
-                const logoHTML = db.config.logo ? `<img src="${db.config.logo}" style="width: 80px; height: 80px; object-fit: contain; margin-right: 16px;">` : '';
+            const logoHTML = db.config.logo ? `<img src="${db.config.logo}" style="width: 80px; height: 80px; object-fit: contain; margin-right: 16px;">` : '';
 
-                return `
+            return `
                 <div style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; color: #000;">
                     <!-- HEADER WITH LOGO AND COMPANY INFO -->
                     <div style="display: flex; align-items: flex-start; border-bottom: 3px solid #000; padding-bottom: 16px; margin-bottom: 16px;">
@@ -13465,84 +13540,77 @@ Updated Balances:
                     </div>
                 </div>
             `;
+        }
+
+        window.printSettlementInvoice = function () {
+            if (!currentSettlementData) return;
+            const printContent = document.getElementById('settlementInvoiceContent').innerHTML;
+            const printWindow = window.open('', '', 'height=700,width=900');
+
+            if (!printWindow) {
+                alert('Please disable popup blocker and try again, or use the PDF export button.');
+                return;
             }
 
-            window.printSettlementInvoice = function () {
-                if (!currentSettlementData) return;
-                const printContent = document.getElementById('settlementInvoiceContent').innerHTML;
-                const printWindow = window.open('', '', 'height=700,width=900');
+            printWindow.document.write('<html><head><title>Settlement Invoice</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body style="font-family: Arial, sans-serif;">');
+            printWindow.document.write(printContent);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 250);
+        };
 
-                if (!printWindow) {
-                    alert('Please disable popup blocker and try again, or use the PDF export button.');
-                    return;
-                }
+        window.downloadSettlementPDF = function () {
+            if (!currentSettlementData) return;
+            const s = currentSettlementData;
 
-                printWindow.document.write('<html><head><title>Settlement Invoice</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body style="font-family: Arial, sans-serif;">');
-                printWindow.document.write(printContent);
-                printWindow.document.write('</body></html>');
-                printWindow.document.close();
-                setTimeout(() => printWindow.print(), 250);
-            };
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
 
-            window.downloadSettlementPDF = function () {
-                if (!currentSettlementData) return;
-                const s = currentSettlementData;
-
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-
-                let yPos = 20;
-                if (db.config.logo) {
-                    try {
-                        doc.addImage(db.config.logo, 'JPEG', 14, 15, 20, 20);
-                        yPos = 40;
-                    } catch (e) { }
-                }
-
-                doc.setFontSize(18);
-                doc.text(db.config.name, 14, yPos);
-                doc.setFontSize(10);
-                doc.text(db.config.address, 14, yPos + 5);
-                doc.text('CREDIT SETTLEMENT CERTIFICATE', 14, yPos + 15);
-
-                doc.setDrawColor(200);
-                doc.line(14, yPos + 18, 196, yPos + 18);
-
-                doc.setFontSize(12);
-                doc.text(`${s.type === 'customer' ? 'Customer' : 'Supplier'}: ${s.entityName}`, 14, yPos + 28);
-                doc.setFontSize(10);
-                doc.text(`Date: ${window.formatDate(s.date)}`, 14, yPos + 33);
-                doc.text(`Settlement ID: ${s.id.toString().slice(-8)}`, 14, yPos + 38);
-
-                doc.setFontSize(11);
-                doc.text(`Outstanding Due: ${db.config.currency} ${s.dueAmount.toFixed(2)}`, 14, yPos + 50);
-                doc.text(`Amount Settled: ${db.config.currency} ${s.settlementAmount.toFixed(2)}`, 14, yPos + 55);
-                doc.text(`Payment Method: ${s.paymentMethod.toUpperCase()}`, 14, yPos + 60);
-
-                if (s.chequeNo) {
-                    doc.text(`Cheque Number: ${s.chequeNo}`, 14, yPos + 65);
-                }
-
-                doc.setFontSize(8);
-                doc.text('This certificate confirms the settlement of outstanding dues.', 14, yPos + 80);
-
-                const filename = `Settlement_${s.entityName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-                doc.save(filename);
-            };
-
-            window.printSettlementInvoiceQuick = function (settlementId) {
-                const settlement = db.settlements.find(s => s.id === settlementId);
-                if (!settlement) return;
-                currentSettlementData = settlement;
-                printSettlementInvoice();
-            };
-
-
-            if (e.filename && e.filename.includes('sourcemap')) {
-                originalConsole.warn('Security: Source map access blocked');
-                e.preventDefault();
+            let yPos = 20;
+            if (db.config.logo) {
+                try {
+                    doc.addImage(db.config.logo, 'JPEG', 14, 15, 20, 20);
+                    yPos = 40;
+                } catch (e) { }
             }
-        }, true);
+
+            doc.setFontSize(18);
+            doc.text(db.config.name, 14, yPos);
+            doc.setFontSize(10);
+            doc.text(db.config.address, 14, yPos + 5);
+            doc.text('CREDIT SETTLEMENT CERTIFICATE', 14, yPos + 15);
+
+            doc.setDrawColor(200);
+            doc.line(14, yPos + 18, 196, yPos + 18);
+
+            doc.setFontSize(12);
+            doc.text(`${s.type === 'customer' ? 'Customer' : 'Supplier'}: ${s.entityName}`, 14, yPos + 28);
+            doc.setFontSize(10);
+            doc.text(`Date: ${window.formatDate(s.date)}`, 14, yPos + 33);
+            doc.text(`Settlement ID: ${s.id.toString().slice(-8)}`, 14, yPos + 38);
+
+            doc.setFontSize(11);
+            doc.text(`Outstanding Due: ${db.config.currency} ${s.dueAmount.toFixed(2)}`, 14, yPos + 50);
+            doc.text(`Amount Settled: ${db.config.currency} ${s.settlementAmount.toFixed(2)}`, 14, yPos + 55);
+            doc.text(`Payment Method: ${s.paymentMethod.toUpperCase()}`, 14, yPos + 60);
+
+            if (s.chequeNo) {
+                doc.text(`Cheque Number: ${s.chequeNo}`, 14, yPos + 65);
+            }
+
+            doc.setFontSize(8);
+            doc.text('This certificate confirms the settlement of outstanding dues.', 14, yPos + 80);
+
+            const filename = `Settlement_${s.entityName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(filename);
+        };
+
+        window.printSettlementInvoiceQuick = function (settlementId) {
+            const settlement = db.settlements.find(s => s.id === settlementId);
+            if (!settlement) return;
+            currentSettlementData = settlement;
+            printSettlementInvoice();
+        };
 
         // Log protection enabled to original console
         setTimeout(() => {
