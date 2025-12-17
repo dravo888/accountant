@@ -1226,7 +1226,7 @@
                     <span id="syncStatusIndicator" class="text-green-500"><i class="fa-solid fa-circle"></i>
                         Synced</span>
                 </div>
-                <button onclick="nav('settings')"
+                <button onclick="nav('settings'); if(window.loadSettings) window.loadSettings();"
                     class="flex items-center gap-2 text-gray-400 hover:text-karta-primary hover:bg-white/5 transition-all w-full p-2 rounded">
                     <i class="fa-solid fa-gear"></i> Settings
                 </button>
@@ -2533,8 +2533,13 @@
                                 Balance)</label>
                             <input type="number" id="confInitialCash" step="0.01" class="input-field"
                                 placeholder="0.00">
-                            <p class="text-xs text-gray-500 mt-1">Amount of cash at business start. Used in balance
-                                sheet calculations.</p>
+                            <p class="text-xs text-gray-500 mt-1">Cash at business start.</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Initial Bank Balance</label>
+                            <input type="number" id="confInitialBank" step="0.01" class="input-field"
+                                placeholder="0.00">
+                            <p class="text-xs text-gray-500 mt-1">Bank funds at business start.</p>
                         </div>
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">Date System</label>
@@ -10252,10 +10257,18 @@ Updated Balances:
                 const sales = db.transactions.filter(t => t.type === 'sale').reduce((a, c) => a + c.total, 0);
 
                 let cogs = 0;
-                db.transactions.filter(t => t.type === 'sale' && !t.isReturn).forEach(t => {
+                db.transactions.filter(t => t.type === 'sale').forEach(t => {
+                    const isReturn = t.isReturn;
                     t.items.forEach(i => {
                         const itemCost = i.cost !== undefined ? i.cost : (db.products.find(x => x.name === i.name)?.cost || 0);
-                        cogs += moneyRound(itemCost * (i.qty || 1));
+                        const costTotal = moneyRound(itemCost * (i.qty || 1));
+
+                        // Sync with runReports logic: Reduce COGS for returns
+                        if (isReturn) {
+                            cogs -= costTotal;
+                        } else {
+                            cogs += costTotal;
+                        }
                     });
                 });
 
@@ -10373,6 +10386,11 @@ Updated Balances:
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    ${fixedAssets > 0 ? `
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px;">Fixed Assets</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${fixedAssets.toFixed(2)}</td>
+                                    </tr>` : ''}
                                     <tr>
                                         <td style="border: 1px solid #000; padding: 8px;">Closing Stock</td>
                                         <td style="border: 1px solid #000; padding: 8px; text-align: right;">${stockVal.toFixed(2)}</td>
@@ -11141,6 +11159,202 @@ Updated Balances:
             }
         });
 
+        // --- REPAIR BALANCES FUNCTION ---
+        window.repairCashAndBankBalances = function () {
+            if (!confirm("Recalculate Cash & Bank Balances from the beginning?\\n\\nThis will:\\n1. Reset balances to 'Initial Cash/Bank' settings.\\n2. Replay all transactions to calculate current values.\\n3. Fix any discrepancies.")) return;
+
+            // 1. Reset to Initial
+            let runningCash = db.config.initialCash || 0;
+            let runningBank = db.config.initialBank || 0;
+
+            console.log("Starting Repair...");
+            console.log('Initial: Cash=' + runningCash + ', Bank=' + runningBank);
+
+            // 2. Sort transactions by date (oldest first)
+            const sortedTxns = (db.transactions || []).sort((a, b) => new Date(a.date) - new Date(b.date));
+            let count = 0;
+
+            sortedTxns.forEach(txn => {
+                const amt = parseFloat(txn.total) || 0;
+
+                // --- SALES ---
+                if (txn.type === 'sale') {
+                    if (txn.payType === 'split') {
+                        runningCash += (parseFloat(txn.cashAmount) || parseFloat(txn.splitCash) || 0);
+                        runningBank += (parseFloat(txn.bankAmount) || parseFloat(txn.splitBank) || 0);
+                    } else if (txn.payType === 'bank') {
+                        runningBank += amt;
+                    } else if (txn.payType === 'credit') {
+                        // Credit sales don't affect liquid cash/bank
+                    } else {
+                        // Default 'cash'
+                        runningCash += amt;
+                    }
+                }
+
+                // --- PURCHASES ---
+                else if (txn.type === 'purchase') {
+                    if (txn.payType === 'split') {
+                        runningCash -= (parseFloat(txn.cashAmount) || 0);
+                        runningBank -= (parseFloat(txn.bankAmount) || 0);
+                    } else if (txn.payType === 'bank') {
+                        runningBank -= amt;
+                    } else if (txn.payType === 'credit') {
+                        // Credit purchase doesn't affect liquid cash/bank
+                    } else {
+                        // Default 'cash'
+                        runningCash -= amt;
+                    }
+                }
+
+                // --- EXPENSES ---
+                else if (txn.type === 'expense') {
+                    if (txn.payType === 'bank') {
+                        runningBank -= amt;
+                    } else {
+                        runningCash -= amt;
+                    }
+                }
+
+                // --- CUSTOMER PAYMENTS (Inflow) ---
+                else if (txn.type === 'payment') {
+                    const method = txn.paymentMethod || txn.payType || 'cash';
+                    if (method === 'bank') {
+                        runningBank += amt;
+                    } else {
+                        runningCash += amt;
+                    }
+                }
+
+                // --- SUPPLIER PAYMENTS (Outflow) ---
+                else if (txn.type === 'payment_out') {
+                    const method = txn.paymentMethod || txn.payType || 'cash';
+                    if (method === 'bank') {
+                        runningBank -= amt;
+                    } else {
+                        runningCash -= amt;
+                    }
+                }
+
+                // --- ASSET PURCHASES ---
+                else if (txn.type === 'asset_purchase') {
+                    const method = txn.payType || 'cash';
+                    if (method === 'bank') {
+                        runningBank -= amt;
+                    } else {
+                        runningCash -= amt;
+                    }
+                }
+
+                // --- EXPLICIT CASH RETURNS ---
+                else if (txn.type === 'return_cash_out') {
+                    runningCash -= Math.abs(amt);
+                }
+
+                count++;
+            });
+
+            // 3. Update Config
+            db.config.cashBalance = moneyRound(runningCash);
+            db.config.bankBalance = moneyRound(runningBank);
+
+            console.log('Final: Cash=' + db.config.cashBalance + ', Bank=' + db.config.bankBalance);
+
+            // 4. Save & Refresh
+            saveDB();
+            refreshUI();
+            alert('✓ Balances Repaired Successfully!\\nProcessed ' + count + ' transactions.\\n\\nNew Cash Balance: ' + db.config.currency + db.config.cashBalance.toFixed(2) + '\\nNew Bank Balance: ' + db.config.currency + db.config.bankBalance.toFixed(2));
+        };
+
+        // --- Settings Management ---
+        window.loadSettings = function () {
+            if (!db.config) return;
+            document.getElementById('confName').value = db.config.companyName || '';
+            document.getElementById('confAddr').value = db.config.address || '';
+            document.getElementById('confPhone').value = db.config.phone || '';
+            document.getElementById('confTax').value = db.config.taxId || '';
+            document.getElementById('confVatRate').value = db.config.vatRate || 13;
+            document.getElementById('confCurr').value = db.config.currency || 'Rs ';
+            document.getElementById('confInitialCash').value = db.config.initialCash || 0;
+            document.getElementById('confInitialBank').value = db.config.initialBank || 0;
+            document.getElementById('confDateMode').value = (db.config.dateMode || 'english');
+            document.getElementById('confBusinessType').value = (db.config.businessType || 'general');
+
+            // Show Logo if exists
+            const logoImg = document.getElementById('confLogoPreview');
+            const placeholder = document.getElementById('confLogoPlaceholder');
+            if (db.config.logo) {
+                logoImg.src = db.config.logo;
+                logoImg.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                logoImg.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+        };
+
+        // Settings Form Submission
+        const settingsForm = document.getElementById('settingsForm');
+        if (settingsForm) {
+            settingsForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                db.config.companyName = document.getElementById('confName').value;
+                db.config.address = document.getElementById('confAddr').value;
+                db.config.phone = document.getElementById('confPhone').value;
+                db.config.taxId = document.getElementById('confTax').value;
+                db.config.vatRate = parseFloat(document.getElementById('confVatRate').value) || 0;
+                db.config.currency = document.getElementById('confCurr').value;
+
+                // Handle Opening Balances - Update Config & Re-calculate Current Balances
+                const oldInitialCash = db.config.initialCash || 0;
+                const newInitialCash = parseFloat(document.getElementById('confInitialCash').value) || 0;
+                db.config.initialCash = newInitialCash;
+
+                const oldInitialBank = db.config.initialBank || 0;
+                const newInitialBank = parseFloat(document.getElementById('confInitialBank').value) || 0;
+                db.config.initialBank = newInitialBank;
+
+                // Adjust current balances by the difference if they exist, else set to initial
+                if (db.config.cashBalance === undefined) db.config.cashBalance = newInitialCash;
+                else db.config.cashBalance += (newInitialCash - oldInitialCash);
+
+                if (db.config.bankBalance === undefined) db.config.bankBalance = newInitialBank;
+                else db.config.bankBalance += (newInitialBank - oldInitialBank);
+
+                db.config.dateMode = document.getElementById('confDateMode').value;
+                db.config.businessType = document.getElementById('confBusinessType').value;
+
+                // Handle Logo Upload (if new file selected)
+                const logoInput = document.getElementById('confLogoInput');
+                if (logoInput.files && logoInput.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        db.config.logo = e.target.result;
+                        saveDB();
+                        alert("Settings saved successfully!");
+                        loadDashboard(); // Refresh UI
+                    };
+                    reader.readAsDataURL(logoInput.files[0]);
+                } else {
+                    saveDB();
+                    alert("Settings saved successfully!");
+                    loadDashboard(); // Refresh UI
+                }
+
+                // Update calendar visibility immediately
+                if (window.updateDateModeVisibility) window.updateDateModeVisibility();
+            });
+        }
+
+        window.clearLogo = function () {
+            if (confirm("Remove company logo?")) {
+                db.config.logo = null;
+                document.getElementById('confLogoInput').value = '';
+                if (window.loadSettings) window.loadSettings(); // Refresh view
+            }
+        };
+
         // --- Reports Export Logic ---
         window.exportReportCSV = function () {
             if (!currentReportData || !currentReportData.length) {
@@ -11215,11 +11429,19 @@ Updated Balances:
 
                 // FIX #6: Use STORED cost from transaction items, not current product cost
                 let cogs = 0;
-                filteredTxns.filter(t => t.type === 'sale' && !t.isReturn).forEach(t => {
+                filteredTxns.filter(t => t.type === 'sale').forEach(t => {
+                    const isReturn = t.isReturn;
                     t.items.forEach(i => {
                         // Use stored cost if available, otherwise fallback to current product cost
                         const itemCost = i.cost !== undefined ? i.cost : (db.products.find(x => x.name === i.name)?.cost || 0);
-                        cogs += moneyRound(itemCost * (i.qty || 1));
+                        const costTotal = moneyRound(itemCost * (i.qty || 1));
+
+                        // If return, REDUCE COGS. If sale, INCREASE COGS.
+                        if (isReturn) {
+                            cogs -= costTotal;
+                        } else {
+                            cogs += costTotal;
+                        }
                     });
                 });
                 const grossProfit = moneyRound(sales - cogs);
@@ -11243,10 +11465,16 @@ Updated Balances:
 
                 // COGS Calculation
                 let cogs = 0;
-                filteredTxns.filter(t => t.type === 'sale' && !t.isReturn).forEach(t => {
+                filteredTxns.filter(t => t.type === 'sale').forEach(t => {
+                    const isReturn = t.isReturn;
                     t.items.forEach(i => {
                         const itemCost = i.cost !== undefined ? i.cost : (db.products.find(x => x.name === i.name)?.cost || 0);
-                        cogs += moneyRound(itemCost * (i.qty || 1));
+                        const costTotal = moneyRound(itemCost * (i.qty || 1));
+                        if (isReturn) {
+                            cogs -= costTotal;
+                        } else {
+                            cogs += costTotal;
+                        }
                     });
                 });
 
@@ -11571,12 +11799,18 @@ Updated Balances:
                                 if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
                                 if (txn.type === 'payment') { dr = amt; particular = `To Customer Payment (${txn.entityName})`; isRelevant = true; } // Receiving Money
                                 if (txn.type === 'payment_out') { cr = amt; particular = `By Supplier Payment (${txn.entityName})`; isRelevant = true; } // Paying Money
+                                if (txn.type === 'asset_purchase') { cr = amt; particular = `By Asset (${txn.assetName})`; isRelevant = true; }
+                                if (txn.type === 'return_cash_out') { cr = Math.abs(txn.total); particular = `By Cash Return (${txn.entityName || 'Customer'})`; isRelevant = true; }
                             }
                         } else if (selectedAccount === 'Bank A/c') {
                             if (txn.payType === 'bank' || txn.bankAmount > 0) {
                                 const amt = (txn.payType === 'split' ? txn.bankAmount : txn.total);
                                 if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
                                 if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
+                                if (txn.type === 'expense') { cr = amt; particular = `By Expense (${txn.category || 'General'})`; isRelevant = true; }
+                                if (txn.type === 'asset_purchase') { cr = amt; particular = `By Asset (${txn.assetName})`; isRelevant = true; }
+                                if (txn.type === 'payment') { dr = amt; particular = `To Customer Payment (${txn.entityName})`; isRelevant = true; }
+                                if (txn.type === 'payment_out') { cr = amt; particular = `By Supplier Payment (${txn.entityName})`; isRelevant = true; }
                             }
                         } else if (selectedAccount === 'Sales A/c') {
                             if (txn.type === 'sale') { cr = txn.total; particular = `By ${txn.payType === 'credit' ? 'Debtors' : 'Cash/Bank'}`; isRelevant = true; }
@@ -11940,15 +12174,37 @@ Updated Balances:
                 });
 
                 // Net VAT = Output VAT (from sales) - Input VAT (from purchases) - Returned VAT
-                const netVat = moneyRound(totalVat - returnTax);
+                // --- NEW: Calculate Input VAT from Purchases ---
+                const purchases = filteredTxns.filter(t => t.type === 'purchase');
+                let inputVat = 0;
+                purchases.forEach(t => {
+                    let txnTaxable = 0;
+                    if (t.items && Array.isArray(t.items)) {
+                        t.items.forEach(item => {
+                            if (!item.vatExempt) { // Assuming imports match this structure or default to taxable
+                                txnTaxable += (item.qty || 1) * (item.cost || 0);
+                            }
+                        });
+                    } else {
+                        // Fallback structure
+                        txnTaxable = t.total; // Default to assuming total is taxable if no item breakdown
+                    }
+                    // Assuming 13% for now as backward compatibility
+                    const tax = moneyRound(txnTaxable * 0.13);
+                    inputVat += tax;
+                });
+
+                // Net VAT = Output VAT (Sales) - Return VAT (Sales Returns) - Input VAT (Purchases)
+                const netVat = moneyRound(totalVat - returnTax - inputVat);
                 const totalWithVat = moneyRound(totalTaxable + totalVatExempt + totalVat);
 
                 cards.innerHTML += createCard('Taxable Sales', totalTaxable, 'white');
-                cards.innerHTML += createCard('Output VAT Collected', totalVat, 'krata-primary');
+                cards.innerHTML += createCard('Output VAT (Sales)', totalVat, 'karta-primary');
                 if (returnTax > 0) {
                     cards.innerHTML += createCard('Less: Return VAT', returnTax, 'red-500');
                 }
-                cards.innerHTML += createCard('NET VAT PAYABLE', netVat, 'green-400');
+                cards.innerHTML += createCard('Less: Input VAT (Purch)', inputVat, 'blue-400');
+                cards.innerHTML += createCard('NET VAT PAYABLE', netVat, netVat >= 0 ? 'green-400' : 'yellow-400');
                 cards.innerHTML += `<div class="text-xs text-gray-400 mt-2"><i class="fa-solid fa-info-circle mr-1"></i>Note: If you have returns, they reduce VAT payable. Check the table below for details.</div>`;
 
                 thead.innerHTML = `<tr><th class="p-3">Date</th><th class="p-3">Invoice #</th><th class="p-3">Type</th><th class="p-3 text-right">Taxable</th><th class="p-3 text-right">Exempt</th><th class="p-3 text-right">VAT</th><th class="p-3 text-right">Total</th></tr>`;
@@ -12053,20 +12309,38 @@ Updated Balances:
                     const tr = document.createElement('tr');
                     let bgClass = '';
                     let color = 'text-green-500';
-                    if (t.type === 'expense') color = 'text-red-500';
+                    if (t.type === 'expense' || t.type === 'purchase' || t.type === 'asset_purchase' || t.type === 'payment_out') color = 'text-red-500';
                     if (t.isReturn) { color = 'text-orange-500'; bgClass = ' bg-red-900/20'; }
                     tr.className = `border-b border-gray-800 text-gray-300${bgClass}`;
                     let typeLabel = t.type.toUpperCase();
                     if (t.isReturn) typeLabel += ' (RETURN)';
+                    if (t.type === 'asset_purchase') typeLabel = 'ASSET';
                     tr.innerHTML = `<td class="p-3">${window.formatDate(t.date)}</td><td class="p-3 uppercase text-xs font-bold">${typeLabel}</td><td class="p-3">${t.entityName || t.assetName || t.items?.[0]?.name || '-'}</td><td class="p-3 text-right ${color}">${db.config.currency}${t.total.toFixed(2)}</td>`;
                     tbody.appendChild(tr);
                 });
                 // Summary for daily
                 const dSales = reportTxns.filter(t => t.type === 'sale').reduce((a, c) => a + c.total, 0);
                 const dExp = reportTxns.filter(t => t.type === 'expense').reduce((a, c) => a + c.total, 0);
-                cards.innerHTML += createCard('Sales (Net)', dSales, 'green-400');
+                const dPurch = reportTxns.filter(t => t.type === 'purchase').reduce((a, c) => a + c.total, 0);
+                const dAsset = reportTxns.filter(t => t.type === 'asset_purchase').reduce((a, c) => a + c.total, 0);
+
+
+                const dPayIn = reportTxns.filter(t => t.type === 'payment').reduce((a, c) => a + c.total, 0);
+                const dPayOut = reportTxns.filter(t => t.type === 'payment_out').reduce((a, c) => a + c.total, 0);
+                const dReturnOut = reportTxns.filter(t => t.type === 'return_cash_out').reduce((a, c) => a + Math.abs(c.total), 0);
+
+                // True Cash Flow Net Change = Sales(Cash) + PayIn - Exp - Purch(Cash) - Asset(Cash) - PayOut - Returns
+                // Simplified Net Change (Total Volume) = Sales + PayIn - Exp - Purch - Asset - PayOut - Returns
+                const netChange = (dSales + dPayIn) - (dExp + dPurch + dAsset + dPayOut + dReturnOut);
+
+                cards.innerHTML += createCard('Sales', dSales, 'green-400');
+                cards.innerHTML += createCard('Inflows (Pay)', dPayIn, 'green-200');
+                cards.innerHTML += createCard('Purchases', dPurch, 'white');
+                cards.innerHTML += createCard('Assets', dAsset, 'purple-400');
                 cards.innerHTML += createCard('Expenses', dExp, 'red-400');
-                cards.innerHTML += createCard('Net', dSales - dExp, 'white');
+                cards.innerHTML += createCard('Outflows (Pay)', dPayOut, 'red-200');
+                cards.innerHTML += createCard('Returns (Out)', dReturnOut, 'red-500');
+                cards.innerHTML += createCard('Net Cash Flow', netChange, 'karta-primary');
             } else if (type === 'purchase') {
                 // PURCHASE REPORT WITH DETAILED INVOICE INFORMATION
                 reportTxns = filteredTxns.filter(t => t.type === dbType);
@@ -13502,14 +13776,17 @@ Updated Balances:
                     // But if unlocked, it might reset on next open.
                     // Let's NOT save to config.isLocked=false state unless needed.
                 }
+
                 function setTranslate(xPos, yPos, el) {
                     el.style.left = xPos + "px";
                     el.style.top = yPos + "px";
                 }
             }
         }
+
         // Initialize
         initMovableCalendar();
     </script>
 </body>
+
 </html>
