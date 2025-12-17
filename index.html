@@ -2322,13 +2322,19 @@
                                 class="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-xs md:text-sm">
                                 <i class="fa-solid fa-receipt"></i> Record Expense
                             </button>
+
+                            <button onclick="openModal('assetModal')"
+                                class="flex-1 md:flex-none bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-bold text-xs md:text-sm">
+                                <i class="fa-solid fa-box"></i> Purchase Asset
+                            </button>
+
                             <button onclick="openModal('purchModal')"
                                 class="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold text-xs md:text-sm">
                                 <i class="fa-solid fa-cart-shopping"></i> Purchase Order
                             </button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="bg-karta-surface border border-karta-border rounded-lg p-4 h-96 overflow-y-auto">
                             <h4 class="font-bold mb-3 text-karta-primary">Purchase History (GRN)</h4>
                             <div id="purchHistory" class="space-y-2"></div>
@@ -2336,6 +2342,10 @@
                         <div class="bg-karta-surface border border-karta-border rounded-lg p-4 h-96 overflow-y-auto">
                             <h4 class="font-bold mb-3 text-red-500">Expense Log</h4>
                             <div id="expHistory" class="space-y-2"></div>
+                        </div>
+                        <div class="bg-karta-surface border border-karta-border rounded-lg p-4 h-96 overflow-y-auto">
+                            <h4 class="font-bold mb-3 text-purple-500">Assets Purchased</h4>
+                            <div id="assetHistory" class="space-y-2"></div>
                         </div>
                     </div>
 
@@ -2411,11 +2421,20 @@
                                 class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Expense
                                 Report</button>
                             <button onclick="runReports('balance')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Balance
-                                Sheet</button>
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Financial
+                                Statements</button>
                             <button onclick="runReports('debtors')"
                                 class="bg-red-700 hover:bg-red-600 text-white py-2 rounded text-xs">Debtors
                                 Report</button>
+                            <button onclick="runReports('journal')"
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Journal
+                                Book</button>
+                            <button onclick="runReports('ledger')"
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">General
+                                Ledger</button>
+                            <button onclick="runReports('trial')"
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Trial
+                                Balance</button>
                         </div>
                         <div id="debtorFilterContainer" class="hidden">
                             <label class="text-xs text-gray-400">Search by Location</label>
@@ -2753,6 +2772,62 @@
                 <button type="button" onclick="saveInvoiceEdit()"
                     class="px-4 py-2 bg-karta-primary text-black font-bold rounded">Save Changes</button>
             </div>
+        </div>
+
+        <!-- Journal Entry Modal -->
+        <div id="journalModal"
+            class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-lg">
+            <h3 class="text-xl font-bold mb-4 text-white">New Journal Entry</h3>
+            <form id="journalForm" onsubmit="saveJournalEntry(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-400 font-bold">Date</label>
+                    <input type="date" id="jouDate" required class="input-field">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-400 font-bold">Debit Account (Dr)</label>
+                        <select id="jouDrAccount" required class="input-field">
+                            <option value="">-- Select Account --</option>
+                            <option value="Cash A/c">Cash A/c</option>
+                            <option value="Bank A/c">Bank A/c</option>
+                            <option value="Sales A/c">Sales A/c</option>
+                            <option value="Purchase A/c">Purchase A/c</option>
+                            <option value="Expense A/c">Expense A/c</option>
+                            <option value="Assets A/c">Assets A/c</option>
+                            <option value="Capital A/c">Capital A/c</option>
+                            <option value="Drawings A/c">Drawings A/c</option>
+                            <!-- Customers and Suppliers will be added via JS if needed, or typed -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 font-bold">Credit Account (Cr)</label>
+                        <select id="jouCrAccount" required class="input-field">
+                            <option value="">-- Select Account --</option>
+                            <option value="Cash A/c">Cash A/c</option>
+                            <option value="Bank A/c">Bank A/c</option>
+                            <option value="Sales A/c">Sales A/c</option>
+                            <option value="Capital A/c">Capital A/c</option>
+                            <option value="Liabilities A/c">Liabilities A/c</option>
+                            <option value="Income A/c">Other Income A/c</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 font-bold">Amount</label>
+                    <input type="number" id="jouAmount" step="0.01" required class="input-field" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 font-bold">Narration / Particulars</label>
+                    <textarea id="jouNarration" required class="input-field h-20" placeholder="Being..."></textarea>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeModal()"
+                        class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-yellow-600 text-white font-bold rounded hover:bg-yellow-700 transition">Save
+                        Entry</button>
+                </div>
+            </form>
         </div>
 
         <!-- Customer Modal -->
@@ -3248,6 +3323,85 @@
                     <button type="submit"
                         class="px-4 py-2 bg-red-600 text-white font-bold rounded hover:bg-red-700 transition flex items-center gap-2">
                         <i class="fa-solid fa-check"></i> Save Expense
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Asset Purchase Modal -->
+        <div id="assetModal"
+            class="hidden modal-content bg-karta-surface border border-karta-border p-6 rounded-lg w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4 text-purple-500"><i class="fa-solid fa-box mr-2"></i>Purchase Asset
+            </h3>
+            <form id="assetForm" class="space-y-4">
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Asset Name <span
+                            class="text-red-500">*</span></label>
+                    <input type="text" id="assetName" placeholder="e.g., Office Furniture, Computer, Vehicle" required
+                        class="input-field">
+                    <span class="help-text">What asset are you purchasing?</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Asset Type <span
+                            class="text-red-500">*</span></label>
+                    <select id="assetType" required class="input-field">
+                        <option value="">Select Type</option>
+                        <option value="furniture">Furniture & Fixtures</option>
+                        <option value="equipment">Equipment & Machinery</option>
+                        <option value="vehicle">Vehicle</option>
+                        <option value="building">Building & Property</option>
+                        <option value="computer">Computer & IT Equipment</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <span class="help-text">Category of the asset</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Cost <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" id="assetCost" placeholder="0.00" required
+                        class="input-field text-lg font-bold">
+                    <span class="help-text">Purchase price</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Payment Method <span
+                            class="text-red-500">*</span></label>
+                    <div class="flex gap-2 mt-2">
+                        <label
+                            class="flex items-center gap-2 px-3 py-2 rounded border-2 border-karta-border hover:bg-white/5 cursor-pointer transition"
+                            title="Pay by cash">
+                            <input type="radio" name="assetPayment" value="cash" checked class="cursor-pointer">
+                            <span class="text-xs">Cash</span>
+                        </label>
+                        <label
+                            class="flex items-center gap-2 px-3 py-2 rounded border-2 border-karta-border hover:bg-white/5 cursor-pointer transition"
+                            title="Pay by bank">
+                            <input type="radio" name="assetPayment" value="bank" class="cursor-pointer">
+                            <span class="text-xs">Bank</span>
+                        </label>
+                        <label
+                            class="flex items-center gap-2 px-3 py-2 rounded border-2 border-karta-border hover:bg-white/5 cursor-pointer transition"
+                            title="Credit purchase">
+                            <input type="radio" name="assetPayment" value="credit" class="cursor-pointer">
+                            <span class="text-xs">Credit</span>
+                        </label>
+                    </div>
+                    <span class="help-text text-xs">How are you paying?</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Supplier Name (Optional)</label>
+                    <input type="text" id="assetSupplier" placeholder="Supplier or vendor name" class="input-field">
+                    <span class="help-text">Who did you buy from?</span>
+                </div>
+                <div class="form-group">
+                    <label class="text-xs text-gray-400 font-bold">Description (Optional)</label>
+                    <textarea id="assetDescription" placeholder="Additional notes about this asset" rows="2"
+                        class="input-field"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeModal()"
+                        class="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600 transition">Cancel</button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-purple-600 text-white font-bold rounded hover:bg-purple-700 transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Purchase Asset
                     </button>
                 </div>
             </form>
@@ -4056,7 +4210,8 @@
             suppliers: [],
             batches: [],
             transactions: [],
-            settlements: []
+            settlements: [],
+            assets: []
         };
 
         // Start with empty state
@@ -4090,7 +4245,8 @@
                 customers: Array.isArray(data.customers) ? data.customers : [],
                 suppliers: Array.isArray(data.suppliers) ? data.suppliers : [],
                 transactions: Array.isArray(data.transactions) ? data.transactions : [],
-                settlements: Array.isArray(data.settlements) ? data.settlements : []
+                settlements: Array.isArray(data.settlements) ? data.settlements : [],
+                assets: Array.isArray(data.assets) ? data.assets : []
             };
         }
 
@@ -10089,31 +10245,175 @@ Updated Balances:
             `;
 
             // Table Construction
-            if (currentReportTitle.includes("Balance Sheet")) {
+            if (currentReportTitle.includes("Financial Statements") || currentReportTitle.includes("Balance Sheet")) {
+                currentReportTitle = "Financial Statements (Balance Sheet & P&L)";
+
+                // --- PROFIT & LOSS CALCULATIONS (Re-calculated for Print) ---
+                const sales = db.transactions.filter(t => t.type === 'sale').reduce((a, c) => a + c.total, 0);
+
+                let cogs = 0;
+                db.transactions.filter(t => t.type === 'sale' && !t.isReturn).forEach(t => {
+                    t.items.forEach(i => {
+                        const itemCost = i.cost !== undefined ? i.cost : (db.products.find(x => x.name === i.name)?.cost || 0);
+                        cogs += moneyRound(itemCost * (i.qty || 1));
+                    });
+                });
+
+                const grossProfit = moneyRound(sales - Math.abs(cogs));
+                const expenses = db.transactions.filter(t => t.type === 'expense').reduce((a, c) => a + c.total, 0);
+                const netProfit = moneyRound(grossProfit - expenses);
+
+                // --- BALANCE SHEET CALCULATIONS ---
                 const stockVal = db.products.reduce((a, c) => a + (c.stock * c.cost), 0);
                 const receivables = db.customers.reduce((a, c) => a + c.balance, 0);
                 const payables = db.suppliers.reduce((a, c) => a + c.balance, 0);
-                const salesCash = db.transactions.filter(t => t.type === 'sale' && t.payType !== 'credit').reduce((a, c) => a + c.total, 0);
-                const custPayments = db.transactions.filter(t => t.type === 'payment' && !t.isReturn).reduce((a, c) => a + c.total, 0);
-                const supReturnsCash = db.transactions.filter(t => (t.type === 'payment' || t.type === 'return_cash_in') && t.isReturn).reduce((a, c) => a + c.total, 0);
-                const cashIn = salesCash + custPayments + supReturnsCash;
-                const cashOut = db.transactions.filter(t => (t.type === 'expense') || (t.type === 'purchase' && t.payType === 'cash') || (t.type === 'payment_out')).reduce((a, c) => a + c.total, 0);
-                const openingBalance = db.config.initialCash || 0;
-                const cashHand = moneyRound(openingBalance + cashIn - cashOut);
-                const assets = stockVal + receivables + cashHand;
-                const equity = assets - payables;
 
-                html += `<table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                    <tbody>
-                        <tr style="font-weight: 600; border-bottom: 1px solid #ddd;"><td style="padding: 8px;">ASSETS</td><td style="text-align: right; padding: 8px;"></td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 8px; color: #666;">Stock Value</td><td style="text-align: right; padding: 8px;">${db.config.currency}${stockVal.toFixed(2)}</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 8px; color: #666;">Receivables</td><td style="text-align: right; padding: 8px;">${db.config.currency}${receivables.toFixed(2)}</td></tr>
-                        <tr style="border-bottom: 1px solid #ddd;"><td style="padding: 8px; color: #666;">Cash on Hand</td><td style="text-align: right; padding: 8px;">${db.config.currency}${cashHand.toFixed(2)}</td></tr>
-                        <tr style="font-weight: 600; border-bottom: 1px solid #ddd;"><td style="padding: 8px;">Total Assets</td><td style="text-align: right; padding: 8px; color: #00c853;">${db.config.currency}${assets.toFixed(2)}</td></tr>
-                        <tr style="font-weight: 600; border-bottom: 1px solid #ddd;"><td style="padding: 8px;">Payables</td><td style="text-align: right; padding: 8px;">${db.config.currency}${payables.toFixed(2)}</td></tr>
-                        <tr style="font-weight: 600;"><td style="padding: 8px;">Net Equity</td><td style="text-align: right; padding: 8px; color: #00c853; font-size: 12px;">${db.config.currency}${equity.toFixed(2)}</td></tr>
-                    </tbody>
-                </table>`;
+                const cashBalance = moneyRound(db.config.cashBalance || 0);
+                const bankBalance = moneyRound(db.config.bankBalance || 0);
+                const totalLiquidAssets = moneyRound(cashBalance + bankBalance);
+
+                // Calculate Fixed Assets
+                const fixedAssets = (db.assets || []).reduce((a, c) => a + c.cost, 0);
+
+                const assets = moneyRound(stockVal + receivables + totalLiquidAssets + fixedAssets);
+                const equity = moneyRound(assets - payables);
+
+                // Calculate Fiscal Year (Approximate)
+                const today = new Date();
+                const currentMonth = today.getMonth() + 1; // 1-12
+                const currentYear = today.getFullYear();
+                const nepaliYear = currentYear + 57; // Rough conversion
+                const fiscalYear = currentMonth > 3 ? `${nepaliYear}/${(nepaliYear + 1).toString().slice(-3)}` : `${nepaliYear - 1}/${nepaliYear.toString().slice(-3)}`;
+
+                // --- STANDARD NEPALI FORM LAYOUT ---
+                html = `
+                    <div style="font-family: 'Times New Roman', serif; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.4;">
+                        
+                        <!-- Header -->
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            ${db.config.logo ? `<img src="${db.config.logo}" style="width: 80px; height: auto; margin-bottom: 10px;">` : ''}
+                            <h1 style="font-size: 24px; font-weight: bold; text-transform: uppercase; margin: 0;">${db.config.name}</h1>
+                            <p style="margin: 5px 0 0 0; font-size: 14px;">${db.config.address}</p>
+                            <p style="margin: 2px 0 0 0; font-size: 14px;">PAN/VAT: <b>${db.config.taxId || 'N/A'}</b></p>
+                            <div style="margin-top: 15px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 8px 0;">
+                                <h2 style="font-size: 18px; font-weight: bold; margin: 0;">FINANCIAL STATEMENTS</h2>
+                                <p style="margin: 5px 0 0 0; font-size: 14px;">Fiscal Year: <b>2081/082</b></p>
+                                <p style="margin: 2px 0 0 0; font-size: 12px; font-style: italic;">As of ${window.formatDate ? window.formatDate(new Date().toISOString()) : new Date().toLocaleDateString()}</p>
+                            </div>
+                        </div>
+
+                        <!-- 1. PROFIT & LOSS STATEMENT -->
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="font-size: 16px; font-weight: bold; text-decoration: underline; margin-bottom: 10px;">I. PROFIT & LOSS STATEMENT</h3>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px; border: 1px solid #000;">
+                                <thead>
+                                    <tr style="background-color: #f0f0f0;">
+                                        <th style="border: 1px solid #000; padding: 8px; text-align: left;">PARTICULARS</th>
+                                        <th style="border: 1px solid #000; padding: 8px; text-align: right; width: 150px;">AMOUNT (${db.config.currency})</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px;">Sales Revenue</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${sales.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px;">Less: Cost of Goods Sold</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">(${Math.abs(cogs).toFixed(2)})</td>
+                                    </tr>
+                                    <tr style="font-weight: bold; background-color: #fafafa;">
+                                        <td style="border: 1px solid #000; padding: 8px;">GROSS PROFIT</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${grossProfit.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px;">Less: Operating Expenses</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">(${expenses.toFixed(2)})</td>
+                                    </tr>
+                                    <tr style="font-weight: bold; background-color: #e8e8e8;">
+                                        <td style="border: 1px solid #000; padding: 8px;">NET PROFIT / (LOSS)</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${netProfit.toFixed(2)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 2. BALANCE SHEET -->
+                        <div style="margin-bottom: 40px;">
+                            <h3 style="font-size: 16px; font-weight: bold; text-decoration: underline; margin-bottom: 10px;">II. BALANCE SHEET</h3>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px; border: 1px solid #000;">
+                                <thead>
+                                    <tr style="background-color: #f0f0f0;">
+                                        <th style="border: 1px solid #000; padding: 8px; text-align: left;">CAPITAL & LIABILITIES</th>
+                                        <th style="border: 1px solid #000; padding: 8px; text-align: right; width: 150px;">AMOUNT (${db.config.currency})</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Owners Equity</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${equity.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px;">Accounts Payable (Creditors)</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${payables.toFixed(2)}</td>
+                                    </tr>
+                                    <tr style="font-weight: bold; background-color: #e8e8e8;">
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">TOTAL CAPITAL & LIABILITIES</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${(equity + payables).toFixed(2)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <br>
+
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px; border: 1px solid #000;">
+                                <thead>
+                                    <tr style="background-color: #f0f0f0;">
+                                        <th style="border: 1px solid #000; padding: 8px; text-align: left;">ASSETS</th>
+                                        <th style="border: 1px solid #000; padding: 8px; text-align: right; width: 150px;">AMOUNT (${db.config.currency})</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px;">Closing Stock</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${stockVal.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px;">Accounts Receivable (Debtors)</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${receivables.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px;">Cash on Hand</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${cashBalance.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 8px;">Bank Balance</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${bankBalance.toFixed(2)}</td>
+                                    </tr>
+                                    <tr style="font-weight: bold; background-color: #e8e8e8;">
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">TOTAL ASSETS</td>
+                                        <td style="border: 1px solid #000; padding: 8px; text-align: right;">${assets.toFixed(2)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Footer Signatures -->
+                        <div style="margin-top: 80px; display: flex; justify-content: space-between; font-size: 14px;">
+                            <div style="text-align: center; border-top: 1px solid #000; width: 200px; padding-top: 10px;">
+                                <b>Prepared By</b><br>
+                                (Accountant)
+                            </div>
+                             <div style="text-align: center; border-top: 1px solid #000; width: 200px; padding-top: 10px;">
+                                <b>Approved By</b><br>
+                                (Proprietor/Manager)
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 40px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 10px;">
+                            <p>Generated by KARTA Business System • ${new Date().toLocaleString()}</p>
+                        </div>
+                    </div>
+                `;
             } else {
                 // Standard reports
                 html += `<table style="width: 100%; border-collapse: collapse; font-size: 11px;">
@@ -10231,6 +10531,273 @@ Updated Balances:
                         });
                     } else {
                         html += `<tr><td colspan="10" style="padding: 15px; text-align: center; color: #999;">No purchase records found for the selected date range</td></tr>`;
+                    }
+                } else if (currentReportTitle.includes("Journal Book")) {
+                    // --- JOURNAL BOOK PRINT ---
+                    html += `<th style="padding: 8px; text-align: left;">Date</th>
+                              <th style="padding: 8px; text-align: left;">Particulars</th>
+                              <th style="padding: 8px; text-align: center;">L.F.</th>
+                              <th style="padding: 8px; text-align: right;">Debit (${db.config.currency})</th>
+                              <th style="padding: 8px; text-align: right;">Credit (${db.config.currency})</th></tr></thead><tbody>`;
+
+                    let totalDr = 0;
+                    let totalCr = 0;
+
+                    // Filter and sort should already be done in 'currentReportData' from runReports
+                    if (currentReportData && currentReportData.length > 0) {
+                        currentReportData.forEach(txn => {
+                            let drAccount = '';
+                            let crAccount = '';
+                            let amount = 0;
+                            let narration = '';
+                            let showEntry = false;
+
+                            // Same mapping logic as View
+                            if (txn.type === 'sale') {
+                                showEntry = true;
+                                amount = txn.total;
+                                const entity = txn.entityName || 'Walk-in Customer';
+                                narration = `Being goods sold to ${entity} (Inv #${txn.id})`;
+                                crAccount = 'Sales A/c';
+                                if (txn.payType === 'credit') drAccount = `${entity} (Debtor)`;
+                                else if (txn.payType === 'bank') drAccount = 'Bank A/c';
+                                else if (txn.payType === 'cash') drAccount = 'Cash A/c';
+                                else if (txn.payType === 'split') drAccount = 'Cash/Bank (Split)';
+                                else drAccount = 'Cash A/c';
+                            }
+                            else if (txn.type === 'purchase') {
+                                showEntry = true;
+                                amount = txn.total;
+                                const entity = txn.entityName || 'Supplier';
+                                narration = `Being goods purchased from ${entity} (Ref #${txn.ref || txn.id})`;
+                                drAccount = 'Purchase A/c';
+                                if (txn.payType === 'credit') crAccount = `${entity} (Creditor)`;
+                                else if (txn.payType === 'bank') crAccount = 'Bank A/c';
+                                else crAccount = 'Cash A/c';
+                            }
+                            else if (txn.type === 'expense') {
+                                showEntry = true;
+                                amount = txn.total;
+                                narration = `Being expenses paid for ${txn.entityName || txn.category || 'General'}`;
+                                drAccount = 'Expense A/c';
+                                crAccount = 'Cash A/c';
+                            }
+                            else if (txn.type === 'payment') {
+                                showEntry = true;
+                                amount = txn.total;
+                                narration = `Being payment received from ${txn.entityName}`;
+                                drAccount = 'Cash A/c';
+                                crAccount = `${txn.entityName} (Debtor)`;
+                            }
+                            else if (txn.type === 'payment_out') {
+                                showEntry = true;
+                                amount = txn.total;
+                                narration = `Being payment made to ${txn.entityName}`;
+                                drAccount = `${txn.entityName} (Creditor)`;
+                                crAccount = 'Cash A/c';
+                            }
+                            else if (txn.type === 'return_cash_out' || (txn.type === 'sale' && txn.isReturn)) {
+                                showEntry = true;
+                                amount = Math.abs(txn.total);
+                                const entity = txn.entityName || 'Customer';
+                                narration = `Being goods returned by ${entity} (Inv #${txn.ref || txn.id})`;
+                                drAccount = 'Sales Return A/c';
+                                crAccount = 'Cash A/c';
+                            }
+
+                            if (showEntry) {
+                                totalDr += amount;
+                                totalCr += amount;
+                                html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                                    <td style="padding: 8px;">${window.formatDate(txn.date)}</td>
+                                    <td style="padding: 8px;">
+                                        <b>${drAccount} Dr.</b><br>
+                                        <span style="padding-left: 20px;">To ${crAccount}</span><br>
+                                        <span style="font-size: 10px; font-style: italic;">(${narration})</span>
+                                    </td>
+                                    <td style="padding: 8px; text-align: center;">-</td>
+                                    <td style="padding: 8px; text-align: right;">${moneyRound(amount).toFixed(2)}</td>
+                                    <td style="padding: 8px; text-align: right;"></td>
+                                </tr>`;
+                                html += `<tr style="border-bottom: 1px solid #ddd;">
+                                    <td colspan="3"></td>
+                                    <td style="padding: 8px; text-align: right;"></td>
+                                    <td style="padding: 8px; text-align: right;">${moneyRound(amount).toFixed(2)}</td>
+                                </tr>`;
+                            }
+                        });
+
+                        // Total Row
+                        html += `<tr style="font-weight: bold; background-color: #eee;">
+                            <td colspan="3" style="padding: 8px; text-align: right; text-transform: uppercase;">Total</td>
+                            <td style="padding: 8px; text-align: right;">${moneyRound(totalDr).toFixed(2)}</td>
+                            <td style="padding: 8px; text-align: right;">${moneyRound(totalCr).toFixed(2)}</td>
+                         </tr>`;
+                    } else {
+                        html += `<tr><td colspan="5" style="padding: 20px; text-align: center;">No transactions found.</td></tr>`;
+                    }
+
+                } else if (currentReportTitle.includes("General Ledger")) {
+                    // --- GENERAL LEDGER PRINT ---
+                    const selectedAccount = document.getElementById('ledgerAccountSelect')?.value || 'Unknown Account';
+
+                    html += `<tr style="background: #eee;"><td colspan="6" style="padding: 10px; font-size: 14px; font-weight: bold; text-align: center;">Account: ${selectedAccount}</td></tr>`;
+                    html += `<tr style="border-bottom: 1px solid #000; font-weight: 600;">
+                              <th style="padding: 8px; text-align: left;">Date</th>
+                              <th style="padding: 8px; text-align: left;">Particulars</th>
+                              <th style="padding: 8px; text-align: center;">J.F.</th>
+                              <th style="padding: 8px; text-align: right;">Debit</th>
+                              <th style="padding: 8px; text-align: right;">Credit</th>
+                              <th style="padding: 8px; text-align: right;">Balance</th></tr></thead><tbody>`;
+
+                    let balance = 0;
+                    let totalDr = 0;
+                    let totalCr = 0;
+                    let hasData = false;
+
+                    if (currentReportData && currentReportData.length > 0) {
+                        currentReportData.forEach(txn => {
+                            let dr = 0;
+                            let cr = 0;
+                            let particular = '';
+                            let isRelevant = false;
+
+                            // Re-use Logic from View for filtering relevant txns
+                            if (selectedAccount === 'Cash A/c') {
+                                if (txn.payType === 'cash' || txn.cashAmount > 0) {
+                                    const amt = (txn.payType === 'split' ? txn.cashAmount : txn.total);
+                                    if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
+                                    if (txn.type === 'expense') { cr = amt; particular = `By Expense (${txn.category || 'General'})`; isRelevant = true; }
+                                    if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
+                                    if (txn.type === 'payment') { dr = amt; particular = `To Customer Payment (${txn.entityName})`; isRelevant = true; }
+                                    if (txn.type === 'payment_out') { cr = amt; particular = `By Supplier Payment (${txn.entityName})`; isRelevant = true; }
+                                }
+                            } else if (selectedAccount === 'Sales A/c') {
+                                if (txn.type === 'sale') { cr = txn.total; particular = `By ${txn.payType === 'credit' ? 'Debtors' : 'Cash/Bank'}`; isRelevant = true; }
+                                if (txn.type === 'return_cash_out' || (txn.type === 'sale' && txn.isReturn)) { dr = txn.total; particular = `To Return In`; isRelevant = true; }
+                            } else if (selectedAccount === 'Purchase A/c') {
+                                if (txn.type === 'purchase') { dr = txn.total; particular = `To ${txn.payType === 'credit' ? 'Creditors' : 'Cash/Bank'}`; isRelevant = true; }
+                            } else if (selectedAccount === 'Expense A/c') {
+                                if (txn.type === 'expense') { dr = txn.total; particular = `To Cash/Bank`; isRelevant = true; }
+                            } else if (selectedAccount === 'Bank A/c') {
+                                if (txn.payType === 'bank' || txn.bankAmount > 0) {
+                                    const amt = (txn.payType === 'split' ? txn.bankAmount : txn.total);
+                                    if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
+                                    if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
+                                }
+                            }
+
+                            if (isRelevant) {
+                                balance = balance + dr - cr;
+                                totalDr += dr;
+                                totalCr += cr;
+                                hasData = true;
+                                html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                                    <td style="padding: 8px;">${window.formatDate(txn.date)}</td>
+                                    <td style="padding: 8px;">${particular}</td>
+                                    <td style="padding: 8px; text-align: center;">-</td>
+                                    <td style="padding: 8px; text-align: right;">${dr ? moneyRound(dr).toFixed(2) : ''}</td>
+                                    <td style="padding: 8px; text-align: right;">${cr ? moneyRound(cr).toFixed(2) : ''}</td>
+                                    <td style="padding: 8px; text-align: right; font-weight: bold;">${Math.abs(moneyRound(balance)).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
+                                </tr>`;
+                            }
+                        });
+                    }
+
+                    if (hasData) {
+                        // Add Balance c/d entry before totals to balance both sides
+                        const finalBalance = moneyRound(balance);
+                        if (finalBalance !== 0) {
+                            const absBalance = Math.abs(finalBalance);
+                            if (finalBalance > 0) {
+                                // Debit balance: add Balance c/d on Credit side
+                                html += `<tr style="border-bottom: 1px solid #f0f0f0; background-color: #fffef5;">
+                                    <td style="padding: 8px;"></td>
+                                    <td style="padding: 8px; font-weight: bold; font-style: italic;">To Balance c/d</td>
+                                    <td style="padding: 8px; text-align: center;">-</td>
+                                    <td style="padding: 8px; text-align: right;"></td>
+                                    <td style="padding: 8px; text-align: right; font-weight: bold; color: #0066cc;">${absBalance.toFixed(2)}</td>
+                                    <td style="padding: 8px; text-align: right;"></td>
+                                </tr>`;
+                                totalCr += absBalance;
+                            } else {
+                                // Credit balance: add Balance c/d on Debit side
+                                html += `<tr style="border-bottom: 1px solid #f0f0f0; background-color: #fffef5;">
+                                    <td style="padding: 8px;"></td>
+                                    <td style="padding: 8px; font-weight: bold; font-style: italic;">To Balance c/d</td>
+                                    <td style="padding: 8px; text-align: center;">-</td>
+                                    <td style="padding: 8px; text-align: right; font-weight: bold; color: #0066cc;">${absBalance.toFixed(2)}</td>
+                                    <td style="padding: 8px; text-align: right;"></td>
+                                    <td style="padding: 8px; text-align: right;"></td>
+                                </tr>`;
+                                totalDr += absBalance;
+                            }
+                        }
+
+                        // Total row - now both sides should be equal
+                        html += `<tr style="font-weight: bold; background-color: #eee; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+                            <td colspan="3" style="padding: 8px; text-align: right; text-transform: uppercase;">Total</td>
+                            <td style="padding: 8px; text-align: right;">${moneyRound(totalDr).toFixed(2)}</td>
+                            <td style="padding: 8px; text-align: right;">${moneyRound(totalCr).toFixed(2)}</td>
+                            <td></td>
+                         </tr>`;
+
+                        // Add Balance b/d entry after totals (opening balance for next period)
+                        if (finalBalance !== 0) {
+                            const absBalance = Math.abs(finalBalance);
+                            if (finalBalance > 0) {
+                                // Debit balance brought down
+                                html += `<tr style="background-color: #f0f9ff; border-top: 1px solid #ccc;">
+                                    <td style="padding: 8px;"></td>
+                                    <td style="padding: 8px; font-weight: bold; font-style: italic;">By Balance b/d</td>
+                                    <td style="padding: 8px; text-align: center;">-</td>
+                                    <td style="padding: 8px; text-align: right; font-weight: bold; color: #00aa00;">${absBalance.toFixed(2)}</td>
+                                    <td style="padding: 8px; text-align: right;"></td>
+                                    <td style="padding: 8px; text-align: right; font-weight: bold;">${absBalance.toFixed(2)} Dr</td>
+                                </tr>`;
+                            } else {
+                                // Credit balance brought down
+                                html += `<tr style="background-color: #f0f9ff; border-top: 1px solid #ccc;">
+                                    <td style="padding: 8px;"></td>
+                                    <td style="padding: 8px; font-weight: bold; font-style: italic;">By Balance b/d</td>
+                                    <td style="padding: 8px; text-align: center;">-</td>
+                                    <td style="padding: 8px; text-align: right;"></td>
+                                    <td style="padding: 8px; text-align: right; font-weight: bold; color: #00aa00;">${absBalance.toFixed(2)}</td>
+                                    <td style="padding: 8px; text-align: right; font-weight: bold;">${absBalance.toFixed(2)} Cr</td>
+                                </tr>`;
+                            }
+                        }
+                    } else {
+                        html += `<tr><td colspan="6" style="padding: 20px; text-align: center;">No transactions found.</td></tr>`;
+                    }
+                } else if (currentReportTitle.includes("Trial Balance")) {
+                    // --- TRIAL BALANCE PRINT ---
+                    html += `<th style="padding: 8px; text-align: left;">Account Name</th>
+                              <th style="padding: 8px; text-align: right;">Debit (${db.config.currency})</th>
+                              <th style="padding: 8px; text-align: right;">Credit (${db.config.currency})</th></tr></thead><tbody>`;
+
+                    let totalDr = 0;
+                    let totalCr = 0;
+
+                    if (currentReportData && currentReportData.length > 0) {
+                        currentReportData.forEach(acc => {
+                            totalDr += acc.debit || 0;
+                            totalCr += acc.credit || 0;
+                            html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                                <td style="padding: 8px;">${acc.name}</td>
+                                <td style="padding: 8px; text-align: right; ${acc.debit > 0 ? 'font-weight: bold; color: #0066cc;' : 'color: #999;'}">${acc.debit > 0 ? moneyRound(acc.debit).toFixed(2) : '-'}</td>
+                                <td style="padding: 8px; text-align: right; ${acc.credit > 0 ? 'font-weight: bold; color: #00aa00;' : 'color: #999;'}">${acc.credit > 0 ? moneyRound(acc.credit).toFixed(2) : '-'}</td>
+                            </tr>`;
+                        });
+
+                        // Total row
+                        html += `<tr style="font-weight: bold; background-color: #eee; border-top: 2px solid #000;">
+                            <td style="padding: 8px; text-align: right; text-transform: uppercase;">Total</td>
+                            <td style="padding: 8px; text-align: right; color: #0066cc;">${moneyRound(totalDr).toFixed(2)}</td>
+                            <td style="padding: 8px; text-align: right; color: #00aa00;">${moneyRound(totalCr).toFixed(2)}</td>
+                         </tr>`;
+                    } else {
+                        html += `<tr><td colspan="3" style="padding: 20px; text-align: center;">No accounts found.</td></tr>`;
                     }
                 } else {
                     // GENERIC TRANSACTION REPORTS (Daily, Sales, Expense)
@@ -10668,41 +11235,603 @@ Updated Balances:
 
             if (type === 'balance') {
                 currentReportData = [];
-                currentReportTitle = "Balance Sheet";
+                currentReportTitle = "Financial Statements (Balance Sheet & P&L)";
                 document.getElementById('reportTitle').innerText = currentReportTitle;
 
+                // --- PROFIT & LOSS CALCULATIONS ---
+                const sales = filteredTxns.filter(t => t.type === 'sale').reduce((a, c) => a + c.total, 0);
+
+                // COGS Calculation
+                let cogs = 0;
+                filteredTxns.filter(t => t.type === 'sale' && !t.isReturn).forEach(t => {
+                    t.items.forEach(i => {
+                        const itemCost = i.cost !== undefined ? i.cost : (db.products.find(x => x.name === i.name)?.cost || 0);
+                        cogs += moneyRound(itemCost * (i.qty || 1));
+                    });
+                });
+
+                const grossProfit = moneyRound(sales - Math.abs(cogs));
+                const expenses = filteredTxns.filter(t => t.type === 'expense').reduce((a, c) => a + c.total, 0);
+                const netProfit = moneyRound(grossProfit - expenses);
+
+                // --- BALANCE SHEET CALCULATIONS ---
                 const stockVal = db.products.reduce((a, c) => a + (c.stock * c.cost), 0);
                 const receivables = db.customers.reduce((a, c) => a + c.balance, 0);
                 const payables = db.suppliers.reduce((a, c) => a + c.balance, 0);
 
-                // CRITICAL: Use db.config cash/bank as SOURCE OF TRUTH, not calculated from transactions
-                // These are updated in real-time by ALL transactions and are the single source of truth
                 const cashBalance = moneyRound(db.config.cashBalance || 0);
                 const bankBalance = moneyRound(db.config.bankBalance || 0);
                 const totalLiquidAssets = moneyRound(cashBalance + bankBalance);
 
-                // Calculate assets (stock value + receivables + liquid assets)
-                const assets = moneyRound(stockVal + receivables + totalLiquidAssets);
+                // Calculate Fixed Assets
+                const fixedAssets = (db.assets || []).reduce((a, c) => a + c.cost, 0);
 
-                // Calculate equity (assets - liabilities)
+                const assets = moneyRound(stockVal + receivables + totalLiquidAssets + fixedAssets);
+                // Equity = Assets - Liabilities
                 const equity = moneyRound(assets - payables);
 
+                // --- DISPLAY CARDS ---
+                cards.innerHTML += createCard('Net Profit', netProfit, netProfit >= 0 ? 'green-400' : 'red-400');
                 cards.innerHTML += createCard('Total Assets', assets, 'blue-400');
-                cards.innerHTML += createCard('Liabilities', payables, 'red-400');
-                cards.innerHTML += createCard('Equity', equity, 'green-400');
+                cards.innerHTML += createCard('Total Equity', equity, 'karta-primary');
 
+                // --- GENERATE REPORT TABLE ---
                 thead.innerHTML = `<tr><th class="p-3">Category</th><th class="p-3 text-right">Amount</th></tr>`;
-                tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 font-bold" colspan="2">Assets</td></tr>`;
-                tbody.innerHTML += `<tr><td class="p-3">Current Stock (@ Cost)</td><td class="p-3 text-right">${db.config.currency}${stockVal.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr><td class="p-3">Accounts Receivable (Due from Customers)</td><td class="p-3 text-right">${db.config.currency}${receivables.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr><td class="p-3 font-bold">Cash in Hand</td><td class="p-3 text-right font-bold">${db.config.currency}${cashBalance.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr><td class="p-3 font-bold">Bank Balance</td><td class="p-3 text-right font-bold">${db.config.currency}${bankBalance.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr><td class="p-3 font-bold">Total Liquid Assets</td><td class="p-3 text-right font-bold">${db.config.currency}${totalLiquidAssets.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr class="bg-gray-700"><td class="p-3 font-bold">Total Assets</td><td class="p-3 text-right font-bold">${db.config.currency}${assets.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 font-bold" colspan="2">Liabilities</td></tr>`;
-                tbody.innerHTML += `<tr><td class="p-3">Accounts Payable (Due to Suppliers)</td><td class="p-3 text-right">${db.config.currency}${payables.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr class="bg-gray-700"><td class="p-3 font-bold">Total Liabilities</td><td class="p-3 text-right font-bold">${db.config.currency}${payables.toFixed(2)}</td></tr>`;
-                tbody.innerHTML += `<tr class="bg-green-900"><td class="p-3 font-bold">Equity (Assets - Liabilities)</td><td class="p-3 text-right font-bold text-green-400">${db.config.currency}${equity.toFixed(2)}</td></tr>`;
+
+                // Part 1: Profit & Loss Statement
+                tbody.innerHTML += `<tr class="bg-gray-700 border-b border-gray-600"><td class="p-3 font-bold text-white" colspan="2">I. PROFIT & LOSS STATEMENT</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 pl-6">Total Revenue (Sales)</td><td class="p-3 text-right text-green-400">+${db.config.currency}${sales.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 pl-6">Cost of Goods Sold (COGS)</td><td class="p-3 text-right text-red-300">-${db.config.currency}${Math.abs(cogs).toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr class="border-t border-gray-800"><td class="p-3 pl-6 font-bold">Gross Profit</td><td class="p-3 text-right font-bold text-white">${db.config.currency}${grossProfit.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 pl-6">Operating Expenses</td><td class="p-3 text-right text-red-300">-${db.config.currency}${expenses.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr class="bg-white/5 border-t border-gray-600"><td class="p-3 font-bold text-karta-primary pl-6">NET PROFIT / (LOSS)</td><td class="p-3 text-right font-bold text-karta-primary">${db.config.currency}${netProfit.toFixed(2)}</td></tr>`;
+
+                tbody.innerHTML += `<tr><td colspan="2" class="p-2"></td></tr>`; // Spacer
+
+                // Part 2: Balance Sheet
+                tbody.innerHTML += `<tr class="bg-gray-700 border-b border-gray-600"><td class="p-3 font-bold text-white" colspan="2">II. BALANCE SHEET</td></tr>`;
+
+                // Assets
+                tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 pl-6 font-bold text-gray-300" colspan="2">ASSETS</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 pl-8">Cash on Hand</td><td class="p-3 text-right">${db.config.currency}${cashBalance.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 pl-8">Bank Balance</td><td class="p-3 text-right">${db.config.currency}${bankBalance.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 pl-8">Accounts Receivable (Debtors)</td><td class="p-3 text-right">${db.config.currency}${receivables.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 pl-8">Closing Stock Value</td><td class="p-3 text-right">${db.config.currency}${stockVal.toFixed(2)}</td></tr>`;
+                if (fixedAssets > 0) {
+                    tbody.innerHTML += `<tr><td class="p-3 pl-8">Fixed Assets</td><td class="p-3 text-right text-purple-400">${db.config.currency}${fixedAssets.toFixed(2)}</td></tr>`;
+                }
+                tbody.innerHTML += `<tr class="border-t border-gray-700"><td class="p-3 pl-6 font-bold">Total Assets</td><td class="p-3 text-right font-bold text-blue-400">${db.config.currency}${assets.toFixed(2)}</td></tr>`;
+
+                // Liabilities
+                tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 pl-6 font-bold text-gray-300" colspan="2">LIABILITIES</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 pl-8">Accounts Payable (Creditors)</td><td class="p-3 text-right">${db.config.currency}${payables.toFixed(2)}</td></tr>`;
+                tbody.innerHTML += `<tr class="border-t border-gray-700"><td class="p-3 pl-6 font-bold">Total Liabilities</td><td class="p-3 text-right font-bold text-red-400">${db.config.currency}${payables.toFixed(2)}</td></tr>`;
+
+                // Equity
+                tbody.innerHTML += `<tr class="bg-gray-800"><td class="p-3 pl-6 font-bold text-gray-300" colspan="2">EQUITY</td></tr>`;
+                tbody.innerHTML += `<tr><td class="p-3 pl-8">Owner's Equity (Net Assets)</td><td class="p-3 text-right text-green-400">${db.config.currency}${equity.toFixed(2)}</td></tr>`;
+
+                return;
+            }
+
+            // --- JOURNAL BOOK REPORT (AUTOMATIC) ---
+            if (type === 'journal') {
+                currentReportTitle = "Journal Book (Automatic)";
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+
+                let html = `<table id="repTable" style="width:100%; text-align: left; border-collapse: collapse;">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700 uppercase text-sm leading-normal">
+                            <th class="py-3 px-6">Date</th>
+                            <th class="py-3 px-6">Particulars</th>
+                            <th class="py-3 px-6 text-center">L.F.</th>
+                            <th class="py-3 px-6 text-right">Debit (${db.config.currency})</th>
+                            <th class="py-3 px-6 text-right">Credit (${db.config.currency})</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600 text-sm font-light">`;
+
+                // Use FILTERED transactions by date
+                const allTxns = filteredTxns.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+                currentReportData = allTxns; // Export uses this data
+
+                if (allTxns.length === 0) {
+                    html += `<tr><td colspan="5" class="text-center py-4">No transactions found.</td></tr>`;
+                } else {
+                    allTxns.forEach(txn => {
+                        let drAccount = '';
+                        let crAccount = '';
+                        let amount = 0;
+                        let narration = '';
+                        let showEntry = false;
+
+                        // --- MAP TRANSACTIONS TO JOURNAL ENTRIES ---
+
+                        // 1. SALES (Income)
+                        if (txn.type === 'sale') {
+                            showEntry = true;
+                            amount = txn.total;
+                            const entity = txn.entityName || 'Walk-in Customer';
+                            narration = `Being goods sold to ${entity} (Inv #${txn.id})`;
+
+                            // Credit: Sales A/c (Always)
+                            crAccount = 'Sales A/c';
+
+                            // Debit: Cash, Bank, or Debtor
+                            if (txn.payType === 'credit') drAccount = `${entity} (Debtor)`;
+                            else if (txn.payType === 'bank') drAccount = 'Bank A/c';
+                            else if (txn.payType === 'cash') drAccount = 'Cash A/c';
+                            else if (txn.payType === 'split') drAccount = 'Cash/Bank (Split)';
+                            else drAccount = 'Cash A/c';
+                        }
+
+                        // 2. PURCHASES (Expense/Asset)
+                        else if (txn.type === 'purchase') {
+                            showEntry = true;
+                            amount = txn.total;
+                            const entity = txn.entityName || 'Supplier';
+                            narration = `Being goods purchased from ${entity} (Ref #${txn.ref || txn.id})`;
+
+                            // Debit: Purchase A/c (Always)
+                            drAccount = 'Purchase A/c';
+
+                            // Credit: Cash, Bank, or Creditor
+                            if (txn.payType === 'credit') crAccount = `${entity} (Creditor)`;
+                            else if (txn.payType === 'bank') crAccount = 'Bank A/c';
+                            else if (txn.payType === 'cash') crAccount = 'Cash A/c';
+                            else crAccount = 'Cash A/c';
+                        }
+
+                        // 3. EXPENSES (Nominal)
+                        else if (txn.type === 'expense') {
+                            showEntry = true;
+                            amount = txn.total;
+                            narration = `Being expenses paid for ${txn.entityName || txn.category || 'General'}`;
+
+                            drAccount = 'Expense A/c';
+                            crAccount = 'Cash A/c'; // Assuming expenses paid by cash mostly
+                        }
+
+                        // 3b. ASSET PURCHASE (Fixed Assets)
+                        else if (txn.type === 'asset_purchase') {
+                            showEntry = true;
+                            amount = txn.total;
+                            narration = `Being ${txn.assetName} purchased (Ref #${txn.id})`;
+
+                            drAccount = `${txn.assetName} A/c`;
+                            if (txn.payType === 'credit' && txn.supplierName && txn.supplierName !== 'N/A') {
+                                crAccount = `${txn.supplierName} (Creditor)`;
+                            } else if (txn.payType === 'bank') {
+                                crAccount = 'Bank A/c';
+                            } else {
+                                crAccount = 'Cash A/c';
+                            }
+                        }
+
+                        // 4. PAYMENTS IN (Received from Debtor)
+                        else if (txn.type === 'payment') {
+                            showEntry = true;
+                            amount = txn.total;
+                            narration = `Being payment received from ${txn.entityName}`;
+
+                            drAccount = 'Cash A/c';
+                            crAccount = `${txn.entityName} (Debtor)`;
+                        }
+
+                        // 5. PAYMENTS OUT (Paid to Creditor)
+                        else if (txn.type === 'payment_out') {
+                            showEntry = true;
+                            amount = txn.total;
+                            narration = `Being payment made to ${txn.entityName}`;
+
+                            drAccount = `${txn.entityName} (Creditor)`;
+                            crAccount = 'Cash A/c';
+                        }
+
+                        // 6. RETURNS (Sales Return)
+                        else if (txn.type === 'return_cash_out' || (txn.type === 'sale' && txn.isReturn)) {
+                            showEntry = true;
+                            amount = Math.abs(txn.total);
+                            const entity = txn.entityName || 'Customer';
+                            narration = `Being goods returned by ${entity} (Inv #${txn.ref || txn.id})`;
+
+                            drAccount = 'Sales Return A/c';
+                            crAccount = 'Cash A/c'; // Or Customer if credit, simplification here
+                        }
+
+
+                        if (showEntry) {
+                            html += `
+                                <tr class="border-b border-gray-200 hover:bg-gray-100">
+                                    <td class="py-3 px-6 text-left whitespace-nowrap align-top">${window.formatDate ? window.formatDate(txn.date) : txn.date}</td>
+                                    <td class="py-3 px-6 text-left">
+                                        <div class="font-bold">${drAccount} <span class="text-xs text-gray-500 font-normal">Dr.</span></div>
+                                        <div class="pl-8 text-gray-500">To ${crAccount}</div>
+                                        <div class="text-xs italic text-gray-400 mt-1">(${narration})</div>
+                                    </td>
+                                    <td class="py-3 px-6 text-center align-top">-</td>
+                                    <td class="py-3 px-6 text-right font-bold align-top">${moneyRound(amount).toFixed(2)}</td>
+                                    <td class="py-3 px-6 text-right align-top"></td>
+                                </tr>
+                                <tr class="border-b border-gray-200 hover:bg-gray-100">
+                                    <td class="py-3 px-6"></td>
+                                    <td class="py-3 px-6"></td>
+                                    <td class="py-3 px-6"></td>
+                                    <td class="py-3 px-6"></td>
+                                    <td class="py-3 px-6 text-right font-bold align-top">${moneyRound(amount).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        }
+                    });
+
+                    // Add Totals Row
+                    const totalDebit = allTxns.reduce((sum, txn) => sum + txn.total, 0); // Simplified: Assuming logic loops all valid entries
+                    // Actually, specific accumulation is needed inside the loop because not all txns have same Dr/Cr logic
+                    // Re-calculating correctly below:
+                }
+
+                // Recalculate Totals more accurately based on displayed entries
+                let totalDr = 0;
+                let totalCr = 0;
+
+                if (allTxns.length > 0) {
+                    allTxns.forEach(txn => {
+                        // Simplify: Since every system txn is balanced, Total Dr = Total Cr = Sum of all txn totals
+                        // However, returns are negative/different. 
+                        // Let's rely on the displayed amount.
+                        // For Sales/Purchase/Expense/Payment, the amount displayed is txn.total
+                        // For Returns, it is abs(txn.total)
+                        const amt = (txn.type === 'return_cash_out' || (txn.type === 'sale' && txn.isReturn)) ? Math.abs(txn.total) : txn.total;
+                        totalDr += amt;
+                        totalCr += amt;
+                    });
+                }
+
+                html += `
+                    <tr class="bg-gray-200 font-bold border-t-2 border-gray-400">
+                        <td colspan="3" class="py-3 px-6 text-right uppercase">Total</td>
+                        <td class="py-3 px-6 text-right">${moneyRound(totalDr).toFixed(2)}</td>
+                        <td class="py-3 px-6 text-right">${moneyRound(totalCr).toFixed(2)}</td>
+                    </tr>
+                `;
+
+                html += `</tbody></table>`;
+                tbody.innerHTML = html;
+                return;
+            }
+
+            // --- GENERAL LEDGER REPORT ---
+            if (type === 'ledger') {
+                currentReportTitle = "General Ledger";
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+
+                // Account Selector
+                cards.innerHTML = `
+                    <div class="mb-4 flex gap-2 items-center print:hidden w-full max-w-md">
+                        <label class="font-bold text-gray-400">Select Account:</label>
+                        <select id="ledgerAccountSelect" onchange="runReports('ledger', this.value)" class="flex-1 p-2 bg-karta-input border border-karta-border rounded text-white focus:outline-none focus:border-green-500">
+                            <option value="">-- Choose Account --</option>
+                            <option value="Cash A/c">Cash A/c</option>
+                            <option value="Bank A/c">Bank A/c</option>
+                            <option value="Sales A/c">Sales A/c</option>
+                            <option value="Purchase A/c">Purchase A/c</option>
+                            <option value="Expense A/c">Expense A/c</option>
+                            <option value="Capital A/c">Capital A/c</option>
+                        </select>
+                    </div>
+                `;
+
+                // Quick hack: runReports(type, filter) - read from arguments if passed
+                const selectedAccount = arguments[1] || '';
+
+                // Set dropdown value if selected
+                setTimeout(() => {
+                    const sel = document.getElementById('ledgerAccountSelect');
+                    if (sel && selectedAccount) sel.value = selectedAccount;
+                }, 50);
+
+                if (selectedAccount) {
+                    let html = `<div class="mb-4"><h3 class="text-center font-bold text-xl underline uppercase text-white">${selectedAccount}</h3></div>`;
+                    html += `<table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-700 text-gray-300 uppercase text-sm">
+                                <th class="py-3 px-4 border border-gray-600">Date</th>
+                                <th class="py-3 px-4 border border-gray-600">Particulars</th>
+                                <th class="py-3 px-4 border border-gray-600 text-center">J.F.</th>
+                                <th class="py-3 px-4 border border-gray-600 text-right">Debit</th>
+                                <th class="py-3 px-4 border border-gray-600 text-right">Credit</th>
+                                <th class="py-3 px-4 border border-gray-600 text-right">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-gray-300">`;
+
+                    let balance = 0;
+                    let totalDr = 0;
+                    let totalCr = 0;
+
+                    // Filter and Sort filtered transactions
+                    const allTxns = filteredTxns.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+                    let hasData = false;
+
+                    allTxns.forEach(txn => {
+                        let dr = 0;
+                        let cr = 0;
+                        let particular = '';
+                        let isRelevant = false;
+
+                        // Identify if transaction affects selected account
+                        if (txn.type === 'journal') {
+                            if (txn.drAccount === selectedAccount) { dr = txn.total; particular = `To ${txn.crAccount}`; isRelevant = true; }
+                            if (txn.crAccount === selectedAccount) { cr = txn.total; particular = `By ${txn.drAccount}`; isRelevant = true; }
+                        } else if (selectedAccount === 'Cash A/c') {
+                            if (txn.payType === 'cash' || txn.cashAmount > 0) {
+                                const amt = (txn.payType === 'split' ? txn.cashAmount : txn.total);
+                                if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
+                                if (txn.type === 'expense') { cr = amt; particular = `By Expense (${txn.category || 'General'})`; isRelevant = true; }
+                                if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
+                                if (txn.type === 'payment') { dr = amt; particular = `To Customer Payment (${txn.entityName})`; isRelevant = true; } // Receiving Money
+                                if (txn.type === 'payment_out') { cr = amt; particular = `By Supplier Payment (${txn.entityName})`; isRelevant = true; } // Paying Money
+                            }
+                        } else if (selectedAccount === 'Bank A/c') {
+                            if (txn.payType === 'bank' || txn.bankAmount > 0) {
+                                const amt = (txn.payType === 'split' ? txn.bankAmount : txn.total);
+                                if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
+                                if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
+                            }
+                        } else if (selectedAccount === 'Sales A/c') {
+                            if (txn.type === 'sale') { cr = txn.total; particular = `By ${txn.payType === 'credit' ? 'Debtors' : 'Cash/Bank'}`; isRelevant = true; }
+                            if (txn.type === 'return_cash_out' || (txn.type === 'sale' && txn.isReturn)) { dr = txn.total; particular = `To Return In`; isRelevant = true; }
+                        } else if (selectedAccount === 'Purchase A/c') {
+                            if (txn.type === 'purchase') { dr = txn.total; particular = `To ${txn.payType === 'credit' ? 'Creditors' : 'Cash/Bank'}`; isRelevant = true; }
+                        } else if (selectedAccount === 'Expense A/c') {
+                            if (txn.type === 'expense') { dr = txn.total; particular = `To Cash/Bank`; isRelevant = true; }
+                        }
+
+                        if (isRelevant) {
+                            hasData = true;
+                            // Calculate running balance 
+                            // Asset/Expense Nature: Dr (+), Cr (-)
+                            // Liability/Income Nature: Cr (+), Dr (-)
+                            // For simplified view, we will use Dr (+) Cr (-) logic basically
+                            balance = balance + dr - cr;
+
+                            totalDr += dr;
+                            totalCr += cr;
+
+                            html += `
+                                <tr class="border-b border-gray-700 hover:bg-white/5">
+                                    <td class="py-2 px-4 border border-gray-600">${window.formatDate ? window.formatDate(txn.date) : txn.date}</td>
+                                    <td class="py-2 px-4 border border-gray-600">${particular}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right">${dr ? moneyRound(dr).toFixed(2) : ''}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right">${cr ? moneyRound(cr).toFixed(2) : ''}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right font-bold">${Math.abs(moneyRound(balance)).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
+                                </tr>
+                            `;
+                        }
+                    });
+
+                    if (hasData) {
+                        // Add Balance c/d entry before totals to balance both sides
+                        const finalBalance = moneyRound(balance);
+                        if (finalBalance !== 0) {
+                            const absBalance = Math.abs(finalBalance);
+                            if (finalBalance > 0) {
+                                // Debit balance: add Balance c/d on Credit side
+                                html += `
+                                    <tr class="border-b border-gray-700 bg-yellow-900/20">
+                                        <td class="py-2 px-4 border border-gray-600"></td>
+                                        <td class="py-2 px-4 border border-gray-600 font-bold italic text-yellow-300">To Balance c/d</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right font-bold text-blue-400">${absBalance.toFixed(2)}</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                    </tr>
+                                `;
+                                totalCr += absBalance;
+                            } else {
+                                // Credit balance: add Balance c/d on Debit side
+                                html += `
+                                    <tr class="border-b border-gray-700 bg-yellow-900/20">
+                                        <td class="py-2 px-4 border border-gray-600"></td>
+                                        <td class="py-2 px-4 border border-gray-600 font-bold italic text-yellow-300">To Balance c/d</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right font-bold text-blue-400">${absBalance.toFixed(2)}</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                    </tr>
+                                `;
+                                totalDr += absBalance;
+                            }
+                        }
+
+                        // Total row - now both sides should be equal
+                        html += `
+                            <tr class="bg-gray-600 font-bold text-white border-t-2 border-gray-500">
+                                <td colspan="3" class="py-2 px-4 border border-gray-600 text-right uppercase">Total</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right">${moneyRound(totalDr).toFixed(2)}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right">${moneyRound(totalCr).toFixed(2)}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                            </tr>
+                        `;
+
+                        // Add Balance b/d entry after totals (opening balance for next period)
+                        if (finalBalance !== 0) {
+                            const absBalance = Math.abs(finalBalance);
+                            if (finalBalance > 0) {
+                                // Debit balance brought down
+                                html += `
+                                    <tr class="bg-blue-900/20 border-t border-gray-500">
+                                        <td class="py-2 px-4 border border-gray-600"></td>
+                                        <td class="py-2 px-4 border border-gray-600 font-bold italic text-green-300">By Balance b/d</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right font-bold text-green-400">${absBalance.toFixed(2)}</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right font-bold">${absBalance.toFixed(2)} Dr</td>
+                                    </tr>
+                                `;
+                            } else {
+                                // Credit balance brought down
+                                html += `
+                                    <tr class="bg-blue-900/20 border-t border-gray-500">
+                                        <td class="py-2 px-4 border border-gray-600"></td>
+                                        <td class="py-2 px-4 border border-gray-600 font-bold italic text-green-300">By Balance b/d</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right font-bold text-green-400">${absBalance.toFixed(2)}</td>
+                                        <td class="py-2 px-4 border border-gray-600 text-right font-bold">${absBalance.toFixed(2)} Cr</td>
+                                    </tr>
+                                `;
+                            }
+                        }
+                    }
+
+                    if (!hasData) {
+                        html += `<tr><td colspan="6" class="text-center py-4 text-gray-500">No transactions found for ${selectedAccount}</td></tr>`;
+                    }
+                    html += `</tbody></table>`;
+                    tbody.innerHTML = html;
+
+                } else {
+                    tbody.innerHTML = `<p class="text-center text-gray-500 italic p-10">Select an account above to view its General Ledger.</p>`;
+                }
+                return;
+            }
+
+            // --- TRIAL BALANCE REPORT ---
+            if (type === 'trial') {
+                currentReportTitle = "Trial Balance";
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+
+                // Calculate balances for all accounts using filtered transactions
+                const allTxns = filteredTxns.slice();
+
+                // Initialize account balances
+                let cashBalance = db.config.cashBalance || 0;
+                let bankBalance = db.config.bankBalance || 0;
+
+                // Calculate Sales A/c balance (Credit nature)
+                let salesBalance = 0;
+                allTxns.forEach(t => {
+                    if (t.type === 'sale') salesBalance += t.total;
+                    if (t.type === 'return_cash_out' || (t.type === 'sale' && t.isReturn)) salesBalance -= t.total;
+                });
+
+                // Calculate Purchase A/c balance (Debit nature)
+                let purchaseBalance = 0;
+                allTxns.forEach(t => {
+                    if (t.type === 'purchase') purchaseBalance += t.total;
+                });
+
+                // Calculate Expense A/c balance (Debit nature)
+                let expenseBalance = 0;
+                allTxns.forEach(t => {
+                    if (t.type === 'expense') expenseBalance += t.total;
+                });
+
+                // Calculate Assets balance (Debit nature)
+                let assetsBalance = 0;
+                if (db.assets && db.assets.length > 0) {
+                    assetsBalance = db.assets.reduce((a, c) => a + c.cost, 0);
+                }
+
+                // Calculate Stock Value (Debit nature - Asset)
+                let stockValue = 0;
+                if (db.products && db.products.length > 0) {
+                    stockValue = db.products.reduce((a, c) => a + (c.stock * c.cost), 0);
+                }
+
+                // Calculate Debtors (Receivables) - Debit nature
+                let debtorsBalance = 0;
+                if (db.customers && db.customers.length > 0) {
+                    debtorsBalance = db.customers.reduce((a, c) => a + c.balance, 0);
+                }
+
+                // Calculate Creditors (Payables) - Credit nature
+                let creditorsBalance = 0;
+                if (db.suppliers && db.suppliers.length > 0) {
+                    creditorsBalance = db.suppliers.reduce((a, c) => a + c.balance, 0);
+                }
+
+                // Build accounts array with balances
+                const accounts = [];
+
+                // Assets (Debit side)
+                if (cashBalance > 0) accounts.push({ name: 'Cash A/c', debit: cashBalance, credit: 0 });
+                else if (cashBalance < 0) accounts.push({ name: 'Cash A/c', debit: 0, credit: Math.abs(cashBalance) });
+
+                if (bankBalance > 0) accounts.push({ name: 'Bank A/c', debit: bankBalance, credit: 0 });
+                else if (bankBalance < 0) accounts.push({ name: 'Bank A/c', debit: 0, credit: Math.abs(bankBalance) });
+
+                if (debtorsBalance > 0) accounts.push({ name: 'Debtors A/c', debit: debtorsBalance, credit: 0 });
+                if (stockValue > 0) accounts.push({ name: 'Closing Stock A/c', debit: stockValue, credit: 0 });
+                if (assetsBalance > 0) accounts.push({ name: 'Fixed Assets A/c', debit: assetsBalance, credit: 0 });
+
+                // Expenses (Debit side)
+                if (purchaseBalance > 0) accounts.push({ name: 'Purchase A/c', debit: purchaseBalance, credit: 0 });
+                if (expenseBalance > 0) accounts.push({ name: 'Expense A/c', debit: expenseBalance, credit: 0 });
+
+                // Liabilities and Income (Credit side)
+                if (creditorsBalance > 0) accounts.push({ name: 'Creditors A/c', debit: 0, credit: creditorsBalance });
+                if (salesBalance > 0) accounts.push({ name: 'Sales A/c', debit: 0, credit: salesBalance });
+
+                // Calculate totals
+                let totalDr = accounts.reduce((a, c) => a + c.debit, 0);
+                let totalCr = accounts.reduce((a, c) => a + c.credit, 0);
+
+                // Calculate Capital/Equity (Balancing figure)
+                const difference = totalDr - totalCr;
+                if (difference > 0) {
+                    // Debit > Credit, add Capital on Credit side
+                    accounts.push({ name: 'Capital A/c', debit: 0, credit: difference });
+                    totalCr += difference;
+                } else if (difference < 0) {
+                    // Credit > Debit, add Capital on Debit side (loss)
+                    accounts.push({ name: 'Capital A/c', debit: Math.abs(difference), credit: 0 });
+                    totalDr += Math.abs(difference);
+                }
+
+                // Display summary cards
+                cards.innerHTML = `
+                    <div class="bg-karta-surface border border-karta-border p-6 rounded-lg">
+                        <h4 class="text-gray-400 text-xs uppercase">Total Debits</h4>
+                        <h2 class="text-2xl font-bold text-blue-400 mt-2">${db.config.currency}${moneyRound(totalDr).toFixed(2)}</h2>
+                    </div>
+                    <div class="bg-karta-surface border border-karta-border p-6 rounded-lg">
+                        <h4 class="text-gray-400 text-xs uppercase">Total Credits</h4>
+                        <h2 class="text-2xl font-bold text-green-400 mt-2">${db.config.currency}${moneyRound(totalCr).toFixed(2)}</h2>
+                    </div>
+                    <div class="bg-karta-surface border border-karta-border p-6 rounded-lg">
+                        <h4 class="text-gray-400 text-xs uppercase">Status</h4>
+                        <h2 class="text-2xl font-bold text-karta-primary mt-2">${totalDr === totalCr ? 'Balanced ✓' : 'Not Balanced'}</h2>
+                    </div>
+                `;
+
+                // Generate table
+                thead.innerHTML = `<tr>
+                    <th class="p-3 text-left">Account Name</th>
+                    <th class="p-3 text-right">Debit (${db.config.currency})</th>
+                    <th class="p-3 text-right">Credit (${db.config.currency})</th>
+                </tr>`;
+
+                let html = '';
+                accounts.forEach(acc => {
+                    html += `<tr class="border-b border-gray-700">
+                        <td class="p-3">${acc.name}</td>
+                        <td class="p-3 text-right ${acc.debit > 0 ? 'text-blue-400 font-semibold' : 'text-gray-600'}">${acc.debit > 0 ? moneyRound(acc.debit).toFixed(2) : '-'}</td>
+                        <td class="p-3 text-right ${acc.credit > 0 ? 'text-green-400 font-semibold' : 'text-gray-600'}">${acc.credit > 0 ? moneyRound(acc.credit).toFixed(2) : '-'}</td>
+                    </tr>`;
+                });
+
+                // Total row
+                html += `<tr class="bg-gray-700 font-bold border-t-2 border-gray-500">
+                    <td class="p-3 uppercase">Total</td>
+                    <td class="p-3 text-right text-blue-300">${moneyRound(totalDr).toFixed(2)}</td>
+                    <td class="p-3 text-right text-green-300">${moneyRound(totalCr).toFixed(2)}</td>
+                </tr>`;
+
+                tbody.innerHTML = html;
+                currentReportData = accounts; // For export
                 return;
             }
 
@@ -10929,7 +12058,7 @@ Updated Balances:
                     tr.className = `border-b border-gray-800 text-gray-300${bgClass}`;
                     let typeLabel = t.type.toUpperCase();
                     if (t.isReturn) typeLabel += ' (RETURN)';
-                    tr.innerHTML = `<td class="p-3">${window.formatDate(t.date)}</td><td class="p-3 uppercase text-xs font-bold">${typeLabel}</td><td class="p-3">${t.entityName || t.items[0]?.name || '-'}</td><td class="p-3 text-right ${color}">${db.config.currency}${t.total.toFixed(2)}</td>`;
+                    tr.innerHTML = `<td class="p-3">${window.formatDate(t.date)}</td><td class="p-3 uppercase text-xs font-bold">${typeLabel}</td><td class="p-3">${t.entityName || t.assetName || t.items?.[0]?.name || '-'}</td><td class="p-3 text-right ${color}">${db.config.currency}${t.total.toFixed(2)}</td>`;
                     tbody.appendChild(tr);
                 });
                 // Summary for daily
@@ -11175,6 +12304,9 @@ Updated Balances:
                     eh.innerHTML += `<div class="p-3 bg-white/5 rounded flex justify-between"><div><div class="font-bold text-white text-sm">${t.items?.[0]?.name || 'Expense'}</div><div class="text-xs text-gray-500">${window.formatDate(t.date)}</div></div><div class="text-red-400 font-bold text-sm">-${t.total.toFixed(2)}</div></div>`;
                 });
             }
+
+            // Populate Asset History (Call render function)
+            if (window.renderAssets) window.renderAssets();
         }
 
         // --- PRICE MANAGEMENT FUNCTIONS ---
@@ -11494,6 +12626,246 @@ Updated Balances:
                 alert(`Settlement Recorded\nEntity: ${name}\nAmount: ${db.config.currency}${amount.toFixed(2)}\nMethod: ${paymentMethod.toUpperCase()}${chequeNo ? '\nCheque: ' + chequeNo : ''}\n\nCash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
                 renderSettlements();
                 loadDashboard();
+                refreshUI();
+            };
+
+            // --- EXPENSE FORM HANDLER ---
+            const expForm = document.getElementById('expForm');
+            if (expForm) {
+                expForm.onsubmit = function (e) {
+                    e.preventDefault();
+
+                    const desc = document.getElementById('expDesc').value;
+                    const amount = parseFloat(document.getElementById('expAmt').value);
+                    const paymentMethod = document.querySelector('input[name="expPayment"]:checked').value;
+
+                    if (!desc || !amount) {
+                        alert('Please fill in all required fields');
+                        return;
+                    }
+
+                    // Update Balance
+                    if (paymentMethod === 'cash') {
+                        db.config.cashBalance = moneyRound(db.config.cashBalance - amount);
+                    } else {
+                        db.config.bankBalance = moneyRound(db.config.bankBalance - amount);
+                    }
+
+                    // Record Transaction
+                    const expenseTxn = {
+                        id: Date.now(),
+                        date: new Date().toISOString(),
+                        type: 'expense',
+                        entityName: desc, // Using entityName to store description
+                        category: 'General', // Default category
+                        items: [{ name: desc, qty: 1, cost: amount, total: amount }],
+                        total: amount,
+                        payType: paymentMethod,
+                        cashBalance: db.config.cashBalance,
+                        bankBalance: db.config.bankBalance
+                    };
+
+                    if (!db.transactions) db.transactions = [];
+                    db.transactions.push(expenseTxn);
+
+                    saveDB();
+                    window.closeModal();
+                    alert('Expense Recorded Successfully');
+                    refreshUI();
+
+                    // Reset form
+                    expForm.reset();
+                };
+            }
+
+            // --- DELETE EXPENSE FUNCTION ---
+            window.deleteExpense = function (id) {
+                if (!confirm('Are you sure you want to delete this expense?')) return;
+
+                const idx = db.transactions.findIndex(t => t.id === id);
+                if (idx === -1) return;
+
+                const t = db.transactions[idx];
+
+                // Refund Amount (Reverse the expense)
+                if (t.payType === 'cash') {
+                    db.config.cashBalance = moneyRound(db.config.cashBalance + t.total);
+                } else {
+                    db.config.bankBalance = moneyRound(db.config.bankBalance + t.total);
+                }
+
+                db.transactions.splice(idx, 1);
+                saveDB();
+                alert('Expense deleted and amount refunded to ' + t.payType.toUpperCase());
+                refreshUI();
+            };
+
+            // --- ASSET PURCHASE FORM HANDLER ---
+            const assetForm = document.getElementById('assetForm');
+            if (assetForm) {
+                assetForm.onsubmit = function (e) {
+                    e.preventDefault();
+
+                    const assetName = document.getElementById('assetName').value.trim();
+                    const assetType = document.getElementById('assetType').value;
+                    const cost = parseFloat(document.getElementById('assetCost').value);
+                    const paymentMethod = document.querySelector('input[name="assetPayment"]:checked').value;
+                    const supplier = document.getElementById('assetSupplier').value.trim();
+                    const description = document.getElementById('assetDescription').value.trim();
+
+                    if (!assetName || !assetType || !cost) {
+                        alert('Please fill in all required fields');
+                        return;
+                    }
+
+                    // Update Balance
+                    if (paymentMethod === 'cash') {
+                        if (db.config.cashBalance < cost) {
+                            if (!confirm(`Insufficient cash balance (${db.config.currency}${db.config.cashBalance.toFixed(2)}). Continue anyway?`)) {
+                                return;
+                            }
+                        }
+                        db.config.cashBalance = moneyRound(db.config.cashBalance - cost);
+                    } else if (paymentMethod === 'bank') {
+                        if (db.config.bankBalance < cost) {
+                            if (!confirm(`Insufficient bank balance (${db.config.currency}${db.config.bankBalance.toFixed(2)}). Continue anyway?`)) {
+                                return;
+                            }
+                        }
+                        db.config.bankBalance = moneyRound(db.config.bankBalance - cost);
+                    }
+                    // For credit, no immediate balance change
+
+                    // Record Asset
+                    const assetObj = {
+                        id: Date.now(),
+                        date: new Date().toISOString(),
+                        assetName: assetName,
+                        assetType: assetType,
+                        cost: cost,
+                        payType: paymentMethod,
+                        supplierName: supplier || 'N/A',
+                        description: description || '',
+                        cashBalance: db.config.cashBalance,
+                        bankBalance: db.config.bankBalance
+                    };
+
+                    if (!db.assets) db.assets = [];
+                    db.assets.push(assetObj);
+
+                    // Also create a transaction for journal purposes
+                    const assetTxn = {
+                        id: Date.now() + 1, // Slightly different ID
+                        date: new Date().toISOString(),
+                        type: 'asset_purchase',
+                        assetName: assetName,
+                        assetType: assetType,
+                        total: cost,
+                        payType: paymentMethod,
+                        supplierName: supplier || 'N/A',
+                        description: description || '',
+                        cashBalance: db.config.cashBalance,
+                        bankBalance: db.config.bankBalance
+                    };
+
+                    if (!db.transactions) db.transactions = [];
+                    db.transactions.push(assetTxn);
+
+                    saveDB();
+                    window.closeModal();
+                    alert(`Asset "${assetName}" purchased successfully for ${db.config.currency}${cost.toFixed(2)}`);
+                    refreshUI();
+
+                    // Reset form
+                    assetForm.reset();
+                };
+            }
+
+            // --- RENDER ASSETS FUNCTION ---
+            window.renderAssets = function () {
+                const container = document.getElementById('assetHistory');
+                if (!container) return;
+
+                if (!db.assets || db.assets.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">No assets purchased yet</p>';
+                    return;
+                }
+
+                let html = '';
+                db.assets.slice().reverse().forEach(asset => {
+                    const typeLabels = {
+                        'furniture': 'Furniture',
+                        'equipment': 'Equipment',
+                        'vehicle': 'Vehicle',
+                        'building': 'Property',
+                        'computer': 'IT Equipment',
+                        'other': 'Other'
+                    };
+                    const typeLabel = typeLabels[asset.assetType] || asset.assetType;
+
+                    html += `
+                        <div class="bg-gray-800 border border-gray-700 rounded p-3 hover:bg-gray-750 transition">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex-1">
+                                    <h5 class="font-bold text-white text-sm">${asset.assetName}</h5>
+                                    <p class="text-xs text-gray-400">${typeLabel} | ${window.formatDate(asset.date)}</p>
+                                </div>
+                                <button onclick="deleteAsset(${asset.id})" 
+                                    class="text-red-500 hover:text-red-400 text-xs"
+                                    title="Delete asset">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                            <div class="flex justify-between items-center text-xs mt-2">
+                                <span class="text-gray-400">Cost:</span>
+                                <span class="font-bold text-purple-400">${db.config.currency}${asset.cost.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs mt-1">
+                                <span class="text-gray-400">Payment:</span>
+                                <span class="text-white uppercase">${asset.payType}</span>
+                            </div>
+                            ${asset.supplierName && asset.supplierName !== 'N/A' ? `
+                            <div class="flex justify-between items-center text-xs mt-1">
+                                <span class="text-gray-400">Supplier:</span>
+                                <span class="text-white">${asset.supplierName}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            };
+
+            // --- DELETE ASSET FUNCTION ---
+            window.deleteAsset = function (id) {
+                if (!confirm('Are you sure you want to delete this asset? The amount will be refunded.')) return;
+
+                const idx = db.assets.findIndex(a => a.id === id);
+                if (idx === -1) {
+                    alert('Asset not found');
+                    return;
+                }
+
+                const asset = db.assets[idx];
+
+                // Refund Amount
+                if (asset.payType === 'cash') {
+                    db.config.cashBalance = moneyRound(db.config.cashBalance + asset.cost);
+                } else if (asset.payType === 'bank') {
+                    db.config.bankBalance = moneyRound(db.config.bankBalance + asset.cost);
+                }
+                // For credit, no balance change
+
+                // Also remove from transactions
+                const txnIdx = db.transactions.findIndex(t => t.type === 'asset_purchase' && t.assetName === asset.assetName && Math.abs(t.total - asset.cost) < 0.01);
+                if (txnIdx !== -1) {
+                    db.transactions.splice(txnIdx, 1);
+                }
+
+                db.assets.splice(idx, 1);
+                saveDB();
+                alert(`Asset deleted and ${db.config.currency}${asset.cost.toFixed(2)} refunded to ${asset.payType.toUpperCase()}`);
                 refreshUI();
             };
 
@@ -12130,17 +13502,14 @@ Updated Balances:
                     // But if unlocked, it might reset on next open.
                     // Let's NOT save to config.isLocked=false state unless needed.
                 }
-
                 function setTranslate(xPos, yPos, el) {
                     el.style.left = xPos + "px";
                     el.style.top = yPos + "px";
                 }
             }
         }
-
         // Initialize
         initMovableCalendar();
     </script>
 </body>
-
 </html>
