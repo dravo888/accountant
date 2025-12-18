@@ -3,6 +3,9 @@
 
 <head>
     <link rel="icon" type="image/png" href="karta-logo-design.png">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
@@ -3955,7 +3958,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
         // IMPORT ONVALUE FOR REALTIME UPDATES
-        import { getDatabase, ref, set, get, child, update, onValue } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
+        import { getDatabase, ref, set, get, child, update, onValue, query, limitToLast } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -4263,17 +4266,92 @@
 
                 // 1. GENERATE UNIQUE KEY FOR THIS USER
                 DB_KEY = `karta_db_${user.uid}`;
+                const BLOCK_KEY = `karta_blocked_${user.uid}`;
 
-                // 2. LOAD LOCAL DATA SPECIFIC TO THIS USER
+                // *** SECURITY: CHECK LOCAL BLOCK STATUS FIRST (before showing anything) ***
+                const localBlockStatus = localStorage.getItem(BLOCK_KEY);
+                if (localBlockStatus === 'blocked') {
+                    console.warn('⛔ User is BLOCKED (from local cache)');
+                    authScreen.classList.add('hidden');
+                    appRoot.classList.add('hidden');
+                    document.getElementById('blocked-overlay').classList.remove('hidden');
+                    document.getElementById('blocked-overlay').style.display = 'flex';
+
+                    // Still try to verify with server if online
+                    if (navigator.onLine && firebaseAvailable) {
+                        try {
+                            const recheck = await get(ref(dbRealtime, 'registeredUsers/' + user.uid + '/status'));
+                            if (recheck.exists() && recheck.val() !== 'blocked') {
+                                // Admin has unblocked - remove local block
+                                localStorage.removeItem(BLOCK_KEY);
+                                // Reload to show app
+                                window.location.reload();
+                            }
+                        } catch (e) {
+                            // Offline or error - stay blocked (fail-safe)
+                        }
+                    }
+                    return; // Stop here - don't load app
+                }
+
+                // 2. CHECK SERVER BLOCK STATUS BEFORE SHOWING APP (if online)
+                let isBlocked = false;
+                if (firebaseAvailable && dbRealtime) {
+                    try {
+                        const registeredUserRef = ref(dbRealtime, 'registeredUsers/' + user.uid);
+                        const existingUser = await get(registeredUserRef);
+
+                        if (existingUser.exists()) {
+                            const userData = existingUser.val();
+
+                            if (userData.status === 'blocked') {
+                                console.warn('⛔ User is BLOCKED by admin');
+                                isBlocked = true;
+
+                                // SAVE BLOCK STATUS LOCALLY (persists offline)
+                                localStorage.setItem(BLOCK_KEY, 'blocked');
+
+                                authScreen.classList.add('hidden');
+                                appRoot.classList.add('hidden');
+                                document.getElementById('blocked-overlay').classList.remove('hidden');
+                                document.getElementById('blocked-overlay').style.display = 'flex';
+                                return; // Stop - don't show app
+                            } else {
+                                // User is NOT blocked - clear any stale local block status
+                                localStorage.removeItem(BLOCK_KEY);
+
+                                // Update last login time
+                                await set(ref(dbRealtime, 'registeredUsers/' + user.uid + '/lastLogin'), new Date().toISOString());
+                                await set(ref(dbRealtime, 'registeredUsers/' + user.uid + '/loginCount'), (userData.loginCount || 0) + 1);
+                            }
+                        } else {
+                            // New user - create full record
+                            await set(registeredUserRef, {
+                                email: user.email,
+                                uid: user.uid,
+                                createdAt: new Date().toISOString(),
+                                lastLogin: new Date().toISOString(),
+                                loginCount: 1,
+                                status: 'active'
+                            });
+                        }
+                        console.log('✓ User tracked in registeredUsers');
+                    } catch (regError) {
+                        console.warn('Could not check block status:', regError.message);
+                        // If offline and check fails, we already checked local block status above
+                        // So only users without local block flag will reach here
+                    }
+                }
+
+                // 3. ONLY NOW SHOW THE APP (after block check passes)
                 const localData = localStorage.getItem(DB_KEY);
                 if (localData) {
-                    // FIX: Run through sanitizer
                     db = ensureDbStructure(JSON.parse(localData));
                 } else {
                     db = JSON.parse(JSON.stringify(APP_STATE));
                 }
 
-                refreshUI(); // Show data immediately
+                refreshUI();
 
                 authScreen.classList.add('hidden');
                 appRoot.classList.remove('hidden');
@@ -4282,49 +4360,6 @@
                 document.getElementById('dbIdDisplay').innerText = user.uid.slice(0, 8) + "...";
 
                 console.log("Logged in as: ", user.email);
-
-                // 2.5. CHECK IF USER IS BLOCKED + SAVE TO registeredUsers (for admin panel tracking)
-                try {
-                    const registeredUserRef = ref(dbRealtime, 'registeredUsers/' + user.uid);
-                    const existingUser = await get(registeredUserRef);
-
-                    if (existingUser.exists()) {
-                        const userData = existingUser.val();
-
-                        // *** BLOCK CHECK: If user is blocked, show overlay and prevent access ***
-                        if (userData.status === 'blocked') {
-                            console.warn('⛔ User is BLOCKED by admin');
-
-                            // Hide everything else
-                            authScreen.classList.add('hidden');
-                            appRoot.classList.add('hidden');
-
-                            // Show blocked overlay
-                            document.getElementById('blocked-overlay').classList.remove('hidden');
-                            document.getElementById('blocked-overlay').style.display = 'flex'; // FORCE DISPLAY
-
-                            // Stop here - don't continue with login
-                            return;
-                        }
-
-                        // Update last login time only (if not blocked)
-                        await set(ref(dbRealtime, 'registeredUsers/' + user.uid + '/lastLogin'), new Date().toISOString());
-                        await set(ref(dbRealtime, 'registeredUsers/' + user.uid + '/loginCount'), (userData.loginCount || 0) + 1);
-                    } else {
-                        // New user - create full record
-                        await set(registeredUserRef, {
-                            email: user.email,
-                            uid: user.uid,
-                            createdAt: new Date().toISOString(),
-                            lastLogin: new Date().toISOString(),
-                            loginCount: 1,
-                            status: 'active'
-                        });
-                    }
-                    console.log('✓ User tracked in registeredUsers');
-                } catch (regError) {
-                    console.warn('Could not update registeredUsers:', regError.message);
-                }
 
                 // 3. START SECURE CLOUD SYNC
                 // Path is securely isolated to users/{uid}/data
@@ -12529,8 +12564,145 @@ Updated Balances:
 
             return issues.length === 0;
         };
+
+        // --- Subscription Enforcement ---
+        function checkSubscriptionStatus() {
+            // Skip if no config or no expiry set (lifetime)
+            if (!db.config || !db.config.expiryDate) return;
+
+            const expiry = new Date(db.config.expiryDate);
+            const now = new Date();
+            // Reset time part to ensure accurate day comparison
+            expiry.setHours(23, 59, 59, 999);
+
+            const diffTime = expiry - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // Remove existing lock screen if valid
+            const existingLock = document.getElementById('subscription-lock-screen');
+
+            if (diffDays < 0) {
+                // EXPIRED
+                if (!existingLock) {
+                    const lockScreen = document.createElement('div');
+                    lockScreen.id = 'subscription-lock-screen';
+                    lockScreen.className = 'fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4';
+                    lockScreen.innerHTML = `
+                        <div class="bg-gray-900 border border-red-600 rounded-lg p-8 max-w-md w-full text-center shadow-2xl shadow-red-900/50">
+                            <div class="w-20 h-20 bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i class="fa-solid fa-lock text-4xl text-red-500"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-white mb-2">Subscription Expired</h2>
+                            <p class="text-gray-400 mb-6">Your license for Karta expired on <span class="text-red-400 font-mono">${expiry.toLocaleDateString()}</span>.</p>
+                            <div class="bg-red-900/20 rounded p-4 mb-6 border border-red-800/50">
+                                <p class="text-xs text-red-300">Please contact the administrator to renew your subscription and restore access.</p>
+                            </div>
+                            <button onclick="location.reload()" class="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded border border-gray-600 transition">
+                                <i class="fa-solid fa-rotate-right mr-2"></i>Refresh Status
+                            </button>
+                            <div class="mt-6 text-xs text-gray-600">
+                                ID: <span class="font-mono">${currentUser ? currentUser.uid.slice(0, 8) : 'Unknown'}</span>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(lockScreen);
+                }
+            } else {
+                // VALID - Remove lock if it exists (e.g. after renewal sync)
+                if (existingLock) existingLock.remove();
+
+                // Show warning if expiring soon (optional)
+                // if (diffDays <= 7) { ... }
+            }
+        }
+
+        // --- XSS Protection - escape HTML entities ---
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // --- Global Announcement Check (Real-time) ---
+        let announcementUnsubscribe = null;
+
+        function initAnnouncementListener() {
+            // Only check if firebase available and user logged in (implicit)
+            if (!dbRealtime) return;
+
+            // Unsubscribe from previous listener if exists
+            if (announcementUnsubscribe) {
+                announcementUnsubscribe();
+            }
+
+            const annRef = query(ref(dbRealtime, 'announcements'), limitToLast(1));
+
+            // Set up real-time listener - updates automatically when data changes
+            announcementUnsubscribe = onValue(annRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const ann = Object.values(data)[0]; // Get the single latest
+
+                    // Check if dismissed
+                    const dismissedId = localStorage.getItem('dismissedAnnouncement');
+                    if (dismissedId === ann.id) {
+                        // Still dismissed - ensure banner is removed
+                        const existingBanner = document.getElementById('announcement-banner');
+                        if (existingBanner) existingBanner.remove();
+                        return;
+                    }
+
+                    // Remove existing banner if any (e.g. replacing old one)
+                    const existingBanner = document.getElementById('announcement-banner');
+                    if (existingBanner) existingBanner.remove();
+
+                    // Create Banner
+                    const colorClass = ann.type === 'urgent' ? 'bg-red-600' : (ann.type === 'warning' ? 'bg-orange-600' : 'bg-blue-600');
+                    const banner = document.createElement('div');
+                    banner.id = 'announcement-banner';
+                    banner.className = `${colorClass} text-white px-4 py-3 text-center text-sm font-bold relative z-[9999] shadow-lg flex items-center justify-center gap-3`;
+                    banner.innerHTML = `
+                        <span>
+                            <i class="fa-solid fa-bullhorn mr-2"></i>
+                            ${escapeHtml(ann.message)}
+                        </span>
+                        <button onclick="dismissAnnouncement('${ann.id}')" class="bg-black/20 hover:bg-black/40 text-white rounded-full w-6 h-6 flex items-center justify-center ml-4 transition">
+                            <i class="fa-solid fa-times text-xs"></i>
+                        </button>
+                    `;
+
+                    // Prepend to body
+                    document.body.prepend(banner);
+                } else {
+                    // No active announcements, ensure banner removed
+                    const existingBanner = document.getElementById('announcement-banner');
+                    if (existingBanner) existingBanner.remove();
+                }
+            }, (error) => {
+                console.error('Announcement listener error:', error);
+            });
+        }
+
+        // Keep legacy function name for compatibility
+        function checkAnnouncements() {
+            initAnnouncementListener();
+        }
+
+        window.dismissAnnouncement = (id) => {
+            localStorage.setItem('dismissedAnnouncement', id);
+            const banner = document.getElementById('announcement-banner');
+            if (banner) banner.remove();
+        };
+
         // --- Global Refresh ---
         function refreshUI() {
+            // 0a. Check Announcements
+            checkAnnouncements();
+
+            // 0b. Check Subscription Status First
+            checkSubscriptionStatus();
+
             // Run data migration on load
             migrateProductIds();
 
@@ -13854,6 +14026,195 @@ Updated Balances:
 
         // Initialize
         initMovableCalendar();
+    </script>
+
+    <!-- PWA Service Worker Registration & Offline Sync -->
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Service Workers generally require HTTPS or localhost. file:// protocol is often not supported.
+                if (window.location.protocol === 'file:') {
+                    console.warn('[PWA] Service Workers cannot run on "file://" protocol. To enable offline support and installation, please serve this project using a local server (e.g., Live Server in VS Code, Python http.server, or npx http-server).');
+                    // Optional: You could show a UI notification here
+                    return;
+                }
+
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('[PWA] Service Worker registered successfully:', registration.scope);
+
+                        // Check for updates periodically
+                        setInterval(() => {
+                            registration.update();
+                        }, 60000); // Check every minute
+
+                        // Handle updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New version available
+                                    if (confirm('New version of Karta available! Reload to update?')) {
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.error('[PWA] Service Worker registration failed:', error);
+                    });
+
+                // Listen for messages from Service Worker
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'SYNC_DATA') {
+                        console.log('[PWA] Sync data message received');
+                        if (typeof syncToCloud === 'function') {
+                            syncToCloud();
+                        }
+                    }
+                });
+            });
+        }
+
+        // --- Offline/Online Status Management ---
+        let isOnline = navigator.onLine;
+        let pendingSyncData = [];
+
+        // Create status indicator
+        function createOfflineIndicator() {
+            const existing = document.getElementById('pwa-status-indicator');
+            if (existing) return existing;
+
+            const indicator = document.createElement('div');
+            indicator.id = 'pwa-status-indicator';
+            indicator.className = 'fixed bottom-4 right-4 z-[9998] px-4 py-2 rounded-full text-sm font-bold shadow-lg transition-all duration-300';
+            indicator.style.display = 'none';
+            document.body.appendChild(indicator);
+            return indicator;
+        }
+
+        function updateOnlineStatus() {
+            isOnline = navigator.onLine;
+            const indicator = createOfflineIndicator();
+
+            if (!isOnline) {
+                // Offline
+                indicator.className = 'fixed bottom-4 right-4 z-[9998] px-4 py-2 rounded-full text-sm font-bold shadow-lg transition-all duration-300 bg-orange-600 text-white';
+                indicator.innerHTML = '<i class="fa-solid fa-wifi-slash mr-2"></i>Offline Mode';
+                indicator.style.display = 'flex';
+                indicator.style.alignItems = 'center';
+                console.log('[PWA] App is now OFFLINE');
+            } else {
+                // Online
+                indicator.className = 'fixed bottom-4 right-4 z-[9998] px-4 py-2 rounded-full text-sm font-bold shadow-lg transition-all duration-300 bg-green-600 text-white';
+                indicator.innerHTML = '<i class="fa-solid fa-wifi mr-2"></i>Back Online';
+                indicator.style.display = 'flex';
+                indicator.style.alignItems = 'center';
+                console.log('[PWA] App is now ONLINE');
+
+                // Trigger sync when back online
+                triggerDataSync();
+
+                // Hide indicator after 3 seconds
+                setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // Sync data when back online
+        async function triggerDataSync() {
+            console.log('[PWA] Triggering data sync...');
+
+            // Check if sync function exists and call it
+            if (typeof syncToCloud === 'function') {
+                try {
+                    await syncToCloud();
+                    console.log('[PWA] Data synced successfully');
+                } catch (e) {
+                    console.error('[PWA] Sync failed:', e);
+                }
+            }
+
+            // Request background sync if supported
+            if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    await registration.sync.register('sync-data');
+                    console.log('[PWA] Background sync registered');
+                } catch (e) {
+                    console.warn('[PWA] Background sync not supported:', e);
+                }
+            }
+        }
+
+        // Listen for online/offline events
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        // Initial check
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (!navigator.onLine) {
+                    updateOnlineStatus();
+                }
+            }, 1000);
+        });
+
+        // PWA Install Prompt Handler
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('[PWA] Install prompt captured');
+
+            // Show custom install button in UI (optional)
+            showInstallButton();
+        });
+
+        function showInstallButton() {
+            // Create install button if it doesn't exist
+            let installBtn = document.getElementById('pwa-install-btn');
+            if (!installBtn) {
+                installBtn = document.createElement('button');
+                installBtn.id = 'pwa-install-btn';
+                installBtn.className = 'fixed bottom-4 left-4 z-[9998] px-4 py-2 rounded-full text-sm font-bold shadow-lg bg-karta-primary text-black hover:bg-green-400 transition-all duration-300 flex items-center gap-2';
+                installBtn.innerHTML = '<i class="fa-solid fa-download"></i> Install App';
+                installBtn.onclick = installPWA;
+                document.body.appendChild(installBtn);
+            }
+        }
+
+        async function installPWA() {
+            if (!deferredPrompt) {
+                console.log('[PWA] No install prompt available');
+                return;
+            }
+
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('[PWA] User response to install prompt:', outcome);
+
+            if (outcome === 'accepted') {
+                const installBtn = document.getElementById('pwa-install-btn');
+                if (installBtn) installBtn.remove();
+            }
+
+            deferredPrompt = null;
+        }
+
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] App was installed successfully');
+            deferredPrompt = null;
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) installBtn.remove();
+        });
+
+        console.log('[PWA] Offline support initialized');
     </script>
 </body>
 
