@@ -2931,7 +2931,7 @@
                     <input type="number" step="0.01" id="pWhole" class="input-field" placeholder="0.00">
                     <span class="help-text">For bulk orders (optional)</span>
                 </div>
-                <input type="hidden" id="pStock" value="0">
+
                 <div>
                     <label class="text-xs text-gray-400 font-bold">Reorder Level</label>
                     <input type="number" id="pReorder" class="input-field" value="10" placeholder="10">
@@ -5346,10 +5346,6 @@
                 cost: parseFloat(document.getElementById('pCost').value),
                 retail: parseFloat(document.getElementById('pRetail').value),
                 wholesale: parseFloat(document.getElementById('pWhole').value) || 0,
-                // Stock is managed via Purchases now. 
-                // For new products, it defaults to 0. 
-                // For edits, we preserve existing stock in the logic below.
-                stock: 0,
                 reorder: parseInt(document.getElementById('pReorder').value),
                 supplierId: supplierId ? parseInt(supplierId) : null,
                 supplierName: supplierName
@@ -5365,9 +5361,7 @@
                     db.products[prodIndex] = {
                         ...db.products[prodIndex],
                         ...pData,
-                        id: originalId,
-                        // EXPLICTLY PRESERVE STOCK - Do not use form value
-                        stock: db.products[prodIndex].stock
+                        id: originalId
                     };
                     alert("✅ Product Updated Successfully!");
                 }
@@ -5375,6 +5369,7 @@
                 // CREATE MODE
                 const newProduct = {
                     id: Date.now(),
+                    stock: 0,
                     ...pData
                 };
                 db.products.push(newProduct);
@@ -5403,8 +5398,7 @@
             document.getElementById('pCost').value = prod.cost;
             document.getElementById('pRetail').value = prod.retail;
             document.getElementById('pWhole').value = prod.wholesale || '';
-            document.getElementById('pWhole').value = prod.wholesale || '';
-            // document.getElementById('pStock').value = prod.stock; // STOCK NOT EDITABLE MANUALLY
+
             document.getElementById('pReorder').value = prod.reorder || '10';
 
             // Handle Supplier Select
