@@ -1,9 +1,9 @@
 // Karta PWA Service Worker
-// Version: 1.0.0
+// Version: 1.0.1
 
-const CACHE_NAME = 'karta-cache-v1';
-const STATIC_CACHE = 'karta-static-v1';
-const CDN_CACHE = 'karta-cdn-v1';
+const CACHE_NAME = 'karta-cache-v2';
+const STATIC_CACHE = 'karta-static-v2';
+const CDN_CACHE = 'karta-cdn-v2';
 
 // Static files to cache (local files)
 const STATIC_FILES = [
@@ -19,7 +19,7 @@ const STATIC_FILES = [
 
 // External CDN resources to cache
 const CDN_FILES = [
-    'https://cdn.tailwindcss.com',
+    'https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,container-queries',
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
     'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
