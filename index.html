@@ -147,6 +147,101 @@
         document.documentElement.setAttribute('data-protected', 'true');
         document.documentElement.setAttribute('data-source', 'KARTA_PROPRIETARY');
 
+        // ===== SERVER-ONLY PROTECTION SYSTEM =====
+        // Blocks file:// protocol to make saved files completely unusable
+
+        // Layer 1: Strict File Protocol Blocking - MUST RUN FROM WEB SERVER
+        (function () {
+            // Check if page is opened from file:// (saved file)
+            if (window.location.protocol === 'file:') {
+                // Immediate block - prevent any code execution
+                document.addEventListener('DOMContentLoaded', function () {
+                    document.documentElement.innerHTML = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Access Denied</title>
+                            <style>
+                                body {
+                                    margin: 0;
+                                    padding: 0;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    min-height: 100vh;
+                                    background: #0b0b0b;
+                                    font-family: monospace;
+                                    color: #ef4444;
+                                }
+                                .error-container {
+                                    text-align: center;
+                                    padding: 40px;
+                                    max-width: 600px;
+                                }
+                                .error-icon {
+                                    font-size: 72px;
+                                    margin-bottom: 20px;
+                                }
+                                .error-title {
+                                    font-size: 24px;
+                                    font-weight: bold;
+                                    margin-bottom: 16px;
+                                }
+                                .error-message {
+                                    font-size: 14px;
+                                    color: #9e9e9e;
+                                    line-height: 1.6;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="error-container">
+                                <div class="error-icon">⛔</div>
+                                <div class="error-title">Access Denied</div>
+                                <div class="error-message">
+                                    This application must be accessed through a web server.<br><br>
+                                    Direct file access is not permitted for security reasons.<br><br>
+                                    Contact your administrator for proper access.
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                    `;
+                    // Remove all scripts to prevent any execution
+                    const scripts = document.querySelectorAll('script');
+                    scripts.forEach(s => s.remove());
+                });
+                // Throw error to stop script execution
+                throw new Error('File protocol not allowed');
+            }
+
+            // Additional check for null origin (some edge cases)
+            if (window.location.origin === 'null') {
+                document.addEventListener('DOMContentLoaded', function () {
+                    document.body.innerHTML = '<div style="color:red;padding:20px;font-family:monospace;">Unauthorized Access</div>';
+                });
+                throw new Error('Invalid origin');
+            }
+        })();
+
+        // Continuous validation - re-check every 2 seconds
+        setInterval(function () {
+            if (window.location.protocol === 'file:' || window.location.origin === 'null') {
+                document.body.innerHTML = '';
+                document.head.innerHTML = '<title>Access Denied</title>';
+                throw new Error('Unauthorized file access detected');
+            }
+        }, 2000);
+
+
+        // REMOVED: Layer 2 code integrity monitoring was causing false positives
+        // Firebase auto-login and dynamic scripts trigger legitimate checksum changes
+
+        // REMOVED: Layers 3-5 (anti-debugging, runtime validation, DOM observer)
+        // These are unnecessary since file:// blocking prevents all saved file access
+
+        // ===== END PROTECTION SYSTEM =====
+
         tailwind.config = {
             theme: {
                 extend: {
@@ -14630,4 +14725,5 @@ Updated Balances:
         console.log('[PWA] Offline support initialized');
     </script>
 </body>
+
 </html>
