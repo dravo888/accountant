@@ -7,8 +7,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <!-- Anti-Copy Protection Headers -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -175,14 +174,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 
-        /* ===== iOS & Mobile Optimizations ===== */
-        :root {
-            --safe-top: env(safe-area-inset-top);
-            --safe-bottom: env(safe-area-inset-bottom);
-            --safe-left: env(safe-area-inset-left);
-            --safe-right: env(safe-area-inset-right);
-        }
-
+        /* ===== CODE PROTECTION STYLES ===== */
         /* Prevent text selection globally */
         * {
             -webkit-user-select: none !important;
@@ -224,15 +216,6 @@
             font-family: 'Inter', sans-serif;
             -webkit-user-select: none;
             user-select: none;
-            overflow-x: hidden;
-
-            /* iOS Fixes */
-            min-height: 100dvh;
-            touch-action: manipulation;
-            padding-top: var(--safe-top);
-            padding-bottom: var(--safe-bottom);
-            padding-left: var(--safe-left);
-            padding-right: var(--safe-right);
         }
 
         /* Custom Scrollbar */
@@ -268,8 +251,6 @@
             border-radius: 0.375rem;
             width: 100%;
             transition: all 0.2s ease;
-            font-size: 16px;
-            /* Prevent Mobile Zoom */
         }
 
         .input-field:focus {
@@ -512,8 +493,6 @@
             padding: 0.5rem;
             border-radius: 0.375rem;
             transition: all 0.2s ease;
-            font-size: 16px;
-            /* Prevent Mobile Zoom */
         }
 
         select:hover {
@@ -597,9 +576,6 @@
         }
 
         /* ===== ENHANCED UX IMPROVEMENTS ===== */
-
-        /* Standardized Print Helper */
-
 
         /* Empty State Styling */
         .empty-state {
@@ -2431,6 +2407,11 @@
                                         class="fa-solid fa-print"></i> Print Report</button>
                             </div>
                         </div>
+                        <div id="agingDateContainer" class="hidden">
+                            <label class="text-xs text-gray-400">As of Date (for Aging Reports)</label>
+                            <input type="date" id="agingAsOfDate" class="input-field"
+                                title="Select date for aging calculation">
+                        </div>
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                             <button onclick="runReports('daily')"
                                 class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Daily
@@ -2452,7 +2433,13 @@
                                 Statements</button>
                             <button onclick="runReports('debtors')"
                                 class="bg-red-700 hover:bg-red-600 text-white py-2 rounded text-xs">Debtors
-                                Report</button>
+                                List</button>
+                            <button onclick="runReports('aging')"
+                                class="bg-orange-700 hover:bg-orange-600 text-white py-2 rounded text-xs">Debtors
+                                Aging</button>
+                            <button onclick="runReports('creditors_aging')"
+                                class="bg-purple-700 hover:bg-purple-600 text-white py-2 rounded text-xs">Creditors
+                                Aging</button>
                             <button onclick="runReports('journal')"
                                 class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Journal
                                 Book</button>
@@ -3571,6 +3558,21 @@
                     </select>
                 </div>
 
+                <!-- Invoice Selection (Optional) -->
+                <div>
+                    <label class="text-xs text-gray-400 font-bold mb-2 block">Link to Invoice (Optional)</label>
+                    <select id="settlementInvoice" class="input-field bg-gray-800"
+                        onchange="updateSettlementAmountFromInvoice()">
+                        <option value="">-- General Payment (FIFO) --</option>
+                    </select>
+                </div>
+
+                <!-- Date Selection -->
+                <div>
+                    <label class="text-xs text-gray-400 font-bold mb-2 block">Settlement Date</label>
+                    <input type="date" id="settlementDate" class="input-field bg-gray-800">
+                </div>
+
                 <!-- Amount Due Display -->
                 <div class="bg-white/5 p-4 rounded border border-gray-700">
                     <div class="flex justify-between items-center mb-2">
@@ -4289,8 +4291,8 @@
                 currentUser = user;
 
                 // 1. GENERATE UNIQUE KEY FOR THIS USER
-                DB_KEY = `karta_db_${user.uid} `;
-                const BLOCK_KEY = `karta_blocked_${user.uid} `;
+                DB_KEY = `karta_db_${user.uid}`;
+                const BLOCK_KEY = `karta_blocked_${user.uid}`;
 
                 // *** SECURITY: CHECK LOCAL BLOCK STATUS FIRST (before showing anything) ***
                 const localBlockStatus = localStorage.getItem(BLOCK_KEY);
@@ -4497,26 +4499,26 @@
 
             // Reset to default state first
             paymentSection.innerHTML = `
-            <button
-        onclick="document.getElementById('qrCodeContainer').classList.remove('hidden'); this.classList.add('hidden');"
-        class="w-full bg-karta-primary hover:bg-karta-primaryDark text-black font-bold py-2.5 md:py-3 text-sm md:text-base rounded transition-all duration-200 hover:shadow-lg mb-4">
-            <i class="fa-solid fa-wallet mr-2"></i> Proceed to Payment
+                <button
+                    onclick="document.getElementById('qrCodeContainer').classList.remove('hidden'); this.classList.add('hidden');"
+                    class="w-full bg-karta-primary hover:bg-karta-primaryDark text-black font-bold py-2.5 md:py-3 text-sm md:text-base rounded transition-all duration-200 hover:shadow-lg mb-4">
+                    <i class="fa-solid fa-wallet mr-2"></i> Proceed to Payment
                 </button>
-            <div id="qrCodeContainer" class="hidden animate-slideIn">
-                <div class="bg-white/5 border border-white/10 rounded-lg p-4 mb-4 flex flex-col items-center">
-                    <div class="bg-white p-2 rounded-lg mb-3">
-                        <img src="payment-qr.jpg" alt="eSewa QR Code" class="w-48 h-48 object-contain">
+                <div id="qrCodeContainer" class="hidden animate-slideIn">
+                    <div class="bg-white/5 border border-white/10 rounded-lg p-4 mb-4 flex flex-col items-center">
+                        <div class="bg-white p-2 rounded-lg mb-3">
+                            <img src="payment-qr.jpg" alt="eSewa QR Code" class="w-48 h-48 object-contain">
+                        </div>
+                        <p class="text-karta-primary text-xs md:text-sm font-semibold mb-4">
+                            <i class="fa-solid fa-qrcode mr-2"></i>Scan using eSewa App
+                        </p>
+                        <button onclick="window.notifyPaymentDone()"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-check"></i> I Have Made Payment
+                        </button>
                     </div>
-                    <p class="text-karta-primary text-xs md:text-sm font-semibold mb-4">
-                        <i class="fa-solid fa-qrcode mr-2"></i>Scan using eSewa App
-                    </p>
-                    <button onclick="window.notifyPaymentDone()"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded transition-all flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-check"></i> I Have Made Payment
-                    </button>
                 </div>
-            </div>
-        `;
+            `;
 
             if (userData.paymentStatus === 'review') {
                 paymentSection.innerHTML = '<p class="text-green-400 font-bold"><i class="fa-solid fa-check-circle mr-2"></i>Payment Submitted for Review</p>';
@@ -4736,7 +4738,7 @@
         // REPAIR FUNCTION: Recalculate cash, bank, AND credit balances from transactions
         // This fixes negative balances and incorrect credit amounts caused by improper deletes or past bugs
         window.repairCashAndBankBalances = function () {
-            console.log(`\n === STARTING DATABASE REPAIR(CASH + BANK + CREDIT) === `);
+            console.log(`\n=== STARTING DATABASE REPAIR (CASH + BANK + CREDIT) ===`);
 
             // Step 1: Reset ALL balances to 0
             db.config.cashBalance = 0;
@@ -4758,15 +4760,15 @@
                         // Add to cash/bank based on payment type
                         if (txn.payType === 'cash') {
                             db.config.cashBalance = moneyRound(db.config.cashBalance + (txn.total || 0));
-                            console.log(`  Sale(cash): +${db.config.currency}${(txn.total || 0).toFixed(2)} → Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)} `);
+                            console.log(`  Sale (cash): +${db.config.currency}${(txn.total || 0).toFixed(2)} → Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}`);
                         } else if (txn.payType === 'bank') {
                             db.config.bankBalance = moneyRound(db.config.bankBalance + (txn.total || 0));
-                            console.log(`  Sale(bank): +${db.config.currency}${(txn.total || 0).toFixed(2)} → Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)} `);
+                            console.log(`  Sale (bank): +${db.config.currency}${(txn.total || 0).toFixed(2)} → Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
                         } else if (txn.payType === 'credit') {
                             const cust = db.customers.find(c => c.id === txn.entityId);
                             if (cust) {
                                 cust.balance = moneyRound(cust.balance + (txn.total || 0));
-                                console.log(`  Sale(credit): +${db.config.currency}${(txn.total || 0).toFixed(2)} → Customer ${cust.name}: ${db.config.currency}${cust.balance.toFixed(2)} `);
+                                console.log(`  Sale (credit): +${db.config.currency}${(txn.total || 0).toFixed(2)} → Customer ${cust.name}: ${db.config.currency}${cust.balance.toFixed(2)}`);
                             }
                         } else if (txn.payType === 'split') {
                             if (txn.cashAmount) {
@@ -4781,22 +4783,22 @@
                                     cust.balance = moneyRound(cust.balance + txn.splitCredit);
                                 }
                             }
-                            console.log(`  Sale(split): +${db.config.currency}${(txn.total || 0).toFixed(2)} `);
+                            console.log(`  Sale (split): +${db.config.currency}${(txn.total || 0).toFixed(2)}`);
                         }
                     } else if (txn.type === 'expense') {
                         // Subtract expenses from cash
                         db.config.cashBalance = moneyRound(db.config.cashBalance - (txn.total || 0));
-                        console.log(`  Expense: -${db.config.currency}${(txn.total || 0).toFixed(2)} → Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)} `);
+                        console.log(`  Expense: -${db.config.currency}${(txn.total || 0).toFixed(2)} → Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}`);
                     }
                 });
             }
 
             console.log(`\n✓ Database Repaired!`);
-            console.log(`New Cash Balance: ${db.config.cashBalance} `);
-            console.log(`New Bank Balance: ${db.config.bankBalance} `);
+            console.log(`New Cash Balance: ${db.config.cashBalance}`);
+            console.log(`New Bank Balance: ${db.config.bankBalance}`);
 
             // Log credit balances
-            console.log(`\nCustomer Credit Balances(what customers owe us): `);
+            console.log(`\nCustomer Credit Balances (what customers owe us):`);
             if (db.customers && Array.isArray(db.customers)) {
                 db.customers.forEach(c => {
                     // FIX: If balance is NaN, set to 0
@@ -4805,12 +4807,12 @@
                         c.balance = 0;
                     }
                     if (c.balance !== 0) {
-                        console.log(`  ${c.name}: ${db.config.currency}${c.balance.toFixed(2)} `);
+                        console.log(`  ${c.name}: ${db.config.currency}${c.balance.toFixed(2)}`);
                     }
                 });
             }
 
-            console.log(`\nSupplier Credit Balances(what we owe suppliers): `);
+            console.log(`\nSupplier Credit Balances (what we owe suppliers):`);
             if (db.suppliers && Array.isArray(db.suppliers)) {
                 db.suppliers.forEach(s => {
                     // FIX: If balance is NaN, set to 0
@@ -4819,7 +4821,7 @@
                         s.balance = 0;
                     }
                     if (s.balance !== 0) {
-                        console.log(`  ${s.name}: ${db.config.currency}${s.balance.toFixed(2)} `);
+                        console.log(`  ${s.name}: ${db.config.currency}${s.balance.toFixed(2)}`);
                     }
                 });
             }
@@ -4835,14 +4837,14 @@
             loadDashboard();
 
             let repairSummary = `✓ DATABASE REPAIRED\n\n`;
-            repairSummary += `Cash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)} \n`;
-            repairSummary += `Bank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)} \n\n`;
+            repairSummary += `Cash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\n`;
+            repairSummary += `Bank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}\n\n`;
 
             const totalCustomerCredit = db.customers ? db.customers.reduce((a, c) => a + c.balance, 0) : 0;
             const totalSupplierCredit = db.suppliers ? db.suppliers.reduce((a, s) => a + s.balance, 0) : 0;
 
-            repairSummary += `Customer Credit(Receivables): ${db.config.currency}${totalCustomerCredit.toFixed(2)} \n`;
-            repairSummary += `Supplier Credit(Payables): ${db.config.currency}${totalSupplierCredit.toFixed(2)} \n\n`;
+            repairSummary += `Customer Credit (Receivables): ${db.config.currency}${totalCustomerCredit.toFixed(2)}\n`;
+            repairSummary += `Supplier Credit (Payables): ${db.config.currency}${totalSupplierCredit.toFixed(2)}\n\n`;
             repairSummary += `Recalculated from SALES and EXPENSES only.`;
 
             alert(repairSummary);
@@ -5029,13 +5031,13 @@
             if (confirm("⚠️  DANGER: This will wipe ALL old data from localStorage and cloud!\n\nYou will start fresh with empty database.\n\nContinue?")) {
                 // Step 1: Clear localStorage for this user
                 if (DB_KEY) {
-                    console.log(`Clearing localStorage key: ${DB_KEY} `);
+                    console.log(`Clearing localStorage key: ${DB_KEY}`);
                     localStorage.removeItem(DB_KEY);
                 }
 
                 // Step 2: Clear cloud if connected
                 if (currentUser) {
-                    console.log(`Clearing cloud data for user: ${currentUser.uid} `);
+                    console.log(`Clearing cloud data for user: ${currentUser.uid}`);
                     set(ref(dbRealtime, 'users/' + currentUser.uid + '/data'), APP_STATE);
                 }
 
@@ -5274,13 +5276,13 @@
                     let batchInfo = `<div class="text-xs text-gray-500">N/A</div>`;
                     if (p.batch || p.expiry) {
                         batchInfo = `
-            <div class="text-xs text-gray-400">Batch: <span class="text-white">${p.batch || '-'}</span></div>
-                <div class="text-[10px] text-gray-500">Exp: ${p.expiry ? window.formatDate(p.expiry) : '-'}</div>
-        `;
+                        <div class="text-xs text-gray-400">Batch: <span class="text-white">${p.batch || '-'}</span></div>
+                        <div class="text-[10px] text-gray-500">Exp: ${p.expiry ? window.formatDate(p.expiry) : '-'}</div>
+                    `;
                     }
 
                     tr.innerHTML = `
-            <td class="p-3 font-bold text-white">${p.name}</td>
+                    <td class="p-3 font-bold text-white">${p.name}</td>
                     <td class="p-3 text-gray-400 font-mono text-xs">${p.sku}</td>
                     <td class="p-3">${batchInfo}</td>
                     <td class="p-3"><span class="px-2 py-1 bg-gray-800 rounded text-xs">${p.category}</span></td>
@@ -5291,7 +5293,7 @@
                         <button onclick="editProduct(${p.id})" class="text-blue-400 hover:text-blue-300 w-8 h-8 rounded hover:bg-white/10 transition" title="Edit Product"><i class="fa-solid fa-edit"></i></button>
                         <button onclick="delProd(${p.id})" class="text-red-500 hover:text-red-400 w-8 h-8 rounded hover:bg-white/10 transition" title="Delete Product"><i class="fa-solid fa-trash"></i></button>
                     </td>
-        `;
+                `;
                     tbody.appendChild(tr);
                 });
         }
@@ -5334,9 +5336,9 @@
             filteredProducts.forEach(p => {
                 const supplier = p.supplierId ? db.suppliers.find(s => s.id === p.supplierId) : null;
                 const tr = document.createElement('tr');
-                tr.className = `hover: bg - white / 5 border - b border - gray - 800 ${supplier ? 'bg-green-950/10' : ''} `;
+                tr.className = `hover:bg-white/5 border-b border-gray-800 ${supplier ? 'bg-green-950/10' : ''}`;
                 tr.innerHTML = `
-            <td class="p-3 font-bold text-white">${p.name}</td>
+                    <td class="p-3 font-bold text-white">${p.name}</td>
                     <td class="p-3 text-gray-400 text-xs font-mono">${p.sku}</td>
                     <td class="p-3">
                         ${supplier ? `<span class="px-3 py-1 bg-green-900/40 text-green-300 rounded text-xs font-bold border border-green-700"><i class="fa-solid fa-check-circle mr-1"></i>${supplier.name}</span>` : '<span class="px-3 py-1 bg-gray-800/50 text-gray-500 text-xs rounded border border-gray-700"><i class="fa-solid fa-circle-xmark mr-1\"></i>Unassigned</span>'}
@@ -5347,7 +5349,7 @@
                         </button>
                         ${supplier ? `<button onclick="quickUnassignProduct(${p.id})" class="text-red-400 hover:text-red-300 text-xs font-bold px-3 py-1.5 bg-red-900/30 hover:bg-red-900/50 rounded transition border border-red-800" title="Remove supplier"><i class="fa-solid fa-unlink"></i></button>` : ''}
                     </td>
-        `;
+                `;
                 tbody.appendChild(tr);
             });
         }
@@ -5370,7 +5372,7 @@
             const currentSupplier = product.supplierId ? db.suppliers.find(s => s.id === product.supplierId) : null;
             const supplierDisplay = document.getElementById('assignCurrentSupplierName');
             if (currentSupplier) {
-                supplierDisplay.innerHTML = `<i class="fa-solid fa-check-circle text-green-400 mr-1"></i> ${currentSupplier.name} `;
+                supplierDisplay.innerHTML = `<i class="fa-solid fa-check-circle text-green-400 mr-1"></i>${currentSupplier.name}`;
                 supplierDisplay.className = 'text-green-400 font-bold';
             } else {
                 supplierDisplay.innerHTML = '<i class="fa-solid fa-circle-xmark text-gray-500 mr-1"></i>Unassigned';
@@ -5466,7 +5468,7 @@
                 return;
             }
 
-            if (confirm(`Remove supplier assignment for "${product.name}" ? `)) {
+            if (confirm(`Remove supplier assignment for "${product.name}"?`)) {
                 product.supplierId = null;
                 product.supplierName = null;
                 saveDB();
@@ -5482,7 +5484,7 @@
             const product = db.products.find(p => Math.floor(p.id) === numProductId);
             if (!product) return;
 
-            if (confirm(`Unassign "${product.name}" from its supplier ? `)) {
+            if (confirm(`Unassign "${product.name}" from its supplier?`)) {
                 product.supplierId = null;
                 product.supplierName = null;
                 saveDB();
@@ -5581,7 +5583,7 @@
                 });
                 saveDB();
                 window.closeModal();
-                alert(`Payment Recorded!\nCustomer: ${cust.name} \nAmount: ${db.config.currency}${amount.toFixed(2)} \nMethod: Cash\n\nUpdated Balance: ${db.config.currency}${cust.balance.toFixed(2)} \nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)} `);
+                alert(`Payment Recorded!\nCustomer: ${cust.name}\nAmount: ${db.config.currency}${amount.toFixed(2)}\nMethod: Cash\n\nUpdated Balance: ${db.config.currency}${cust.balance.toFixed(2)}\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}`);
                 loadDashboard();
             }
         };
@@ -5649,7 +5651,7 @@
                 const totalSpent = txns.filter(t => t.type === 'sale').reduce((a, x) => a + x.total, 0);
 
                 el.innerHTML = `
-            <div class="flex-1">
+                    <div class="flex-1">
                         <div class="flex justify-between items-start mb-2">
                             <h4 class="font-bold text-white text-lg">${c.name}</h4>
                             <span class="text-xs ${c.balance > 0 ? 'text-red-500' : 'text-green-500'} font-bold border border-current px-2 py-0.5 rounded">
@@ -5660,16 +5662,16 @@
                         <div class="text-xs text-gray-400 mb-2 flex items-center"><i class="fa-solid fa-phone w-4"></i> ${c.phone}</div>
                         <div class="text-xs text-gray-500 mt-2 mb-4">Total Orders: <span class="text-white">${txns.length}</span> | Spent: <span class="text-white">${db.config.currency}${totalSpent.toFixed(0)}</span></div>
                     </div>
-
-            <div class="mt-auto pt-3 border-t border-gray-800 flex gap-2">
-                <button onclick="viewCustomerHistory(${c.id})" class="flex-1 bg-white/10 hover:bg-white/20 text-white text-xs py-2 rounded transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-list-ul"></i> History
-                </button>
-                <button onclick="editCustomer(${c.id})" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-xs py-2 rounded transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-edit"></i> Edit
-                </button>
-            </div>
-        `;
+                    
+                    <div class="mt-auto pt-3 border-t border-gray-800 flex gap-2">
+                         <button onclick="viewCustomerHistory(${c.id})" class="flex-1 bg-white/10 hover:bg-white/20 text-white text-xs py-2 rounded transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-list-ul"></i> History
+                         </button>
+                         <button onclick="editCustomer(${c.id})" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-xs py-2 rounded transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-edit"></i> Edit
+                         </button>
+                    </div>
+                `;
                 grid.appendChild(el);
             });
 
@@ -5695,10 +5697,10 @@
             document.getElementById('chPhone').innerText = cust.phone;
             document.getElementById('chAddr').innerText = cust.address || "N/A";
 
-            document.getElementById('chBalance').innerText = `${db.config.currency}${cust.balance.toFixed(2)} `;
-            document.getElementById('chBalance').className = `text - 2xl font - bold mt - 1 ${cust.balance > 0 ? 'text-red-500' : 'text-green-500'} `;
+            document.getElementById('chBalance').innerText = `${db.config.currency}${cust.balance.toFixed(2)}`;
+            document.getElementById('chBalance').className = `text-2xl font-bold mt-1 ${cust.balance > 0 ? 'text-red-500' : 'text-green-500'}`;
 
-            document.getElementById('chTotalSpent').innerText = `${db.config.currency}${totalSpent.toFixed(2)} `;
+            document.getElementById('chTotalSpent').innerText = `${db.config.currency}${totalSpent.toFixed(2)}`;
             document.getElementById('chTxnCount').innerText = txns.length;
 
             // Populate Table
@@ -5715,7 +5717,7 @@
                     // Format Items String
                     let itemsStr = '-';
                     if (t.items && t.items.length > 0) {
-                        itemsStr = t.items.map(i => `${i.qty}x ${i.name} `).join(', ');
+                        itemsStr = t.items.map(i => `${i.qty}x ${i.name}`).join(', ');
                         if (itemsStr.length > 40) itemsStr = itemsStr.substring(0, 40) + '...';
                     } else if (t.type === 'payment') {
                         itemsStr = 'Payment Received';
@@ -5728,12 +5730,12 @@
                     const invoiceNum = t.invoiceNumber || t.ref || t.id.toString().slice(-6);
 
                     tr.innerHTML = `
-            <td class="p-3">${window.formatDate(t.date)}</td>
+                        <td class="p-3">${window.formatDate(t.date)}</td>
                         <td class="p-3 uppercase text-xs font-bold ${typeColor}">${t.type}</td>
                         <td class="p-3 font-mono text-xs">#${invoiceNum}</td>
                         <td class="p-3 text-xs text-gray-400 max-w-[150px] truncate">${itemsStr}</td>
                         <td class="p-3 text-right font-bold">${db.config.currency}${t.total.toFixed(2)}</td>
-        `;
+                    `;
                     tbody.appendChild(tr);
                 });
             }
@@ -5770,14 +5772,14 @@
             doc.line(14, yPos + 18, 196, yPos + 18);
 
             doc.setFontSize(12);
-            doc.text(`Customer: ${cust.name} `, 14, yPos + 28);
+            doc.text(`Customer: ${cust.name}`, 14, yPos + 28);
             doc.setFontSize(10);
-            doc.text(`Phone: ${cust.phone} `, 14, yPos + 33);
-            doc.text(`Address: ${cust.address || '-'} `, 14, yPos + 38);
+            doc.text(`Phone: ${cust.phone}`, 14, yPos + 33);
+            doc.text(`Address: ${cust.address || '-'}`, 14, yPos + 38);
 
             // Summary
-            doc.text(`Current Balance Due: ${db.config.currency} ${cust.balance.toFixed(2)} `, 140, yPos + 28);
-            doc.text(`Total Lifetime Spend: ${db.config.currency} ${txns.filter(t => t.type === 'sale').reduce((a, x) => a + x.total, 0).toFixed(2)} `, 140, yPos + 33);
+            doc.text(`Current Balance Due: ${db.config.currency} ${cust.balance.toFixed(2)}`, 140, yPos + 28);
+            doc.text(`Total Lifetime Spend: ${db.config.currency} ${txns.filter(t => t.type === 'sale').reduce((a, x) => a + x.total, 0).toFixed(2)}`, 140, yPos + 33);
 
             // Table
             const tableData = txns.map(t => {
@@ -5785,9 +5787,9 @@
                 return [
                     window.formatDate(t.date),
                     t.type.toUpperCase(),
-                    `#${invoiceNum} `,
-                    t.type === 'sale' ? t.items.map(i => `${i.qty}x ${i.name} `).join(', ') : 'Payment Received',
-                    `${db.config.currency} ${t.total.toFixed(2)} `
+                    `#${invoiceNum}`,
+                    t.type === 'sale' ? t.items.map(i => `${i.qty}x ${i.name}`).join(', ') : 'Payment Received',
+                    `${db.config.currency} ${t.total.toFixed(2)}`
                 ];
             });
 
@@ -5806,7 +5808,7 @@
             doc.text("Generated by Karta Business OS", 14, finalY);
             doc.text(window.formatDate(new Date().toISOString()), 14, finalY + 5);
 
-            doc.save(`${cust.name.replace(/\s+/g, '_')} _History.pdf`);
+            doc.save(`${cust.name.replace(/\s+/g, '_')}_History.pdf`);
         }
 
         // --- Supplier Management ---
@@ -5828,7 +5830,7 @@
                     sup.phone = phone;
                     sup.taxId = taxId;
                     sup.balance = balance;
-                    console.log(`✓ Supplier updated: ${name} with balance: ${db.config.currency}${balance.toFixed(2)} `);
+                    console.log(`✓ Supplier updated: ${name} with balance: ${db.config.currency}${balance.toFixed(2)}`);
                 }
             } else {
                 // Add new supplier
@@ -5840,7 +5842,7 @@
                     taxId: taxId,
                     balance: balance
                 });
-                console.log(`✓ New supplier created: ${name} with balance: ${db.config.currency}${balance.toFixed(2)} `);
+                console.log(`✓ New supplier created: ${name} with balance: ${db.config.currency}${balance.toFixed(2)}`);
             }
             // Save immediately without debounce for critical data
             if (currentUser && DB_KEY) {
@@ -5875,7 +5877,7 @@
             const balanceStatus = sup.balance > 0 ? 'We Owe' : (sup.balance < 0 ? 'They Owe Us' : 'Settled');
             const balanceColor = sup.balance > 0 ? '#f87171' : (sup.balance < 0 ? '#4ade80' : '#9ca3af');
             document.getElementById('shBalance').innerHTML = `<span style="color: ${balanceColor}; font-weight: bold;">${db.config.currency}${Math.abs(sup.balance).toFixed(2)}</span> <span style="font-size: 0.75rem; color: #9ca3af;">(${balanceStatus})</span>`;
-            document.getElementById('shTotalPurchased').innerText = `${db.config.currency}${totalPurchased.toFixed(2)} `;
+            document.getElementById('shTotalPurchased').innerText = `${db.config.currency}${totalPurchased.toFixed(2)}`;
 
             // Populate Table
             const tbody = document.getElementById('shTableBody');
@@ -5890,7 +5892,7 @@
 
                     let itemsStr = '-';
                     if (t.type === 'purchase' && t.items) {
-                        itemsStr = t.items.map(i => `${i.qty}x ${i.name} `).join(', ');
+                        itemsStr = t.items.map(i => `${i.qty}x ${i.name}`).join(', ');
                     } else if (t.type === 'payment_out') {
                         itemsStr = 'Payment Sent to Supplier';
                     }
@@ -5899,12 +5901,12 @@
                     const amountSign = t.type === 'payment_out' ? '-' : '';
 
                     tr.innerHTML = `
-            <td class="p-3">${window.formatDate(t.date)}</td>
+                        <td class="p-3">${window.formatDate(t.date)}</td>
                         <td class="p-3 uppercase text-xs font-bold ${typeColor}">${t.type === 'payment_out' ? 'Payment' : 'Purchase'}</td>
                         <td class="p-3 text-xs text-gray-500">${t.ref || '-'}</td>
                         <td class="p-3 text-xs text-gray-400 max-w-[150px] truncate">${itemsStr}</td>
                         <td class="p-3 text-right font-bold">${amountSign}${db.config.currency}${t.total.toFixed(2)}</td>
-        `;
+                    `;
                     tbody.appendChild(tr);
                 });
             }
@@ -5958,7 +5960,7 @@
                 });
                 saveDB();
                 window.closeModal();
-                alert(`Payment Recorded!\nSupplier: ${sup.name} \nAmount: ${db.config.currency}${amount.toFixed(2)} \nMethod: Cash\n\nRemaining Balance: ${db.config.currency}${sup.balance.toFixed(2)} \nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)} `);
+                alert(`Payment Recorded!\nSupplier: ${sup.name}\nAmount: ${db.config.currency}${amount.toFixed(2)}\nMethod: Cash\n\nRemaining Balance: ${db.config.currency}${sup.balance.toFixed(2)}\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}`);
                 loadDashboard();
             }
         };
@@ -5992,20 +5994,20 @@
             doc.line(14, yPos + 18, 196, yPos + 18);
 
             doc.setFontSize(12);
-            doc.text(`Supplier: ${sup.name} `, 14, yPos + 28);
+            doc.text(`Supplier: ${sup.name}`, 14, yPos + 28);
             doc.setFontSize(10);
-            doc.text(`Contact: ${sup.contact || '-'} `, 14, yPos + 33);
-            doc.text(`Phone: ${sup.phone || '-'} `, 14, yPos + 38);
+            doc.text(`Contact: ${sup.contact || '-'}`, 14, yPos + 33);
+            doc.text(`Phone: ${sup.phone || '-'}`, 14, yPos + 38);
 
             const balanceStatus = sup.balance > 0 ? 'Balance Due (We Owe)' : (sup.balance < 0 ? 'Refund Due (They Owe Us)' : 'Settled');
-            doc.text(`${balanceStatus}: ${db.config.currency} ${Math.abs(sup.balance).toFixed(2)} `, 140, yPos + 28);
+            doc.text(`${balanceStatus}: ${db.config.currency} ${Math.abs(sup.balance).toFixed(2)}`, 140, yPos + 28);
 
             const tableData = txns.map(t => [
                 window.formatDate(t.date),
                 t.type === 'payment_out' ? 'PAYMENT SENT' : 'PURCHASE',
                 t.ref || '-',
-                t.type === 'purchase' ? (t.items && t.items[0] ? t.items.map(i => `${i.qty}x ${i.name} `).join(', ') : '-') : 'Payment to Supplier',
-                `${t.type === 'payment_out' ? '-' : ''}${db.config.currency} ${t.total.toFixed(2)} `
+                t.type === 'purchase' ? (t.items && t.items[0] ? t.items.map(i => `${i.qty}x ${i.name}`).join(', ') : '-') : 'Payment to Supplier',
+                `${t.type === 'payment_out' ? '-' : ''}${db.config.currency} ${t.total.toFixed(2)}`
             ]);
 
             doc.autoTable({
@@ -6017,7 +6019,7 @@
                 headStyles: { fillColor: [66, 66, 66] }
             });
 
-            doc.save(`${sup.name.replace(/\s+/g, '_')} _Statement.pdf`);
+            doc.save(`${sup.name.replace(/\s+/g, '_')}_Statement.pdf`);
         }
 
         function renderSuppliers() {
@@ -6048,7 +6050,7 @@
                 const balanceColor = s.balance > 0 ? 'text-red-400' : (s.balance < 0 ? 'text-green-400' : 'text-gray-400');
                 const balanceLabel = s.balance > 0 ? '(We Owe)' : (s.balance < 0 ? '(They Owe Us)' : '(Settled)');
                 tr.innerHTML = `
-            <td class="p-3 text-white font-bold">${s.name}</td>
+                    <td class="p-3 text-white font-bold">${s.name}</td>
                     <td class="p-3 text-gray-400">${s.contact}</td>
                     <td class="p-3 text-gray-400">${s.phone}</td>
                     <td class="p-3 text-gray-400 text-xs">${s.taxId}</td>
@@ -6058,7 +6060,7 @@
                          <button onclick="editSupplier(${s.id})" class="text-blue-400 hover:text-blue-300" title="Edit"><i class="fa-solid fa-edit"></i></button>
                          <button onclick="delSup(${s.id})" class="text-red-500 hover:text-red-400" title="Delete"><i class="fa-solid fa-trash"></i></button>
                     </td>
-        `;
+                `;
                 tbody.appendChild(tr);
             });
         }
@@ -6078,7 +6080,7 @@
             const fixBtn = document.getElementById('fixBalanceBtn');
             if (sup.balance < 0) {
                 fixBtn.classList.remove('hidden');
-                fixBtn.innerHTML = `<i class="fa-solid fa-wrench mr-2"></i> Fix Negative Balance(${db.config.currency}${Math.abs(sup.balance).toFixed(2)})`;
+                fixBtn.innerHTML = `<i class="fa-solid fa-wrench mr-2"></i>Fix Negative Balance (${db.config.currency}${Math.abs(sup.balance).toFixed(2)})`;
             } else {
                 fixBtn.classList.add('hidden');
             }
@@ -6101,13 +6103,13 @@
                 return;
             }
 
-            if (!confirm(`Fix negative balance for "${sup.name}" ?\n\nCurrent: ${db.config.currency}${sup.balance.toFixed(2)} \n\nThis will: \n1.Set balance to 0\n2.Recalculate from actual purchase transactions\n3.Remove glitched duplicate deletes\n\nContinue ? `)) {
+            if (!confirm(`Fix negative balance for "${sup.name}"?\n\nCurrent: ${db.config.currency}${sup.balance.toFixed(2)}\n\nThis will:\n1. Set balance to 0\n2. Recalculate from actual purchase transactions\n3. Remove glitched duplicate deletes\n\nContinue?`)) {
                 return;
             }
 
-            console.log(`\n === FIXING SUPPLIER NEGATIVE BALANCE === `);
-            console.log(`Supplier: ${sup.name} `);
-            console.log(`Before: ${sup.balance} `);
+            console.log(`\n=== FIXING SUPPLIER NEGATIVE BALANCE ===`);
+            console.log(`Supplier: ${sup.name}`);
+            console.log(`Before: ${sup.balance}`);
 
             // Step 1: Set to 0
             sup.balance = 0;
@@ -6132,7 +6134,7 @@
                 }
 
                 sup.balance = moneyRound(sup.balance + amountOwed);
-                console.log(`  + Purchase: ${db.config.currency}${amountOwed.toFixed(2)} → Balance: ${db.config.currency}${sup.balance.toFixed(2)} `);
+                console.log(`  + Purchase: ${db.config.currency}${amountOwed.toFixed(2)} → Balance: ${db.config.currency}${sup.balance.toFixed(2)}`);
             });
 
             // Step 4: Subtract any payments made to this supplier
@@ -6145,10 +6147,10 @@
 
             paymentTransactions.forEach(txn => {
                 sup.balance = moneyRound(sup.balance - txn.amount);
-                console.log(`  - Payment: ${db.config.currency}${txn.amount.toFixed(2)} → Balance: ${db.config.currency}${sup.balance.toFixed(2)} `);
+                console.log(`  - Payment: ${db.config.currency}${txn.amount.toFixed(2)} → Balance: ${db.config.currency}${sup.balance.toFixed(2)}`);
             });
 
-            console.log(`After: ${sup.balance} `);
+            console.log(`After: ${sup.balance}`);
             console.log(`=== BALANCE FIX COMPLETE ===\n`);
 
             // Step 5: Save immediately without debounce
@@ -6170,7 +6172,7 @@
             renderSuppliers();
             refreshUI();
 
-            alert(`✓ SUPPLIER BALANCE FIXED!\n\nSupplier: ${sup.name} \nNew Balance: ${db.config.currency}${sup.balance.toFixed(2)} \n\nRecalculated from all valid purchases and payments.`);
+            alert(`✓ SUPPLIER BALANCE FIXED!\n\nSupplier: ${sup.name}\nNew Balance: ${db.config.currency}${sup.balance.toFixed(2)}\n\nRecalculated from all valid purchases and payments.`);
         };
 
         window.delSup = function (id) { if (confirm("Delete Supplier?")) { db.suppliers = db.suppliers.filter(s => s.id !== id); saveDB(); renderSuppliers(); } }
@@ -6303,11 +6305,11 @@
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-white/5 border-b border-gray-800 text-gray-300';
                     tr.innerHTML = `
-            <td class="p-3">
-                <select onchange="updatePurchaseItem(${item.id}, 'product', this.value)" class="input-field text-xs py-1.5" style="background-color: #0b0b0b;">
-                    <option value="">Select Product</option>
-                    ${supplierProducts.map(p => `<option value="${p.id}" ${item.productId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                </select>
+                        <td class="p-3">
+                            <select onchange="updatePurchaseItem(${item.id}, 'product', this.value)" class="input-field text-xs py-1.5" style="background-color: #0b0b0b;">
+                                <option value="">Select Product</option>
+                                ${supplierProducts.map(p => `<option value="${p.id}" ${item.productId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                            </select>
                         </td>
                         <td class="p-3 text-center">
                             <input type="number" min="0" value="${item.qty}" onchange="updatePurchaseItem(${item.id}, 'qty', this.value)" class="input-field text-xs text-center py-1.5 w-16" style="background-color: #0b0b0b;">
@@ -6333,7 +6335,7 @@
                                 <i class="fa-solid fa-trash-alt"></i>
                             </button>
                         </td>
-        `;
+                    `;
                     tbody.appendChild(tr);
                 });
             }
@@ -6391,7 +6393,7 @@
 
                 const remainingEl = document.getElementById('splitSalesRemaining');
                 if (remainingEl) {
-                    remainingEl.innerText = `${db.config.currency}${Math.abs(remaining).toFixed(2)} `;
+                    remainingEl.innerText = `${db.config.currency}${Math.abs(remaining).toFixed(2)}`;
                     if (remaining < 0) {
                         remainingEl.style.color = '#ef4444';
                     } else if (remaining > 0) {
@@ -6431,7 +6433,7 @@
 
             // Validate split payment integrity against chargedTotal
             if (Math.abs(sum - chargedTotal) > 0.01) {
-                alert(`❌ SPLIT PAYMENT MISMATCH!\n\nTotal Amount: ${db.config.currency}${chargedTotal.toFixed(2)} \nEntered Sum: ${db.config.currency}${sum.toFixed(2)} \nDifference: ${db.config.currency}${Math.abs(chargedTotal - sum).toFixed(2)} \n\nPlease correct the amounts so they match the total exactly.`);
+                alert(`❌ SPLIT PAYMENT MISMATCH!\n\nTotal Amount: ${db.config.currency}${chargedTotal.toFixed(2)}\nEntered Sum: ${db.config.currency}${sum.toFixed(2)}\nDifference: ${db.config.currency}${Math.abs(chargedTotal - sum).toFixed(2)}\n\nPlease correct the amounts so they match the total exactly.`);
                 return;
             }
 
@@ -6479,7 +6481,7 @@
 
             // Final validation - calculated total should match split total
             if (Math.abs(txnTotal - total) > 0.01) {
-                console.warn(`WARNING: Recalculated total(${txnTotal}) differs from modal total(${total}).Using modal total.`);
+                console.warn(`WARNING: Recalculated total (${txnTotal}) differs from modal total (${total}). Using modal total.`);
             }
 
             if (credit > 0) {
@@ -6560,15 +6562,15 @@
             window.closeModal();
 
             alert(`Split Payment Sale Complete!
-        Total: ${db.config.currency}${chargedTotal.toFixed(2)}
+Total: ${db.config.currency}${chargedTotal.toFixed(2)}
 
-        Cash: ${db.config.currency}${cash.toFixed(2)}
-        Bank: ${db.config.currency}${bank.toFixed(2)}
-        Credit: ${db.config.currency}${credit.toFixed(2)}
+    Cash: ${db.config.currency}${cash.toFixed(2)}
+    Bank: ${db.config.currency}${bank.toFixed(2)}
+    Credit: ${db.config.currency}${credit.toFixed(2)}
 
 Updated Balances:
-        Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}
-        Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)} `);
+    Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}
+    Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
         };
 
         // Helper function for split payment display
@@ -6601,10 +6603,10 @@ Updated Balances:
             const creditAmount = moneyRound(grandTotal - cashAmount - bankAmount);
 
             document.getElementById('splitCreditAmount').value = Math.max(0, creditAmount).toFixed(2);
-            document.getElementById('splitTotalDisplay').innerText = `${db.config.currency}${grandTotal.toFixed(2)} `;
-            document.getElementById('splitCashDisplay').innerText = `${db.config.currency}${cashAmount.toFixed(2)} `;
-            document.getElementById('splitBankDisplay').innerText = `${db.config.currency}${bankAmount.toFixed(2)} `;
-            document.getElementById('splitCreditDisplay').innerText = `${db.config.currency}${Math.max(0, creditAmount).toFixed(2)} `;
+            document.getElementById('splitTotalDisplay').innerText = `${db.config.currency}${grandTotal.toFixed(2)}`;
+            document.getElementById('splitCashDisplay').innerText = `${db.config.currency}${cashAmount.toFixed(2)}`;
+            document.getElementById('splitBankDisplay').innerText = `${db.config.currency}${bankAmount.toFixed(2)}`;
+            document.getElementById('splitCreditDisplay').innerText = `${db.config.currency}${Math.max(0, creditAmount).toFixed(2)}`;
         };
 
         document.getElementById('purchForm').onsubmit = e => {
@@ -6877,13 +6879,13 @@ Updated Balances:
 
             let message = '';
             if (paymentMethod === 'cash') {
-                message = `CASH PURCHASE saved!\nSupplier: ${sup.name} \nAmount: ${db.config.currency}${totalAmount.toFixed(2)} \nPaid in Cash\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)} \nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)} `;
+                message = `CASH PURCHASE saved!\nSupplier: ${sup.name}\nAmount: ${db.config.currency}${totalAmount.toFixed(2)}\nPaid in Cash\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`;
             } else if (paymentMethod === 'bank') {
-                message = `BANK PAYMENT PURCHASE saved!\nSupplier: ${sup.name} \nAmount: ${db.config.currency}${totalAmount.toFixed(2)} \nPaid via Bank\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)} \nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)} `;
+                message = `BANK PAYMENT PURCHASE saved!\nSupplier: ${sup.name}\nAmount: ${db.config.currency}${totalAmount.toFixed(2)}\nPaid via Bank\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`;
             } else if (paymentMethod === 'credit') {
-                message = `PURCHASE ON CREDIT saved!\nSupplier: ${sup.name} \nAmount: ${db.config.currency}${totalAmount.toFixed(2)} \nBalance Due: ${db.config.currency}${sup.balance.toFixed(2)} `;
+                message = `PURCHASE ON CREDIT saved!\nSupplier: ${sup.name}\nAmount: ${db.config.currency}${totalAmount.toFixed(2)}\nBalance Due: ${db.config.currency}${sup.balance.toFixed(2)}`;
             } else if (paymentMethod === 'split') {
-                message = `SPLIT PAYMENT PURCHASE saved!\nSupplier: ${sup.name} \nTotal: ${db.config.currency}${totalAmount.toFixed(2)} \n\nCash: ${db.config.currency}${cashAmount.toFixed(2)} \nBank: ${db.config.currency}${bankAmount.toFixed(2)} \nCredit: ${db.config.currency}${creditAmount.toFixed(2)} \nBalance Due: ${db.config.currency}${sup.balance.toFixed(2)} \n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)} \nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)} `;
+                message = `SPLIT PAYMENT PURCHASE saved!\nSupplier: ${sup.name}\nTotal: ${db.config.currency}${totalAmount.toFixed(2)}\n\nCash: ${db.config.currency}${cashAmount.toFixed(2)}\nBank: ${db.config.currency}${bankAmount.toFixed(2)}\nCredit: ${db.config.currency}${creditAmount.toFixed(2)}\nBalance Due: ${db.config.currency}${sup.balance.toFixed(2)}\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`;
             }
 
             // Show a non-blocking toast and open the print preview (print dialog)
@@ -6952,7 +6954,7 @@ Updated Balances:
             saveDB();
             window.closeModal();
 
-            alert(`✓ Expense Recorded!\n\nDescription: ${expenseDesc} \nAmount: ${db.config.currency}${expenseAmount.toFixed(2)} \nPaid from: ${paymentMode.toUpperCase()} \n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)} \nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)} `);
+            alert(`✓ Expense Recorded!\n\nDescription: ${expenseDesc}\nAmount: ${db.config.currency}${expenseAmount.toFixed(2)}\nPaid from: ${paymentMode.toUpperCase()}\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
 
             loadDashboard();
         };
@@ -6966,7 +6968,7 @@ Updated Balances:
                 return;
             }
 
-            if (!confirm(`Delete this expense ?\n\nDescription: ${expense.description} \nAmount: ${db.config.currency}${expense.total.toFixed(2)} \nPaid from: ${(expense.paymentMode || 'cash').toUpperCase()} \n\nThis will restore the amount to ${(expense.paymentMode || 'cash').toUpperCase()}.`)) {
+            if (!confirm(`Delete this expense?\n\nDescription: ${expense.description}\nAmount: ${db.config.currency}${expense.total.toFixed(2)}\nPaid from: ${(expense.paymentMode || 'cash').toUpperCase()}\n\nThis will restore the amount to ${(expense.paymentMode || 'cash').toUpperCase()}.`)) {
                 return;
             }
 
@@ -6977,10 +6979,10 @@ Updated Balances:
             const payMode = expense.paymentMode || 'cash';
             if (payMode === 'cash') {
                 db.config.cashBalance = moneyRound(db.config.cashBalance + expense.total);
-                console.log(`✓ Cash restored: +${db.config.currency}${expense.total.toFixed(2)} → Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)} `);
+                console.log(`✓ Cash restored: +${db.config.currency}${expense.total.toFixed(2)} → Cash: ${db.config.currency}${db.config.cashBalance.toFixed(2)}`);
             } else if (payMode === 'bank') {
                 db.config.bankBalance = moneyRound(db.config.bankBalance + expense.total);
-                console.log(`✓ Bank restored: +${db.config.currency}${expense.total.toFixed(2)} → Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)} `);
+                console.log(`✓ Bank restored: +${db.config.currency}${expense.total.toFixed(2)} → Bank: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
             }
 
             // Delete expense from transactions
@@ -6997,7 +6999,7 @@ Updated Balances:
             saveDB();
             loadDashboard();
 
-            alert(`✓ EXPENSE DELETED!\n\n${(expense.paymentMode || 'cash').toUpperCase()}: +${db.config.currency}${expense.total.toFixed(2)} \n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)} \nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)} `);
+            alert(`✓ EXPENSE DELETED!\n\n${(expense.paymentMode || 'cash').toUpperCase()}: +${db.config.currency}${expense.total.toFixed(2)}\n\nCash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\nBank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
         };
 
         // --- POS Logic ---
@@ -7064,7 +7066,7 @@ Updated Balances:
                 // FIX: Use closure or string ID
                 el.onclick = () => addToCart(p);
                 el.innerHTML = `
-            <div class="flex justify-between items-start mb-2">
+                    <div class="flex justify-between items-start mb-2">
                         <span class="text-xs bg-karta-primary text-black px-2 py-1 rounded font-bold">${p.sku}</span>
                         <span class="text-sm font-bold text-karta-primary bg-gray-800 px-2 py-1 rounded">Stock: ${p.stock}</span>
                     </div>
@@ -7074,7 +7076,7 @@ Updated Balances:
                         <div><span class="text-gray-500">Expires:</span> <span class="${p.expiry && p.expiry !== 'N/A' ? 'text-yellow-400 font-semibold' : 'text-gray-500'}">${p.expiry ? window.formatDate(p.expiry) : 'N/A'}</span></div>
                     </div>
                     <div class="text-karta-primary font-bold text-lg mt-auto">${db.config.currency}${p.retail}</div>
-        `;
+                `;
                 grid.appendChild(el);
             });
         }
@@ -7129,7 +7131,7 @@ Updated Balances:
             editPriceIdx = idx;
             const item = cart[idx];
             document.getElementById('editPriceItemName').innerText = item.name;
-            document.getElementById('editPriceOriginal').innerText = `${db.config.currency}${item.retail.toFixed(2)} `;
+            document.getElementById('editPriceOriginal').innerText = `${db.config.currency}${item.retail.toFixed(2)}`;
             document.getElementById('editPriceInput').value = item.retail;
             document.getElementById('editPriceWholesaleInput').value = item.wholesale || item.retail;
             window.openModal('editPriceModal');
@@ -7188,7 +7190,7 @@ Updated Balances:
                     const row = document.createElement('div');
                     row.className = "flex flex-col bg-white/5 p-2 rounded text-xs mb-1";
                     row.innerHTML = `
-            <div class="flex justify-between items-center">
+                        <div class="flex justify-between items-center">
                             <div class="flex-1">
                                 <div class="text-white font-bold">${item.name}</div>
                                 <div class="text-gray-400">${db.config.currency}${price.toFixed(2)} ${priceType === 'wholesale' ? '<span class="text-blue-400">(W)</span>' : ''}</div>
@@ -7202,12 +7204,12 @@ Updated Balances:
                             <button onclick="openEditPriceModal(${idx})" class="text-blue-400 hover:text-blue-300 transition p-1 text-[10px]" title="Edit Price"><i class="fa-solid fa-edit"></i></button>
                             <button onclick="removeFromCart(${idx})" class="text-red-500 hover:text-red-400 transition p-1 text-[10px]"><i class="fa-solid fa-trash"></i></button>
                         </div>
-            <div class="mt-1 flex items-center gap-2">
-                <button onclick="toggleVatExempt(${idx})" class="flex-1 text-[9px] px-2 py-1 rounded ${item.vatExempt ? 'bg-red-600/50 text-red-300 border border-red-500' : 'bg-gray-700 text-gray-300 border border-gray-600'} hover:bg-opacity-75 transition">
-                    <i class="fa-solid ${item.vatExempt ? 'fa-ban' : 'fa-receipt'} mr-1"></i>${item.vatExempt ? 'VAT Exempt' : 'Apply VAT'}
-                </button>
-            </div>
-        `;
+                        <div class="mt-1 flex items-center gap-2">
+                            <button onclick="toggleVatExempt(${idx})" class="flex-1 text-[9px] px-2 py-1 rounded ${item.vatExempt ? 'bg-red-600/50 text-red-300 border border-red-500' : 'bg-gray-700 text-gray-300 border border-gray-600'} hover:bg-opacity-75 transition">
+                                <i class="fa-solid ${item.vatExempt ? 'fa-ban' : 'fa-receipt'} mr-1"></i>${item.vatExempt ? 'VAT Exempt' : 'Apply VAT'}
+                            </button>
+                        </div>
+                    `;
                     body.appendChild(row);
                 });
             }
@@ -7225,13 +7227,13 @@ Updated Balances:
             // Calculate final total with Freight Charge
             const finalTotal = moneyRound(subtotalAfterDiscount + tax + freightCost);
 
-            document.getElementById('posSubTotal').innerText = `${db.config.currency}${sub.toFixed(2)} `;
+            document.getElementById('posSubTotal').innerText = `${db.config.currency}${sub.toFixed(2)}`;
             document.getElementById('posVatRate').innerText = db.config.vatRate;
-            document.getElementById('posTax').innerText = `${db.config.currency}${tax.toFixed(2)} `;
+            document.getElementById('posTax').innerText = `${db.config.currency}${tax.toFixed(2)}`;
             // If No VAT, strike through or dim the tax text
             document.getElementById('posTax').className = applyVat ? "" : "line-through text-gray-600";
 
-            document.getElementById('posTotal').innerText = `${db.config.currency}${finalTotal.toFixed(2)} `;
+            document.getElementById('posTotal').innerText = `${db.config.currency}${finalTotal.toFixed(2)}`;
         }
 
         window.toggleVatExempt = function (idx) {
@@ -7287,7 +7289,7 @@ Updated Balances:
                         return;
                     }
 
-                    totalEl.innerText = `${db.config.currency}${total.toFixed(2)} `;
+                    totalEl.innerText = `${db.config.currency}${total.toFixed(2)}`;
                     cashEl.value = '';
                     bankEl.value = '';
                     creditEl.value = '';
@@ -7474,12 +7476,12 @@ Updated Balances:
             if (type === 'cash' || type === 'bank' || type === 'credit') {
                 printInvoice(txn);
                 if (type === 'cash' || type === 'bank') {
-                    alert(`✅ Sale Recorded!\nAmount: ${db.config.currency}${total.toFixed(2)} \nPayment: ${type.toUpperCase()} \n\n💰 Cash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)} \n🏦 Bank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)} `);
+                    alert(`✅ Sale Recorded!\nAmount: ${db.config.currency}${total.toFixed(2)}\nPayment: ${type.toUpperCase()}\n\n💰 Cash Balance: ${db.config.currency}${db.config.cashBalance.toFixed(2)}\n🏦 Bank Balance: ${db.config.currency}${db.config.bankBalance.toFixed(2)}`);
                 } else {
-                    alert(`✅ Sale Recorded Successfully!\nPayment: ${type.toUpperCase()} \nAmount: ${db.config.currency}${total.toFixed(2)} `);
+                    alert(`✅ Sale Recorded Successfully!\nPayment: ${type.toUpperCase()}\nAmount: ${db.config.currency}${total.toFixed(2)}`);
                 }
             } else {
-                alert(`✅ Sale Recorded Successfully!\nPayment: ${type.toUpperCase()} \nAmount: ${db.config.currency}${total.toFixed(2)} `);
+                alert(`✅ Sale Recorded Successfully!\nPayment: ${type.toUpperCase()}\nAmount: ${db.config.currency}${total.toFixed(2)}`);
             }
 
             document.getElementById('posDiscount').value = '0';
@@ -7498,9 +7500,9 @@ Updated Balances:
         let retSupCart = [];
 
         window.toggleReturnSplit = function (mode) {
-            const paymentMode = document.querySelector(`input[name = "ret${mode === 'cust' ? 'Cust' : 'Sup'}Payment"]: checked`)?.value || 'cash';
-            const splitDiv = document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'} SplitDiv`);
-            const splitInputs = document.querySelectorAll(`#ret${mode === 'cust' ? 'Cust' : 'Sup'}Split${mode === 'cust' ? 'C' : ''} ash, #ret${mode === 'cust' ? 'Cust' : 'Sup'} SplitBank, #ret${mode === 'cust' ? 'Cust' : 'Sup'} SplitCredit`);
+            const paymentMode = document.querySelector(`input[name="ret${mode === 'cust' ? 'Cust' : 'Sup'}Payment"]:checked`)?.value || 'cash';
+            const splitDiv = document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitDiv`);
+            const splitInputs = document.querySelectorAll(`#ret${mode === 'cust' ? 'Cust' : 'Sup'}Split${mode === 'cust' ? 'C' : ''}ash, #ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitBank, #ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitCredit`);
 
             if (paymentMode === 'split') {
                 splitDiv.classList.remove('hidden');
@@ -7511,20 +7513,20 @@ Updated Balances:
             } else {
                 splitDiv.classList.add('hidden');
                 // Reset split values
-                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'} SplitCash`).value = '';
-                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'} SplitBank`).value = '';
-                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'} SplitCredit`).value = '';
-                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'} SplitTotal`).innerText = '$0.00';
+                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitCash`).value = '';
+                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitBank`).value = '';
+                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitCredit`).value = '';
+                document.getElementById(`ret${mode === 'cust' ? 'Cust' : 'Sup'}SplitTotal`).innerText = '$0.00';
             }
         }
 
         window.calculateReturnSplitTotal = function (mode) {
             const prefix = mode === 'cust' ? 'retCust' : 'retSup';
-            const cash = parseFloat(document.getElementById(`${prefix} SplitCash`).value) || 0;
-            const bank = parseFloat(document.getElementById(`${prefix} SplitBank`).value) || 0;
-            const credit = parseFloat(document.getElementById(`${prefix} SplitCredit`).value) || 0;
+            const cash = parseFloat(document.getElementById(`${prefix}SplitCash`).value) || 0;
+            const bank = parseFloat(document.getElementById(`${prefix}SplitBank`).value) || 0;
+            const credit = parseFloat(document.getElementById(`${prefix}SplitCredit`).value) || 0;
             const total = cash + bank + credit;
-            document.getElementById(`${prefix} SplitTotal`).innerText = `${db.config.currency}${total.toFixed(2)} `;
+            document.getElementById(`${prefix}SplitTotal`).innerText = `${db.config.currency}${total.toFixed(2)}`;
         }
 
         window.autoCalculateSplitCust = function () {
@@ -7655,9 +7657,9 @@ Updated Balances:
             });
 
             supplierProducts.forEach(p => {
-                const expiryText = p.expiry ? ` | Exp: ${p.expiry} ` : ' | No Expiry';
-                const batchText = p.batch ? ` | Batch: ${p.batch} ` : '';
-                prodSel.innerHTML += `< option value = "${p.id}" > ${p.name} (Stock: ${p.stock}${batchText}${expiryText})</option > `;
+                const expiryText = p.expiry ? ` | Exp: ${p.expiry}` : ' | No Expiry';
+                const batchText = p.batch ? ` | Batch: ${p.batch}` : '';
+                prodSel.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock}${batchText}${expiryText})</option>`;
             });
         }
 
@@ -7672,13 +7674,13 @@ Updated Balances:
 
                 if (prod) {
                     document.getElementById('retCustQtyPurchased').innerText = maxQty;
-                    document.getElementById('retCustPrice').innerText = `${db.config.currency}${prod.retail} `;
+                    document.getElementById('retCustPrice').innerText = `${db.config.currency}${prod.retail}`;
                 }
             } else if (mode === 'sup') {
                 const pid = parseInt(document.getElementById('retSupProd').value);
                 const prod = db.products.find(p => p.id === pid);
                 if (prod) {
-                    document.getElementById('retSupCost').innerText = `${db.config.currency}${prod.cost} `;
+                    document.getElementById('retSupCost').innerText = `${db.config.currency}${prod.cost}`;
                     document.getElementById('retSupStock').innerText = prod.stock;
                 }
             }
@@ -7708,7 +7710,7 @@ Updated Balances:
                     // Calculate total if we add this quantity
                     const newTotal = existingItem.qty + qty;
                     if (newTotal > maxQty) {
-                        return alert(`Cannot exceed maximum returnable quantity!\nAlready in cart: ${existingItem.qty} \nMax returnable: ${maxQty} \nTrying to add: ${qty} `);
+                        return alert(`Cannot exceed maximum returnable quantity!\nAlready in cart: ${existingItem.qty}\nMax returnable: ${maxQty}\nTrying to add: ${qty}`);
                     }
                     existingItem.qty += qty;
                     alert(`✓ Quantity updated to ${newTotal} units`);
@@ -7743,7 +7745,7 @@ Updated Balances:
                     // Calculate total if we add this quantity
                     const newTotal = existingItem.qty + qty;
                     if (newTotal > prod.stock) {
-                        return alert(`Cannot exceed stock!\nAlready in cart: ${existingItem.qty} \nStock available: ${prod.stock} \nTrying to add: ${qty} `);
+                        return alert(`Cannot exceed stock!\nAlready in cart: ${existingItem.qty}\nStock available: ${prod.stock}\nTrying to add: ${qty}`);
                     }
                     existingItem.qty += qty;
                     alert(`✓ Quantity updated to ${newTotal} units`);
@@ -7783,7 +7785,7 @@ Updated Balances:
                         const itemTotal = moneyRound(item.price * item.qty);
                         subtotal = moneyRound(subtotal + itemTotal);
                         return `
-            <div class="flex justify-between items-center text-xs bg-white/5 p-1 rounded border border-gray-700">
+                            <div class="flex justify-between items-center text-xs bg-white/5 p-1 rounded border border-gray-700">
                                 <div>
                                     <span class="text-white">${item.name}</span>
                                     <span class="text-gray-500"> x${item.qty}</span>
@@ -7793,7 +7795,7 @@ Updated Balances:
                                     <button onclick="removeFromReturnCart('cust', ${idx})" class="text-red-500 hover:text-red-400 text-xs">✕</button>
                                 </div>
                             </div>
-            `;
+                        `;
                     }).join('');
                     countEl.innerText = cart.length;
 
@@ -7801,9 +7803,9 @@ Updated Balances:
                     const vat = moneyRound(subtotal * (vatRate / 100));
                     const total = moneyRound(subtotal + vat);
 
-                    document.getElementById('retCustSubtotal').innerText = `${db.config.currency}${subtotal.toFixed(2)} `;
-                    document.getElementById('retCustVAT').innerText = `${db.config.currency}${vat.toFixed(2)} `;
-                    document.getElementById('retCustTotal').innerText = `${db.config.currency}${total.toFixed(2)} `;
+                    document.getElementById('retCustSubtotal').innerText = `${db.config.currency}${subtotal.toFixed(2)}`;
+                    document.getElementById('retCustVAT').innerText = `${db.config.currency}${vat.toFixed(2)}`;
+                    document.getElementById('retCustTotal').innerText = `${db.config.currency}${total.toFixed(2)}`;
                 }
             } else if (mode === 'sup') {
                 const cart = retSupCart;
@@ -7823,7 +7825,7 @@ Updated Balances:
                         const itemTotal = moneyRound(item.cost * item.qty);
                         subtotal = moneyRound(subtotal + itemTotal);
                         return `
-            <div class="flex justify-between items-center text-xs bg-white/5 p-1 rounded border border-gray-700">
+                            <div class="flex justify-between items-center text-xs bg-white/5 p-1 rounded border border-gray-700">
                                 <div>
                                     <span class="text-white">${item.name}</span>
                                     <span class="text-gray-500"> x${item.qty}</span>
@@ -7833,7 +7835,7 @@ Updated Balances:
                                     <button onclick="removeFromReturnCart('sup', ${idx})" class="text-red-500 hover:text-red-400 text-xs">✕</button>
                                 </div>
                             </div>
-            `;
+                        `;
                     }).join('');
                     countEl.innerText = cart.length;
 
@@ -7841,9 +7843,9 @@ Updated Balances:
                     const vat = moneyRound(subtotal * (vatRate / 100));
                     const total = moneyRound(subtotal + vat);
 
-                    document.getElementById('retSupSubtotal').innerText = `${db.config.currency}${subtotal.toFixed(2)} `;
-                    document.getElementById('retSupVAT').innerText = `${db.config.currency}${vat.toFixed(2)} `;
-                    document.getElementById('retSupTotal').innerText = `${db.config.currency}${total.toFixed(2)} `;
+                    document.getElementById('retSupSubtotal').innerText = `${db.config.currency}${subtotal.toFixed(2)}`;
+                    document.getElementById('retSupVAT').innerText = `${db.config.currency}${vat.toFixed(2)}`;
+                    document.getElementById('retSupTotal').innerText = `${db.config.currency}${total.toFixed(2)}`;
                 }
             }
         }
@@ -8016,7 +8018,7 @@ Updated Balances:
                         // MIXED SCENARIO (Part Credit, Part Cash/Bank)
                         // Force Split Mode
                         console.log("Smart Split Triggered:", breakdown);
-                        alert(`⚠ Mixed Payment Origins Detected!\n\n${db.config.currency}${breakdown.credit.toFixed(2)} from Credit Sales\n${db.config.currency}${nonCreditTotal.toFixed(2)} from Cash / Bank Sales\n\nAuto - switching to SPLIT refund.`);
+                        alert(`⚠ Mixed Payment Origins Detected!\n\n${db.config.currency}${breakdown.credit.toFixed(2)} from Credit Sales\n${db.config.currency}${nonCreditTotal.toFixed(2)} from Cash/Bank Sales\n\nAuto-switching to SPLIT refund.`);
 
                         refundMethod = 'split';
 
@@ -8066,7 +8068,7 @@ Updated Balances:
 
                     const splitTotal = moneyRound(splitCash + splitBank + splitCredit);
                     if (Math.abs(splitTotal - totalRefund) > 0.01) {
-                        return alert(`Split refund total(${db.config.currency}${splitTotal.toFixed(2)}) doesn't match return total (${db.config.currency}${totalRefund.toFixed(2)})`);
+                        return alert(`Split refund total (${db.config.currency}${splitTotal.toFixed(2)}) doesn't match return total (${db.config.currency}${totalRefund.toFixed(2)})`);
                     }
                 }
 
@@ -9483,8 +9485,9 @@ Updated Balances:
         }
 
         function printInvoice(txn) {
-            // Note: We no longer switch views (remove/add hidden classes)
-            // We just populate the hidden invoice container and print its content.
+            // SHOW INVOICE VIEW, HIDE REPORT VIEW
+            document.getElementById('invoice-print-view').classList.remove('hidden');
+            document.getElementById('report-print-view').classList.add('hidden');
 
             // Show logo if exists
             const logoImg = document.getElementById('printInvLogo');
@@ -9631,11 +9634,14 @@ Updated Balances:
                 barcodeSvg.innerHTML = generateBarcodeDisplay(barcodeText);
             }
 
-            // Use standard print helper
+            // Try print, fallback to PDF for mobile apps
             setTimeout(() => {
-                const content = document.getElementById('invoice-print-view').innerHTML;
-                window.printContent(content, 'Invoice #' + (txn.invoiceNumber || txn.id));
-            }, 100);
+                if (navigator.userAgent.toLowerCase().includes('twinr') || navigator.userAgent.toLowerCase().includes('mobile')) {
+                    generateInvoicePDF(txn);
+                } else {
+                    window.print();
+                }
+            }, 200);
         }
 
         // Simple barcode display generator
@@ -10208,13 +10214,48 @@ Updated Balances:
                     finalHTML = finalHTML.replace('>PURCHASE</h2>', '>PURCHASE RETURN</h2>');
                 }
 
-                // Use the standard print helper
-                window.printContent(finalHTML, 'Purchase Invoice #' + (purchaseInvoice.ref || purchaseInvoice.id));
+                const invoiceHTML = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Purchase Invoice #${purchaseInvoice.ref || purchaseInvoice.id}</title>
+                        <style>
+                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                            html, body { 
+                                font-family: Arial, sans-serif; 
+                                color: #000; 
+                                background: white; 
+                                padding: 0;
+                                margin: 0;
+                            }
+                            body { padding: 20px; }
+                        </style>
+                    </head>
+                    <body>
+                        ${finalHTML}
+                    </body>
+                    </html>
+                `;
+
+                // Open print dialog
+                const printWindow = window.open('', '', 'width=1000,height=1200');
+
+                if (!printWindow) {
+                    alert('Please disable popup blocker and try again.');
+                    return;
+                }
+
+                printWindow.document.write(invoiceHTML);
+                printWindow.document.close();
+
+                setTimeout(() => {
+                    printWindow.print();
+                }, 500);
             } catch (err) {
                 console.error('Error printing purchase invoice:', err);
                 alert('Error printing invoice. Please check the console for details.');
             }
-
         };
 
         // --- Print Purchase from Report ---
@@ -10723,31 +10764,6 @@ Updated Balances:
                                     if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
                                     if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
                                 }
-                            } else if (txn.entityName === selectedAccount || (txn.supplier === selectedAccount && txn.type === 'purchase')) {
-                                // --- DYNAMIC CUSTOMER / SUPPLIER ACCOUNTS ---
-                                // Customer (Debtor) Logic
-                                if (txn.type === 'sale' && txn.payType === 'credit') {
-                                    dr = txn.total; particular = `To Sales (Inv #${txn.id})`; isRelevant = true;
-                                }
-                                if (txn.type === 'payment' && txn.entityName === selectedAccount) {
-                                    cr = txn.total; particular = `By Cash/Bank (Payment)`; isRelevant = true;
-                                }
-                                // Sales Return (Credit Logic)
-                                if (txn.type === 'return_cash_out' || (txn.type === 'sale' && txn.isReturn && txn.entityName === selectedAccount)) {
-                                    cr = Math.abs(txn.total); particular = `By Sales Return`; isRelevant = true;
-                                }
-
-                                // Supplier (Creditor) Logic
-                                if (txn.type === 'purchase' && txn.payType === 'credit') {
-                                    cr = txn.total; particular = `By Purchase (Ref #${txn.ref || txn.id})`; isRelevant = true;
-                                }
-                                if (txn.type === 'payment_out' && txn.entityName === selectedAccount) {
-                                    dr = txn.total; particular = `To Cash/Bank (Payment)`; isRelevant = true;
-                                }
-                                // Purchase Return (Debit Logic)
-                                if (txn.type === 'purchase' && txn.isReturn && txn.entityName === selectedAccount) {
-                                    dr = Math.abs(txn.total); particular = `To Purchase Return`; isRelevant = true;
-                                }
                             }
 
                             if (isRelevant) {
@@ -10917,9 +10933,49 @@ Updated Balances:
                 Generated by KARTA • ${new Date().toLocaleString()}
             </div>`;
 
-            // Use the standard print helper
-            window.printContent(html, currentReportTitle + ' - ' + db.config.name);
-        };
+            // Wrap the report in a complete HTML document structure
+            const reportHTML = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>${currentReportTitle} - ${db.config.name}</title>
+                    <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        html, body { 
+                            font-family: Arial, sans-serif; 
+                            color: #000; 
+                            background: white; 
+                            padding: 0;
+                            margin: 0;
+                        }
+                        body { padding: 20px; }
+                    </style>
+                </head>
+                <body>
+                    <div style="font-family: Arial, sans-serif; color: #000; background: white; padding: 0;">
+                        ${html}
+                    </div>
+                </body>
+                </html>
+            `;
+
+            // Use window.open() and print() pattern (same as purchase invoice) for mobile compatibility
+            const printWindow = window.open('', '', 'width=1000,height=1200');
+
+            if (!printWindow) {
+                alert('Please disable popup blocker and try again.');
+                return;
+            }
+
+            printWindow.document.write(reportHTML);
+            printWindow.document.close();
+
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
 
         // Generate Report as PDF (Mobile-friendly)
         function generateReportPDF(htmlContent) {
@@ -11399,39 +11455,33 @@ Updated Balances:
             const cards = document.getElementById('reportCards');
             tbody.innerHTML = ''; cards.innerHTML = '';
 
+            // Show/hide aging date picker for aging reports
+            const agingDateContainer = document.getElementById('agingDateContainer');
+            const agingDateInput = document.getElementById('agingAsOfDate');
+            if (type === 'aging' || type === 'creditors_aging') {
+                agingDateContainer.classList.remove('hidden');
+                // Set default to today if not already set
+                if (!agingDateInput.value) {
+                    agingDateInput.value = new Date().toISOString().split('T')[0];
+                }
+            } else {
+                agingDateContainer.classList.add('hidden');
+            }
+
             // Hide location search filter by default (only show for debtors)
             const debtorFilterContainer = document.getElementById('debtorFilterContainer');
             if (type !== 'debtors') {
                 debtorFilterContainer.classList.add('hidden');
             }
 
-            let fromDate = document.getElementById('repFrom').value;
-            let toDate = document.getElementById('repTo').value;
+            const fromDate = document.getElementById('repFrom').value;
+            const toDate = document.getElementById('repTo').value;
 
-            // FIX: Nepali Date Conversion
-            const dateMode = db.config.dateMode || document.getElementById('confDateMode').value || 'english';
-            if (dateMode === 'nepali' && window.NepaliDate) {
-                const repFromNep = document.getElementById('repFromNep').value;
-                const repToNep = document.getElementById('repToNep').value;
 
-                if (repFromNep) {
-                    try {
-                        const nDate = new window.NepaliDate(repFromNep);
-                        const jsDate = nDate.toJsDate();
-                        fromDate = jsDate.toISOString().split('T')[0];
-                    } catch (e) {
-                        console.warn('Invalid Nepali From Date:', repFromNep);
-                    }
-                }
-                if (repToNep) {
-                    try {
-                        const nDate = new window.NepaliDate(repToNep);
-                        const jsDate = nDate.toJsDate();
-                        toDate = jsDate.toISOString().split('T')[0];
-                    } catch (e) {
-                        console.warn('Invalid Nepali To Date:', repToNep);
-                    }
-                }
+            // Get "As of Date" for aging reports (defaults to today)
+            let agingAsOfDate = new Date();
+            if (agingDateInput && agingDateInput.value && (type === 'aging' || type === 'creditors_aging')) {
+                agingAsOfDate = new Date(agingDateInput.value + 'T23:59:59');
             }
 
             // Filter transactions by date
@@ -11762,43 +11812,18 @@ Updated Balances:
                 currentReportTitle = "General Ledger";
                 document.getElementById('reportTitle').innerText = currentReportTitle;
 
-                // Account Selector - Dynamic Population
-                let accountOptions = `
-                    <option value="">-- Choose Account --</option>
-                    <option value="Cash A/c">Cash A/c</option>
-                    <option value="Bank A/c">Bank A/c</option>
-                    <option value="Sales A/c">Sales A/c</option>
-                    <option value="Purchase A/c">Purchase A/c</option>
-                    <option value="Expense A/c">Expense A/c</option>
-                    <option value="Capital A/c">Capital A/c</option>
-                `;
-
-                // Add Customers
-                if (db.customers && db.customers.length > 0) {
-                    accountOptions += `<optgroup label="Customers (Debtors)">`;
-                    db.customers.forEach(c => {
-                        accountOptions += `<option value="${c.name}">${c.name}</option>`;
-                    });
-                    accountOptions += `</optgroup>`;
-                }
-
-                // Add Suppliers
-                if (db.suppliers && db.suppliers.length > 0) {
-                    accountOptions += `<optgroup label="Suppliers (Creditors)">`;
-                    db.suppliers.forEach(s => {
-                        const sName = s.name || s.companyName;
-                        if (sName) {
-                            accountOptions += `<option value="${sName}">${sName}</option>`;
-                        }
-                    });
-                    accountOptions += `</optgroup>`;
-                }
-
+                // Account Selector
                 cards.innerHTML = `
                     <div class="mb-4 flex gap-2 items-center print:hidden w-full max-w-md">
                         <label class="font-bold text-gray-400">Select Account:</label>
                         <select id="ledgerAccountSelect" onchange="runReports('ledger', this.value)" class="flex-1 p-2 bg-karta-input border border-karta-border rounded text-white focus:outline-none focus:border-green-500">
-                            ${accountOptions}
+                            <option value="">-- Choose Account --</option>
+                            <option value="Cash A/c">Cash A/c</option>
+                            <option value="Bank A/c">Bank A/c</option>
+                            <option value="Sales A/c">Sales A/c</option>
+                            <option value="Purchase A/c">Purchase A/c</option>
+                            <option value="Expense A/c">Expense A/c</option>
+                            <option value="Capital A/c">Capital A/c</option>
                         </select>
                     </div>
                 `;
@@ -11873,104 +11898,6 @@ Updated Balances:
                             if (txn.type === 'purchase') { dr = txn.total; particular = `To ${txn.payType === 'credit' ? 'Creditors' : 'Cash/Bank'}`; isRelevant = true; }
                         } else if (selectedAccount === 'Expense A/c') {
                             if (txn.type === 'expense') { dr = txn.total; particular = `To Cash/Bank`; isRelevant = true; }
-                        } else if (txn.entityName === selectedAccount || (txn.supplier === selectedAccount && txn.type === 'purchase')) {
-                            // --- DYNAMIC CUSTOMER / SUPPLIER ACCOUNTS ---
-                            // Customer (Debtor) Logic
-                            if (txn.type === 'sale' && txn.payType === 'credit') {
-                                dr = txn.total; particular = `To Sales (Inv #${txn.id})`; isRelevant = true;
-                            }
-                            if (txn.type === 'payment' && txn.entityName === selectedAccount) {
-                                cr = txn.total; particular = `By Cash/Bank (Payment)`; isRelevant = true;
-                            }
-                            // Sales Return (Credit Logic)
-                            if (txn.type === 'return_cash_out' || (txn.type === 'sale' && txn.isReturn && txn.entityName === selectedAccount)) {
-                                cr = Math.abs(txn.total); particular = `By Sales Return`; isRelevant = true;
-                            }
-
-                            // Supplier (Creditor) Logic
-                            // Supplier (Creditor) Logic - UPDATED to show FULL LEDGER
-                            if (txn.type === 'purchase') {
-                                // 1. Always Credit the Purchase (Increase Payable)
-                                cr = txn.total;
-                                const refNum = txn.ref || txn.id || 'N/A';
-                                particular = `By Purchase (Ref #${refNum})`;
-                                isRelevant = true;
-
-                                // 2. If paid immediately (Cash/Bank/Split), Debit the Payment (Decrease Payable)
-                                let paidAmount = 0;
-                                let paymentSource = 'Unknown';
-
-                                if (txn.payType === 'cash') {
-                                    paidAmount = txn.total;
-                                    paymentSource = 'Cash';
-                                } else if (txn.payType === 'bank') {
-                                    paidAmount = txn.total;
-                                    paymentSource = 'Bank';
-                                } else if (txn.payType === 'split') {
-                                    paidAmount = (txn.cashAmount || 0) + (txn.bankAmount || 0);
-                                    paymentSource = 'Cash/Bank';
-                                }
-
-                                if (paidAmount > 0) {
-                                    // For single-row display, we treat this as a separate logical entry for the ledger
-                                    // But since we are inside a loop iterating one txn, we need to handle this carefully.
-                                    // OPTION: We can append the CREDIT entry, and then if there's a payment, append a DEBIT entry?
-                                    // No, the loop expects ONE row per transaction iteration usually.
-                                    // BUT, we can just manipulate the HTML directly here or push to a temp array?
-                                    // The current structure builds `html` directly.
-
-                                    // Let's Add the PURCHASE Entry (Credit)
-                                    balance = balance - cr; // Increase Payables (Credit is negative for liability in this simple view? Wait, let's check existing logic)
-                                    // Existing Logic: Asset/Expense Nature: Dr (+), Cr (-)
-                                    // Liability/Income Nature: Cr (+), Dr (-)
-                                    // Wait, the previous code used: balance = balance + dr - cr;
-                                    // So for Suppliers (Liability), Credit increases the negative balance (or positive magnitude).
-                                    // Let's stick to: balance = balance + dr - cr;
-
-                                    totalCr += cr;
-
-                                    html += `
-                                        <tr class="border-b border-gray-700 hover:bg-white/5">
-                                            <td class="py-2 px-4 border border-gray-600">${window.formatDate ? window.formatDate(txn.date) : txn.date}</td>
-                                            <td class="py-2 px-4 border border-gray-600">${particular}</td>
-                                            <td class="py-2 px-4 border border-gray-600 text-center">-</td>
-                                            <td class="py-2 px-4 border border-gray-600 text-right"></td>
-                                            <td class="py-2 px-4 border border-gray-600 text-right">${moneyRound(cr).toFixed(2)}</td>
-                                            <td class="py-2 px-4 border border-gray-600 text-right font-bold">${Math.abs(moneyRound(balance)).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
-                                        </tr>
-                                    `;
-
-                                    // Now Add the PAYMENT Entry (Debit)
-                                    const drAmt = paidAmount;
-                                    const payParticular = `To ${paymentSource} (Instant Payment)`;
-
-                                    balance = balance + drAmt; // Decrease Payable
-                                    totalDr += drAmt;
-                                    hasData = true;
-
-                                    html += `
-                                        <tr class="border-b border-gray-700 hover:bg-white/5 bg-green-900/10">
-                                            <td class="py-2 px-4 border border-gray-600 text-gray-500">"</td>
-                                            <td class="py-2 px-4 border border-gray-600">${payParticular}</td>
-                                            <td class="py-2 px-4 border border-gray-600 text-center">-</td>
-                                            <td class="py-2 px-4 border border-gray-600 text-right">${moneyRound(drAmt).toFixed(2)}</td>
-                                            <td class="py-2 px-4 border border-gray-600 text-right"></td>
-                                            <td class="py-2 px-4 border border-gray-600 text-right font-bold">${Math.abs(moneyRound(balance)).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
-                                        </tr>
-                                    `;
-
-                                    // Prevent the default "if (isRelevant)" block from running again for this txn
-                                    isRelevant = false;
-                                }
-                            }
-
-                            if (txn.type === 'payment_out' && txn.entityName === selectedAccount) {
-                                dr = txn.total; particular = `To Cash/Bank (Payment)`; isRelevant = true;
-                            }
-                            // Purchase Return (Debit Logic)
-                            if (txn.type === 'purchase' && txn.isReturn && txn.entityName === selectedAccount) {
-                                dr = Math.abs(txn.total); particular = `To Purchase Return`; isRelevant = true;
-                            }
                         }
 
                         if (isRelevant) {
@@ -12253,6 +12180,259 @@ Updated Balances:
                         <td class="p-3 text-right font-bold text-red-400">${db.config.currency}${debtor.balance.toFixed(2)}</td>
                         <td class="p-3 text-right text-gray-400">${db.config.currency}${(debtor.limit || 0).toFixed(2)}</td>
                     </tr>`;
+                });
+                return;
+            }
+
+            if (type === 'aging') {
+                const debtorFilterContainer = document.getElementById('debtorFilterContainer');
+                debtorFilterContainer.classList.add('hidden'); // No filter for aging yet
+
+                // Format the "as of" date for display
+                const asOfDateStr = window.formatDate ? window.formatDate(agingAsOfDate.toISOString()) : agingAsOfDate.toLocaleDateString();
+                currentReportTitle = `DEBTORS AGING REPORT (As of ${asOfDateStr})`;
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+
+                // Get debtors
+                const debtors = db.customers.filter(c => c.balance > 1); // Ignore tiny fractions
+                if (debtors.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">No debtors found.</td></tr>';
+                    return;
+                }
+
+                currentReportData = [];
+                const now = agingAsOfDate; // Use selected date instead of new Date()
+
+                // --- AGING CALCULATION LOGIC ---
+                debtors.forEach(cust => {
+                    let remainingBal = cust.balance;
+                    const buckets = { '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
+
+                    // Get all credit sales for this customer (sorted oldest first - FIFO)
+                    const creditSales = db.transactions
+                        .filter(t => t.type === 'sale' &&
+                            t.entityId === cust.id &&
+                            (t.payType === 'credit' || t.creditAmount > 0) &&
+                            !t.isReturn)
+                        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    // Allocate remaining balance to sales invoices (oldest first - FIFO)
+                    creditSales.forEach(txn => {
+                        if (remainingBal <= 0.01) return;
+
+                        let debtAmount = (txn.payType === 'credit') ? txn.total : (txn.creditAmount || 0);
+
+
+                        // Check if there are payments handling this invoice (same logic as creditors)
+
+                        // Also check for payments made after this sale
+                        const linkedPayments = (db.transactions || []).filter(t =>
+                            t.type === 'payment' &&
+                            t.entityId === cust.id &&
+                            new Date(t.date) >= new Date(txn.date));
+                        const linkedPaidAmount = linkedPayments.reduce((sum, p) => sum + p.total, 0) / creditSales.length;
+
+                        debtAmount -= linkedPaidAmount;
+
+                        if (debtAmount <= 0.01) return; // Invoice fully paid
+
+                        const allocated = Math.min(remainingBal, debtAmount);
+
+                        // Calculate age from invoice date to "as of" date
+                        let invoiceDate = new Date(txn.date);
+
+                        // NEPALI DATE FIX: Check if date is in BS format (year > 2080)
+                        const dateStr = txn.date.toString();
+                        const yearMatch = dateStr.match(/^(\d{4})-/);
+                        if (yearMatch && parseInt(yearMatch[1]) > 2080) {
+                            // This is a Nepali BS date - convert to approximate AD
+                            // BS to AD conversion: subtract 57 years (approximate)
+                            const bsYear = parseInt(yearMatch[1]);
+                            const adYear = bsYear - 57;
+                            const adDateStr = dateStr.replace(yearMatch[1], adYear.toString());
+                            invoiceDate = new Date(adDateStr);
+                        }
+
+                        const diffTime = Math.abs(now - invoiceDate);
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                        // DEBUG: Show what's being calculated
+                        console.log(`[AGING] Customer: ${cust.name}, Invoice #${txn.id}, Invoice Date: ${txn.date}, As Of: ${now.toISOString().split('T')[0]}, Age: ${diffDays} days, Amount: Rs.${allocated.toFixed(2)}`);
+
+                        if (diffDays <= 30) buckets['0-30'] += allocated;
+                        else if (diffDays <= 60) buckets['31-60'] += allocated;
+                        else if (diffDays <= 90) buckets['61-90'] += allocated;
+                        else buckets['90+'] += allocated;
+
+                        remainingBal -= allocated;
+                    });
+
+                    // If balance still remains (e.g. Opening Balance or unrecorded legacy sales), put in 90+
+                    if (remainingBal > 0.01) {
+                        buckets['90+'] += remainingBal;
+                    }
+
+                    currentReportData.push({
+                        name: cust.name,
+                        location: cust.address || '-',
+                        phone: cust.phone,
+                        total: cust.balance,
+                        b1: buckets['0-30'],
+                        b2: buckets['31-60'],
+                        b3: buckets['61-90'],
+                        b4: buckets['90+']
+                    });
+                });
+
+                // Render Aging Table
+                thead.innerHTML = `<tr>
+                    <th class="p-3 text-left">Customer</th>
+                    <th class="p-3 text-right">0-30 Days</th>
+                    <th class="p-3 text-right">31-60 Days</th>
+                    <th class="p-3 text-right">61-90 Days</th>
+                    <th class="p-3 text-right">90+ Days</th>
+                    <th class="p-3 text-right">Total Due</th>
+                </tr>`;
+
+                currentReportData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-800 text-gray-300 hover:bg-white/5";
+                    tr.innerHTML = `
+                        <td class="p-3 font-bold text-white">
+                            ${row.name}<br>
+                            <span class="text-xs text-gray-500">${row.phone}</span>
+                        </td>
+                        <td class="p-3 text-right ${row.b1 > 0 ? 'text-green-400' : 'text-gray-600'}">${row.b1 > 0 ? db.config.currency + row.b1.toFixed(2) : '-'}</td>
+                        <td class="p-3 text-right ${row.b2 > 0 ? 'text-yellow-500' : 'text-gray-600'}">${row.b2 > 0 ? db.config.currency + row.b2.toFixed(2) : '-'}</td>
+                        <td class="p-3 text-right ${row.b3 > 0 ? 'text-orange-500' : 'text-gray-600'}">${row.b3 > 0 ? db.config.currency + row.b3.toFixed(2) : '-'}</td>
+                        <td class="p-3 text-right ${row.b4 > 0 ? 'text-red-500 font-bold' : 'text-gray-600'}">${row.b4 > 0 ? db.config.currency + row.b4.toFixed(2) : '-'}</td>
+                        <td class="p-3 text-right font-bold text-white text-lg">${db.config.currency}${row.total.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                return;
+            }
+
+            // --- CREDITORS AGING REPORT (New) ---
+            if (type === 'creditors_aging') {
+                const debtorFilterContainer = document.getElementById('debtorFilterContainer');
+                debtorFilterContainer.classList.add('hidden');
+
+                // Format the "as of" date for display
+                const asOfDateStr = window.formatDate ? window.formatDate(agingAsOfDate.toISOString()) : agingAsOfDate.toLocaleDateString();
+                currentReportTitle = `CREDITORS AGING REPORT (As of ${asOfDateStr})`;
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+
+                // Get creditors (suppliers we owe money to)
+                const creditors = db.suppliers.filter(s => s.balance > 1); // Ignore tiny fractions
+                if (creditors.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">No creditors found.</td></tr>';
+                    return;
+                }
+
+                currentReportData = [];
+                const now = agingAsOfDate; // Use selected date
+
+                // --- AGING CALCULATION LOGIC (for suppliers) ---
+                creditors.forEach(supplier => {
+                    let remainingBal = supplier.balance;
+                    const buckets = { '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
+
+                    // Get all credit purchases for this supplier (sorted oldest first)
+                    const creditPurchases = db.transactions
+                        .filter(t => t.type === 'purchase' &&
+                            t.entityId === supplier.id &&
+                            (t.payType === 'credit' || t.creditAmount > 0) &&
+                            !t.isReturn)
+                        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    // Allocate remaining balance to purchases (oldest first - FIFO)
+                    creditPurchases.forEach(txn => {
+                        if (remainingBal <= 0.01) return;
+
+                        let debtAmount = (txn.payType === 'credit') ? txn.total : (txn.creditAmount || 0);
+
+                        // Check if there are specific payments handling this purchase
+                        const linkedPayments = (db.transactions || []).filter(t =>
+                            t.type === 'payment_out' &&
+                            t.entityId === supplier.id &&
+                            new Date(t.date) >= new Date(txn.date));
+                        const linkedPaidAmount = linkedPayments.reduce((sum, p) => sum + p.total, 0) / creditPurchases.length; // Simplified allocation
+
+                        debtAmount -= linkedPaidAmount;
+
+                        if (debtAmount <= 0.01) return;
+
+                        const allocated = Math.min(remainingBal, debtAmount);
+
+                        // Calculate age from purchase date to "as of" date
+                        let purchaseDate = new Date(txn.purchaseDate || txn.date);
+
+                        // NEPALI DATE FIX: Check if date is in BS format (year > 2080)
+                        const dateStr = (txn.purchaseDate || txn.date).toString();
+                        const yearMatch = dateStr.match(/^(\d{4})-/);
+                        if (yearMatch && parseInt(yearMatch[1]) > 2080) {
+                            // This is a Nepali BS date - convert to approximate AD
+                            // BS to AD conversion: subtract 57 years (approximate)
+                            const bsYear = parseInt(yearMatch[1]);
+                            const adYear = bsYear - 57;
+                            const adDateStr = dateStr.replace(yearMatch[1], adYear.toString());
+                            purchaseDate = new Date(adDateStr);
+                        }
+
+                        const diffTime = Math.abs(now - purchaseDate);
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays <= 30) buckets['0-30'] += allocated;
+                        else if (diffDays <= 60) buckets['31-60'] += allocated;
+                        else if (diffDays <= 90) buckets['61-90'] += allocated;
+                        else buckets['90+'] += allocated;
+
+                        remainingBal -= allocated;
+                    });
+
+                    // If balance still remains, put in 90+
+                    if (remainingBal > 0.01) {
+                        buckets['90+'] += remainingBal;
+                    }
+
+                    currentReportData.push({
+                        name: supplier.name,
+                        contact: supplier.contact || '-',
+                        phone: supplier.phone || '-',
+                        total: supplier.balance,
+                        b1: buckets['0-30'],
+                        b2: buckets['31-60'],
+                        b3: buckets['61-90'],
+                        b4: buckets['90+']
+                    });
+                });
+
+                // Render Creditors Aging Table
+                thead.innerHTML = `<tr>
+                    <th class="p-3 text-left">Supplier</th>
+                    <th class="p-3 text-right">0-30 Days</th>
+                    <th class="p-3 text-right">31-60 Days</th>
+                    <th class="p-3 text-right">61-90 Days</th>
+                    <th class="p-3 text-right">90+ Days</th>
+                    <th class="p-3 text-right">Total Due</th>
+                </tr>`;
+
+                currentReportData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-800 text-gray-300 hover:bg-white/5";
+                    tr.innerHTML = `
+                        <td class="p-3 font-bold text-white">
+                            ${row.name}<br>
+                            <span class="text-xs text-gray-500">${row.phone}</span>
+                        </td>
+                        <td class="p-3 text-right ${row.b1 > 0 ? 'text-green-400' : 'text-gray-600'}">${row.b1 > 0 ? db.config.currency + row.b1.toFixed(2) : '-'}</td>
+                        <td class="p-3 text-right ${row.b2 > 0 ? 'text-yellow-500' : 'text-gray-600'}">${row.b2 > 0 ? db.config.currency + row.b2.toFixed(2) : '-'}</td>
+                        <td class="p-3 text-right ${row.b3 > 0 ? 'text-orange-500' : 'text-gray-600'}">${row.b3 > 0 ? db.config.currency + row.b3.toFixed(2) : '-'}</td>
+                        <td class="p-3 text-right ${row.b4 > 0 ? 'text-red-500 font-bold' : 'text-gray-600'}">${row.b4 > 0 ? db.config.currency + row.b4.toFixed(2) : '-'}</td>
+                        <td class="p-3 text-right font-bold text-white text-lg">${db.config.currency}${row.total.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
                 });
                 return;
             }
@@ -12799,6 +12979,11 @@ Updated Balances:
                     if (existingBanner) existingBanner.remove();
                 }
             }, (error) => {
+                // Suppress permission denied errors which happen before auth is ready
+                if (error.code && error.code.includes('PERMISSION_DENIED')) {
+                    // console.debug('Waiting for permissions...');
+                    return;
+                }
                 console.error('Announcement listener error:', error);
             });
         }
@@ -13019,6 +13204,14 @@ Updated Balances:
             const entitySelect = document.getElementById('settlementEntity');
             entitySelect.innerHTML = '<option value="">-- Choose --</option>';
 
+            // Clear Invoice Dropdown
+            const invoiceSelect = document.getElementById('settlementInvoice');
+            if (invoiceSelect) invoiceSelect.innerHTML = '<option value="">-- General Payment (FIFO) --</option>';
+
+            // Set default date to today
+            const dp = document.getElementById('settlementDate');
+            if (dp) dp.value = new Date().toISOString().split('T')[0];
+
             if (type === 'customer') {
                 if (!db.customers) db.customers = [];
                 db.customers.filter(c => c.balance > 0).forEach(c => {
@@ -13032,8 +13225,72 @@ Updated Balances:
             }
         };
 
+        window.loadSettlementInvoices = function () {
+            const entityOption = document.getElementById('settlementEntity').value;
+            const invoiceSelect = document.getElementById('settlementInvoice');
+            if (!invoiceSelect) return;
+
+            invoiceSelect.innerHTML = '<option value="">-- General Payment (FIFO) --</option>';
+
+            if (!entityOption) return;
+
+            const [id, name, balance] = entityOption.split('|');
+            const entityId = parseInt(id);
+            const type = document.querySelector('input[name="settlementType"]:checked').value;
+
+            // Find unpaid or partially paid sales/purchases for this entity
+            const txns = (db.transactions || []).filter(t =>
+                t.entityId === entityId &&
+                ((type === 'customer' && t.type === 'sale') || (type === 'supplier' && t.type === 'purchase')) &&
+                (t.payType === 'credit' || t.payType === 'split')
+            );
+
+            // Calculate remaining due for each invoice
+            // Note: This needs to account for previous settlements linked to specific invoices
+            // For now, simpler approach: Just show recent credit transactions
+            // Ideally, we sum up all linked payments for each invoice.
+
+            txns.sort((a, b) => new Date(b.date) - new Date(a.date)); // Newest first
+
+            txns.forEach(t => {
+                // Determine how much is already paid off specifically for this invoice
+                // Use loose equality (==) for ID to handle string/number mismatch potentially
+                const alreadyPaid = (db.settlements || []).filter(s => s.linkedInvoiceId == t.id).reduce((sum, s) => sum + s.settlementAmount, 0);
+
+                // Also consider split payment initial cash
+                const initialPaid = (t.payType === 'split') ? ((t.cashAmount || 0) + (t.bankAmount || 0)) : 0;
+
+                // For 'cash' invoices (should be filtered out, but just in case)
+                if (t.payType === 'cash') return;
+
+                const totalDue = t.total - initialPaid - alreadyPaid;
+
+                // Strict check: Must be greater than 0.1 (floating point epsilon)
+                if (totalDue > 0.1) {
+                    const dateStr = window.formatDate(t.date);
+                    const invoiceNum = t.invoiceNumber || t.ref || t.id.toString().slice(-6);
+                    invoiceSelect.innerHTML += `<option value="${t.id}|${totalDue}">${dateStr} - #${invoiceNum} (Due: ${db.config.currency}${totalDue.toFixed(2)})</option>`;
+                }
+            });
+        };
+
+        window.updateSettlementAmountFromInvoice = function () {
+            const invoiceOption = document.getElementById('settlementInvoice').value;
+            if (!invoiceOption) return; // Don't reset if they choose General, let them type
+
+            const [invId, dueAmount] = invoiceOption.split('|');
+            const amount = parseFloat(dueAmount);
+
+            document.getElementById('settlementAmount').value = amount.toFixed(2);
+            updateSettlementDisplay();
+        };
+
         window.updateSettlementAmount = function () {
             const entityOption = document.getElementById('settlementEntity').value;
+
+            // Trigger invoice load
+            window.loadSettlementInvoices();
+
             if (!entityOption) {
                 document.getElementById('settlementDueAmount').innerText = '$0.00';
                 document.getElementById('settlementAmount').value = '';
@@ -13043,7 +13300,7 @@ Updated Balances:
             const [id, name, balance] = entityOption.split('|');
             const balanceAmount = parseFloat(balance) || 0;
             document.getElementById('settlementDueAmount').innerText = `${db.config.currency}${balanceAmount.toFixed(2)}`;
-            document.getElementById('settlementAmount').max = balanceAmount;
+            // document.getElementById('settlementAmount').max = balanceAmount; // Don't restrict, can overpay
             document.getElementById('settlementAmount').value = balanceAmount;
             updateSettlementDisplay();
         };
@@ -13076,6 +13333,20 @@ Updated Balances:
             const bankName = document.getElementById('settlementBankName').value;
             const notes = document.getElementById('settlementNotes').value;
 
+            // NEW: Invoice Linking and Date
+            const invoiceOption = document.getElementById('settlementInvoice') ? document.getElementById('settlementInvoice').value : null;
+            let linkedInvoiceId = null;
+            if (invoiceOption) {
+                const [invId, invAmt] = invoiceOption.split('|');
+                linkedInvoiceId = parseInt(invId);
+            }
+
+            const dateInput = document.getElementById('settlementDate') ? document.getElementById('settlementDate').value : null;
+            // Use manual date if provided, otherwise 'now'
+            // If manual date is just YYYY-MM-DD, append current time to keep sorting roughly correct or just use 00:00
+            const settlementDate = dateInput ? new Date(dateInput + 'T12:00:00').toISOString() : new Date().toISOString();
+
+
             if (!entityOption || !amount) {
                 alert('Please select entity and amount');
                 return;
@@ -13101,7 +13372,7 @@ Updated Balances:
 
             const settlement = {
                 id: Date.now(),
-                date: new Date().toISOString(),
+                date: settlementDate,
                 type: type,
                 entityId: entityId,
                 entityName: name,
@@ -13112,7 +13383,8 @@ Updated Balances:
                 chequeDate: chequeDate || null,
                 bankName: bankName || null,
                 notes: notes,
-                status: 'settled'
+                status: 'settled',
+                linkedInvoiceId: linkedInvoiceId // Save linked invoice
             };
 
             db.settlements.push(settlement);
@@ -13177,7 +13449,7 @@ Updated Balances:
             db.transactions.push({
                 id: Date.now(),
                 type: type === 'customer' ? 'payment' : 'payment_out',
-                date: new Date().toISOString(),
+                date: settlementDate, // Use manual date
                 entityId: entityId,
                 entityName: name,
                 items: [],
@@ -13186,7 +13458,8 @@ Updated Balances:
                 chequeNo: chequeNo,
                 settlementId: settlement.id,
                 cashBalance: db.config.cashBalance,
-                bankBalance: db.config.bankBalance
+                bankBalance: db.config.bankBalance,
+                linkedInvoiceId: linkedInvoiceId // Save linked invoice to txn too
             });
 
             saveDB();
@@ -13654,6 +13927,26 @@ Updated Balances:
 
             const logoHTML = db.config.logo ? `<img src="${db.config.logo}" style="width: 80px; height: 80px; object-fit: contain; margin-right: 16px;">` : '';
 
+            // NEW: Linked Invoice Logic
+            let linkedInvoiceHTML = '';
+            if (settlement.linkedInvoiceId) {
+                // Loose equality for safety
+                const linkedTxn = db.transactions.find(t => t.id == settlement.linkedInvoiceId);
+                if (linkedTxn) {
+                    const invDate = window.formatDate(linkedTxn.date);
+                    const invNum = linkedTxn.invoiceNumber || linkedTxn.ref || linkedTxn.id.toString().slice(-6);
+                    linkedInvoiceHTML = `
+                        <tr style="border-bottom: 1px solid #ddd; background-color: #ffffdd;">
+                            <td style="padding: 4px 0; font-weight: bold; color: #d35400;">Payment For:</td>
+                            <td style="padding: 4px 0; text-align: right; font-weight: bold; color: #d35400;">
+                                Invoice #${invNum}<br>
+                                <span style="font-size: 9px; font-weight: normal; color: #666;">Dated: ${invDate}</span>
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+
             return `
                 <div style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; color: #000;">
                     <!-- HEADER WITH LOGO AND COMPANY INFO -->
@@ -13732,6 +14025,7 @@ Updated Balances:
                                 Payment Information
                             </p>
                             <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
+                                ${linkedInvoiceHTML}
                                 <tr style="border-bottom: 1px solid #ddd;">
                                     <td style="padding: 4px 0; font-weight: bold; width: 50%;">Payment Method:</td>
                                     <td style="padding: 4px 0; text-align: right; font-weight: bold;">
@@ -13833,58 +14127,21 @@ Updated Balances:
             `;
         }
 
-        // Standardized Print Helper
-        // Standardized Print Helper
-        window.printContent = function (contentHTML, title = 'Print') {
-            const printWindow = window.open('', '_blank', 'height=800,width=1000,scrollbars=yes,status=yes');
-
-            if (!printWindow) {
-                alert('Please allow popups for this website to print.');
-                return;
-            }
-
-            printWindow.document.write(`<!DOCTYPE html>
-            <html>
-            <head>
-                <title>${title}</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <script src="https://cdn.tailwindcss.com"><` + `/script>
-                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-                <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-                    body {
-                        font-family: 'Inter', sans-serif;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                        background-color: white;
-                        color: black;
-                        padding: 20px;
-                    }
-                    /* Ensure table borders handle correctly in print */
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border-color: #000; }
-                </style>
-            </head>
-            <body>
-                ${contentHTML}
-                <script>
-                    window.onload = function() {
-                        setTimeout(() => {
-                            window.print();
-                        }, 500);
-                    };
-                <` + `/script>
-            </body>
-            </html>`);
-
-            printWindow.document.close();
-            if (printWindow) printWindow.focus();
-        };
-
         window.printSettlementInvoice = function () {
             if (!currentSettlementData) return;
             const printContent = document.getElementById('settlementInvoiceContent').innerHTML;
-            window.printContent(printContent, 'Settlement Certificate');
+            const printWindow = window.open('', '', 'height=700,width=900');
+
+            if (!printWindow) {
+                alert('Please disable popup blocker and try again, or use the PDF export button.');
+                return;
+            }
+
+            printWindow.document.write('<html><head><title>Settlement Invoice</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body style="font-family: Arial, sans-serif;">');
+            printWindow.document.write(printContent);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 250);
         };
 
         window.downloadSettlementPDF = function () {
@@ -14322,90 +14579,27 @@ Updated Balances:
 
         // PWA Install Prompt Handler
         let deferredPrompt = null;
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             console.log('[PWA] Install prompt captured');
+
+            // Show custom install button in UI (optional)
             showInstallButton();
         });
 
-        // iOS Check on Load
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                // If iOS and Not Installed, show button
-                if (isIOS && !isStandalone) {
-                    showInstallButton();
-                }
-            }, 1000);
-        });
-
         function showInstallButton() {
-            // Check if already exists
-            if (document.getElementById('pwa-install-btn')) return;
-
-            const installBtn = document.createElement('button');
-            installBtn.id = 'pwa-install-btn';
-            installBtn.className = 'fixed bottom-4 left-4 z-[9998] px-4 py-2 rounded-full text-sm font-bold shadow-lg bg-karta-primary text-black hover:bg-green-400 transition-all duration-300 flex items-center gap-2';
-            installBtn.innerHTML = '<i class="fa-solid fa-download"></i> Install App';
-
-            installBtn.onclick = () => {
-                if (isIOS) {
-                    showIOSInstallGuide();
-                } else if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then((choiceResult) => {
-                        if (choiceResult.outcome === 'accepted') {
-                            console.log('User accepted the A2HS prompt');
-                            installBtn.style.display = 'none';
-                        }
-                        deferredPrompt = null;
-                    });
-                } else {
-                    alert("To install: Tap the share icon / menu and select 'Add to Home Screen'");
-                }
-            };
-            document.body.appendChild(installBtn);
-        }
-
-        function showIOSInstallGuide() {
-            // Remove existing modal if any
-            const existing = document.getElementById('ios-install-modal');
-            if (existing) existing.remove();
-
-            const modal = document.createElement('div');
-            modal.id = 'ios-install-modal';
-            modal.className = 'fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn';
-            modal.innerHTML = `
-                <div class="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative">
-                    <button onclick="this.closest('#ios-install-modal').remove()" class="absolute top-3 right-3 text-gray-400 hover:text-white">
-                        <i class="fa-solid fa-times text-lg"></i>
-                    </button>
-                    <div class="text-center mb-4">
-                        <img src="karta-logo-design.png" class="w-16 h-16 mx-auto mb-3 rounded-lg shadow-lg">
-                        <h3 class="text-xl font-bold text-white">Install Karta</h3>
-                        <p class="text-gray-400 text-sm mt-1">Install this app on your iPhone/iPad for the best experience.</p>
-                    </div>
-                    <div class="space-y-4 text-sm text-gray-300">
-                        <div class="flex items-center gap-3">
-                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-800 text-karta-primary font-bold">1</span>
-                            <span>Tap the <span class="text-blue-400 font-bold"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</span> button in the toolbar.</span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-800 text-karta-primary font-bold">2</span>
-                            <span>Scroll down and select <span class="text-white font-bold"><i class="fa-regular fa-square-plus"></i> Add to Home Screen</span>.</span>
-                        </div>
-                    </div>
-                    <div class="mt-6 text-center">
-                        <button onclick="this.closest('#ios-install-modal').remove()" class="px-6 py-2 bg-karta-primary text-black font-bold rounded-lg hover:bg-green-400 w-full">Got it!</button>
-                    </div>
-                    <!-- Pointer arrow -->
-                    <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-gray-900 border-b border-r border-gray-700 rotate-45 sm:hidden"></div>
-                </div>
-            `;
-            document.body.appendChild(modal);
+            // Create install button if it doesn't exist
+            let installBtn = document.getElementById('pwa-install-btn');
+            if (!installBtn) {
+                installBtn = document.createElement('button');
+                installBtn.id = 'pwa-install-btn';
+                installBtn.className = 'fixed bottom-4 left-4 z-[9998] px-4 py-2 rounded-full text-sm font-bold shadow-lg bg-karta-primary text-black hover:bg-green-400 transition-all duration-300 flex items-center gap-2';
+                installBtn.innerHTML = '<i class="fa-solid fa-download"></i> Install App';
+                installBtn.onclick = installPWA;
+                document.body.appendChild(installBtn);
+            }
         }
 
         async function installPWA() {
@@ -14436,5 +14630,4 @@ Updated Balances:
         console.log('[PWA] Offline support initialized');
     </script>
 </body>
-
 </html>
