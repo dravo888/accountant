@@ -129,126 +129,13 @@
             }
         }, 500);
 
-        // ===== AGGRESSIVE SAVE-AS PROTECTION SYSTEM =====
-        // Multi-layered approach to ensure saved files ALWAYS show Access Denied
-
-        const ACCESS_DENIED_HTML = `<!DOCTYPE html>
-<html>
-<head>
-    <title>Access Denied</title>
-    <meta charset="UTF-8">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background: #0b0b0b;
-            font-family: 'Courier New', monospace;
-        }
-        .access-denied {
-            text-align: center;
-            padding: 60px 40px;
-            background: #1a1a1a;
-            border: 2px solid #ef4444;
-            border-radius: 12px;
-            max-width: 500px;
-        }
-        .icon {
-            font-size: 80px;
-            margin-bottom: 20px;
-            color: #ef4444;
-        }
-        h1 {
-            color: #ef4444;
-            font-size: 32px;
-            margin: 0 0 16px 0;
-            font-weight: 700;
-        }
-        p {
-            color: #9e9e9e;
-            font-size: 16px;
-            line-height: 1.6;
-            margin: 0;
-        }
-        .code {
-            margin-top: 24px;
-            padding: 12px;
-            background: #000;
-            border-radius: 6px;
-            color: #00c853;
-            font-family: monospace;
-            font-size: 14px;
-        }
-    </style>
-</head>
-<body>
-    <div class="access-denied">
-        <div class="icon">⛔</div>
-        <h1>ACCESS DENIED</h1>
-        <p>This application is protected and cannot be saved or copied.</p>
-        <p style="margin-top: 16px;">Unauthorized access attempts are logged and monitored.</p>
-        <div class="code">ERROR: SAVE_NOT_PERMITTED</div>
-    </div>
-</body>
-</html>`;
-
-        let saveProtectionActive = false;
-
-        function replaceWithAccessDenied() {
-            if (!saveProtectionActive) {
-                saveProtectionActive = true;
-                document.documentElement.innerHTML = ACCESS_DENIED_HTML;
-            }
-        }
-
-        // Layer 1: Detect Ctrl+S keyboard shortcut
+        // Prevent saving the page
         document.addEventListener('keydown', function (e) {
             if (e.ctrlKey && e.keyCode === 83) { // Ctrl+S
                 e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                replaceWithAccessDenied();
                 return false;
             }
-        }, true); // Use capture phase
-
-        // Layer 2: beforeunload event (fires on save attempts)
-        window.addEventListener('beforeunload', function (e) {
-            replaceWithAccessDenied();
-        }, true);
-
-        // Layer 3: pagehide event (more reliable than beforeunload)
-        window.addEventListener('pagehide', function (e) {
-            replaceWithAccessDenied();
-        }, true);
-
-        // Layer 4: visibilitychange (detects when page becomes hidden - save dialog opens)
-        document.addEventListener('visibilitychange', function () {
-            if (document.hidden) {
-                replaceWithAccessDenied();
-            }
-        }, true);
-
-        // Layer 5: blur event (window loses focus - save dialog)
-        window.addEventListener('blur', function () {
-            replaceWithAccessDenied();
-        }, true);
-
-        // Layer 6: Continuous monitoring - check every 100ms if page is being saved
-        setInterval(function () {
-            // If document is hidden or page has lost visibility, replace content
-            if (document.hidden || document.visibilityState === 'hidden') {
-                replaceWithAccessDenied();
-            }
-        }, 100);
-
-        // Layer 7: Override native save functions if exposed
-        if (window.external && window.external.AddFavorite) {
-            window.external.AddFavorite = function () { replaceWithAccessDenied(); };
-        }
+        });
 
         // Disable drag and drop for copying
         document.addEventListener('dragstart', function (e) {
@@ -259,101 +146,6 @@
         // Watermark detection - Add hidden marker
         document.documentElement.setAttribute('data-protected', 'true');
         document.documentElement.setAttribute('data-source', 'KARTA_PROPRIETARY');
-
-        // ===== SERVER-ONLY PROTECTION SYSTEM =====
-        // Blocks file:// protocol to make saved files completely unusable
-
-        // Layer 1: Strict File Protocol Blocking - MUST RUN FROM WEB SERVER
-        (function () {
-            // Check if page is opened from file:// (saved file)
-            if (window.location.protocol === 'file:') {
-                // Immediate block - prevent any code execution
-                document.addEventListener('DOMContentLoaded', function () {
-                    document.documentElement.innerHTML = `
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                            <title>Access Denied</title>
-                            <style>
-                                body {
-                                    margin: 0;
-                                    padding: 0;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    min-height: 100vh;
-                                    background: #0b0b0b;
-                                    font-family: monospace;
-                                    color: #ef4444;
-                                }
-                                .error-container {
-                                    text-align: center;
-                                    padding: 40px;
-                                    max-width: 600px;
-                                }
-                                .error-icon {
-                                    font-size: 72px;
-                                    margin-bottom: 20px;
-                                }
-                                .error-title {
-                                    font-size: 24px;
-                                    font-weight: bold;
-                                    margin-bottom: 16px;
-                                }
-                                .error-message {
-                                    font-size: 14px;
-                                    color: #9e9e9e;
-                                    line-height: 1.6;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="error-container">
-                                <div class="error-icon">⛔</div>
-                                <div class="error-title">Access Denied</div>
-                                <div class="error-message">
-                                    This application must be accessed through a web server.<br><br>
-                                    Direct file access is not permitted for security reasons.<br><br>
-                                    Contact your administrator for proper access.
-                                </div>
-                            </div>
-                        </body>
-                        </html>
-                    `;
-                    // Remove all scripts to prevent any execution
-                    const scripts = document.querySelectorAll('script');
-                    scripts.forEach(s => s.remove());
-                });
-                // Throw error to stop script execution
-                throw new Error('File protocol not allowed');
-            }
-
-            // Additional check for null origin (some edge cases)
-            if (window.location.origin === 'null') {
-                document.addEventListener('DOMContentLoaded', function () {
-                    document.body.innerHTML = '<div style="color:red;padding:20px;font-family:monospace;">Unauthorized Access</div>';
-                });
-                throw new Error('Invalid origin');
-            }
-        })();
-
-        // Continuous validation - re-check every 2 seconds
-        setInterval(function () {
-            if (window.location.protocol === 'file:' || window.location.origin === 'null') {
-                document.body.innerHTML = '';
-                document.head.innerHTML = '<title>Access Denied</title>';
-                throw new Error('Unauthorized file access detected');
-            }
-        }, 2000);
-
-
-        // REMOVED: Layer 2 code integrity monitoring was causing false positives
-        // Firebase auto-login and dynamic scripts trigger legitimate checksum changes
-
-        // REMOVED: Layers 3-5 (anti-debugging, runtime validation, DOM observer)
-        // These are unnecessary since file:// blocking prevents all saved file access
-
-        // ===== END PROTECTION SYSTEM =====
 
         tailwind.config = {
             theme: {
@@ -2640,14 +2432,20 @@
                                 class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Financial
                                 Statements</button>
                             <button onclick="runReports('debtors')"
-                                class="bg-red-700 hover:bg-red-600 text-white py-2 rounded text-xs">Debtors
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Debtors
                                 List</button>
                             <button onclick="runReports('aging')"
-                                class="bg-orange-700 hover:bg-orange-600 text-white py-2 rounded text-xs">Debtors
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Debtors
                                 Aging</button>
+                            <button onclick="runReports('debtors_ledger')"
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs text-blue-300 border border-blue-900/30">Debtors
+                                Ledger</button>
                             <button onclick="runReports('creditors_aging')"
-                                class="bg-purple-700 hover:bg-purple-600 text-white py-2 rounded text-xs">Creditors
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Creditors
                                 Aging</button>
+                            <button onclick="runReports('creditors_ledger')"
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs text-orange-300 border border-orange-900/30">Creditors
+                                Ledger</button>
                             <button onclick="runReports('journal')"
                                 class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Journal
                                 Book</button>
@@ -2657,6 +2455,75 @@
                             <button onclick="runReports('trial')"
                                 class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Trial
                                 Balance</button>
+                            <button onclick="runReports('bank_rec')"
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Bank
+                                Reconciliation</button>
+                            <button onclick="runReports('voucher_reg')"
+                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Voucher
+                                Register</button>
+                        </div>
+
+                        <!-- BANK RECONCILIATION CONTROLS -->
+                        <div id="bankRecControls" class="hidden space-y-4 border-t border-gray-700 pt-4 mt-2">
+                            <div class="flex flex-col md:flex-row gap-4 items-end">
+                                <div class="w-full md:w-auto">
+                                    <label class="text-xs text-gray-400">Select Bank Account</label>
+                                    <select id="bankRecAccount" class="input-field min-w-[200px]"
+                                        onchange="renderBankReconciliation()">
+                                        <!-- Populated via JS -->
+                                    </select>
+                                </div>
+                                <div class="w-full md:w-auto">
+                                    <label class="text-xs text-gray-400">Reconciliation As On</label>
+                                    <input type="date" id="bankRecDate" class="input-field"
+                                        onchange="renderBankReconciliation()">
+                                </div>
+                            </div>
+
+                            <!-- SUMMARY CARDS FOR BANK REC -->
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div class="bg-white/5 p-3 rounded border border-gray-700">
+                                    <div class="text-xs text-gray-400">System Bank Balance</div>
+                                    <div class="text-xl font-bold text-white" id="brSystemBal">$0.00</div>
+                                </div>
+                                <div class="bg-white/5 p-3 rounded border border-gray-700">
+                                    <div class="text-xs text-gray-400">Add: Uncleared Cheques</div>
+                                    <div class="text-xl font-bold text-green-400" id="brUnclearedAdd">$0.00</div>
+                                </div>
+                                <div class="bg-white/5 p-3 rounded border border-gray-700">
+                                    <div class="text-xs text-gray-400">Less: Unpresented Cheques</div>
+                                    <div class="text-xl font-bold text-red-400" id="brUnclearedLess">$0.00</div>
+                                </div>
+                                <div class="bg-blue-900/20 p-3 rounded border border-blue-500/50">
+                                    <div class="text-xs text-blue-200">Reconciled Bank Balance</div>
+                                    <div class="text-xl font-bold text-blue-400" id="brBankBal">$0.00</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VOUCHER REGISTER FILTERS -->
+                        <div id="voucherControls" class="hidden space-y-4 border-t border-gray-700 pt-4 mt-2">
+                            <div class="flex flex-col md:flex-row gap-4 items-end">
+                                <div class="w-full md:w-auto">
+                                    <label class="text-xs text-gray-400">Voucher Type</label>
+                                    <select id="voucherTypeFilter" class="input-field min-w-[150px]"
+                                        onchange="renderVoucherRegister()">
+                                        <option value="all">All Vouchers</option>
+                                        <option value="Receipt">Receipt</option>
+                                        <option value="Payment">Payment</option>
+                                        <option value="Journal">Journal</option>
+                                        <option value="Sales">Sales</option>
+                                        <option value="Purchase">Purchase</option>
+                                        <option value="Contra">Contra</option>
+                                        <option value="Expense">Expense</option>
+                                    </select>
+                                </div>
+                                <div class="w-full md:w-auto">
+                                    <label class="text-xs text-gray-400">Filter Ledger (Optional)</label>
+                                    <input type="text" id="voucherLedgerFilter" placeholder="e.g. Cash, Sales..."
+                                        class="input-field" onkeyup="renderVoucherRegister()">
+                                </div>
+                            </div>
                         </div>
                         <div id="debtorFilterContainer" class="hidden">
                             <label class="text-xs text-gray-400">Search by Location</label>
@@ -5346,6 +5213,7 @@
                 cost: parseFloat(document.getElementById('pCost').value),
                 retail: parseFloat(document.getElementById('pRetail').value),
                 wholesale: parseFloat(document.getElementById('pWhole').value) || 0,
+                // stock: parseInt(document.getElementById('pStock').value), // Removed manual stock
                 reorder: parseInt(document.getElementById('pReorder').value),
                 supplierId: supplierId ? parseInt(supplierId) : null,
                 supplierName: supplierName
@@ -5369,7 +5237,7 @@
                 // CREATE MODE
                 const newProduct = {
                     id: Date.now(),
-                    stock: 0,
+                    stock: 0, // Initialize stock to 0 for new products
                     ...pData
                 };
                 db.products.push(newProduct);
@@ -5398,7 +5266,7 @@
             document.getElementById('pCost').value = prod.cost;
             document.getElementById('pRetail').value = prod.retail;
             document.getElementById('pWhole').value = prod.wholesale || '';
-
+            // document.getElementById('pStock').value = prod.stock; // Removed manual stock
             document.getElementById('pReorder').value = prod.reorder || '10';
 
             // Handle Supplier Select
@@ -11081,6 +10949,163 @@ Updated Balances:
                     } else {
                         html += `<tr><td colspan="3" style="padding: 20px; text-align: center;">No accounts found.</td></tr>`;
                     }
+                } else if (currentReportTitle.includes("Bank Reconciliation")) {
+                    // --- BANK RECONCILIATION PRINT ---
+                    const filterDate = document.getElementById('bankRecDate')?.value;
+                    const dateLabel = filterDate ? window.formatDate(filterDate) : new Date().toLocaleDateString();
+
+                    // Get bank transactions
+                    const bankTxns = db.transactions.filter(t =>
+                        (t.payType === 'bank') ||
+                        (t.payType === 'split' && (t.bankAmount > 0))
+                    ).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    // Filter by date if set
+                    let filtered = bankTxns;
+                    if (filterDate) {
+                        filtered = bankTxns.filter(t => t.date.substring(0, 10) <= filterDate);
+                    }
+
+                    let systemBalance = 0;
+                    let unclearedAdd = 0;
+                    let unpresented = 0;
+
+                    // Calculate balances
+                    filtered.forEach(t => {
+                        let debit = 0;
+                        let credit = 0;
+
+                        if (t.type === 'sale' || t.type === 'payment') {
+                            debit = t.payType === 'split' ? (t.bankAmount || 0) : t.total;
+                        } else {
+                            credit = t.payType === 'split' ? (t.bankAmount || 0) : t.total;
+                        }
+
+                        systemBalance += (debit - credit);
+
+                        if (!t.reconciled) {
+                            if (credit > 0) unpresented += credit;
+                            if (debit > 0) unclearedAdd += debit;
+                        }
+                    });
+
+                    const recBal = systemBalance + unpresented - unclearedAdd;
+
+                    // Summary Cards at top
+                    html += `
+                        <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 5px;">
+                            <h3 style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold;">Reconciliation Summary (As on ${dateLabel})</h3>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                                <tr>
+                                    <td style="padding: 5px; border-bottom: 1px solid #ddd; font-weight: 500;">System Bank Balance:</td>
+                                    <td style="padding: 5px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold;">${db.config.currency}${systemBalance.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 5px; border-bottom: 1px solid #ddd; font-weight: 500;">Add: Uncleared Credits (Deposits):</td>
+                                    <td style="padding: 5px; border-bottom: 1px solid #ddd; text-align: right; color: #00aa00; font-weight: bold;">${db.config.currency}${unclearedAdd.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 5px; border-bottom: 1px solid #ddd; font-weight: 500;">Less: Unpresented Cheques (Withdrawals):</td>
+                                    <td style="padding: 5px; border-bottom: 1px solid #ddd; text-align: right; color: #cc0000; font-weight: bold;">${db.config.currency}${unpresented.toFixed(2)}</td>
+                                </tr>
+                                <tr style="background: #e3f2fd;">
+                                    <td style="padding: 8px; font-weight: bold; font-size: 12px;">Reconciled Bank Balance:</td>
+                                    <td style="padding: 8px; text-align: right; font-weight: bold; font-size: 12px; color: #0066cc;">${db.config.currency}${recBal.toFixed(2)}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    `;
+
+                    // Transaction table
+                    html += `<table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #ddd; font-weight: 600; color: #666;">
+                                <th style="padding: 8px; text-align: left;">Date</th>
+                                <th style="padding: 8px; text-align: left;">Ref/Cheque No.</th>
+                                <th style="padding: 8px; text-align: left;">Description</th>
+                                <th style="padding: 8px; text-align: right;">Debit (Deposit)</th>
+                                <th style="padding: 8px; text-align: right;">Credit (Withdrawal)</th>
+                                <th style="padding: 8px; text-align: center;">Cleared?</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                    if (filtered && filtered.length > 0) {
+                        filtered.forEach(t => {
+                            let debit = 0;
+                            let credit = 0;
+
+                            if (t.type === 'sale' || t.type === 'payment') {
+                                debit = t.payType === 'split' ? (t.bankAmount || 0) : t.total;
+                            } else {
+                                credit = t.payType === 'split' ? (t.bankAmount || 0) : t.total;
+                            }
+
+                            html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                                <td style="padding: 8px;">${window.formatDate(t.date)}</td>
+                                <td style="padding: 8px; font-family: monospace; color: #666;">#${t.id.toString().slice(-6)}</td>
+                                <td style="padding: 8px;">${t.entityName || t.type.toUpperCase()}</td>
+                                <td style="padding: 8px; text-align: right; ${debit > 0 ? 'font-weight: bold; color: #00aa00;' : 'color: #999;'}">${debit > 0 ? db.config.currency + debit.toFixed(2) : '-'}</td>
+                                <td style="padding: 8px; text-align: right; ${credit > 0 ? 'font-weight: bold; color: #cc0000;' : 'color: #999;'}">${credit > 0 ? db.config.currency + credit.toFixed(2) : '-'}</td>
+                                <td style="padding: 8px; text-align: center;">${t.reconciled ? '✓ Yes' : '✗ No'}</td>
+                            </tr>`;
+                        });
+                    } else {
+                        html += `<tr><td colspan="6" style="padding: 20px; text-align: center;">No bank transactions found.</td></tr>`;
+                    }
+
+                    html += `</tbody></table>`;
+                } else if (currentReportTitle.includes("Voucher Register")) {
+                    // --- VOUCHER REGISTER PRINT ---
+                    const vouchers = generateVoucherList();
+                    const typeFilter = document.getElementById('voucherTypeFilter')?.value || 'all';
+                    const ledgerFilter = document.getElementById('voucherLedgerFilter')?.value.toLowerCase() || '';
+
+                    const filteredVouchers = vouchers.filter(v => {
+                        if (typeFilter !== 'all' && v.voucherType !== typeFilter) return false;
+                        if (ledgerFilter && !v.dr.toLowerCase().includes(ledgerFilter) && !v.cr.toLowerCase().includes(ledgerFilter)) return false;
+                        return true;
+                    });
+
+                    html += `<table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #ddd; font-weight: 600; color: #666;">
+                                <th style="padding: 8px; text-align: left;">Voucher No.</th>
+                                <th style="padding: 8px; text-align: left;">Date</th>
+                                <th style="padding: 8px; text-align: left;">Type</th>
+                                <th style="padding: 8px; text-align: left;">Debit Ledger</th>
+                                <th style="padding: 8px; text-align: left;">Credit Ledger</th>
+                                <th style="padding: 8px; text-align: right;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                    if (filteredVouchers && filteredVouchers.length > 0) {
+                        filteredVouchers.forEach(v => {
+                            const vNo = 'VCH-' + v.seqId.toString().padStart(5, '0');
+                            const typeColor = v.voucherType === 'Receipt' ? '#00aa00' : (v.voucherType === 'Payment' ? '#cc0000' : '#666');
+
+                            html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+                                <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #0066cc;">${vNo}</td>
+                                <td style="padding: 8px;">${window.formatDate(v.date)}</td>
+                                <td style="padding: 8px; font-weight: 600; text-transform: uppercase; color: ${typeColor}; font-size: 10px;">${v.voucherType}</td>
+                                <td style="padding: 8px; font-weight: 500; color: #333;">${v.dr}</td>
+                                <td style="padding: 8px; color: #666;">${v.cr}</td>
+                                <td style="padding: 8px; text-align: right; font-weight: bold;">${db.config.currency}${v.amount.toFixed(2)}</td>
+                            </tr>`;
+                        });
+
+                        // Total row
+                        const totalAmount = filteredVouchers.reduce((sum, v) => sum + v.amount, 0);
+                        html += `<tr style="font-weight: bold; background-color: #eee; border-top: 2px solid #000;">
+                            <td colspan="5" style="padding: 8px; text-align: right; text-transform: uppercase;">Total</td>
+                            <td style="padding: 8px; text-align: right;">${db.config.currency}${totalAmount.toFixed(2)}</td>
+                        </tr>`;
+                    } else {
+                        html += `<tr><td colspan="6" style="padding: 20px; text-align: center;">No vouchers found matching criteria.</td></tr>`;
+                    }
+
+                    html += `</tbody></table>`;
                 } else {
                     // GENERIC TRANSACTION REPORTS (Daily, Sales, Expense)
                     html += `<th style="padding: 8px; text-align: left;">Date</th>
@@ -11677,6 +11702,12 @@ Updated Balances:
                 debtorFilterContainer.classList.add('hidden');
             }
 
+            // Hide new report controls by default
+            const bankRecControls = document.getElementById('bankRecControls');
+            const voucherControls = document.getElementById('voucherControls');
+            if (type !== 'bank_rec' && bankRecControls) bankRecControls.classList.add('hidden');
+            if (type !== 'voucher_reg' && voucherControls) voucherControls.classList.add('hidden');
+
             const fromDate = document.getElementById('repFrom').value;
             const toDate = document.getElementById('repTo').value;
 
@@ -11828,6 +11859,7 @@ Updated Balances:
             if (type === 'journal') {
                 currentReportTitle = "Journal Book (Automatic)";
                 document.getElementById('reportTitle').innerText = currentReportTitle;
+                thead.innerHTML = ''; // Clear previous headers
 
                 let html = `<table id="repTable" style="width:100%; text-align: left; border-collapse: collapse;">
                     <thead>
@@ -11952,23 +11984,22 @@ Updated Balances:
 
                         if (showEntry) {
                             html += `
-                                <tr class="border-b border-gray-200 hover:bg-gray-100">
-                                    <td class="py-3 px-6 text-left whitespace-nowrap align-top">${window.formatDate ? window.formatDate(txn.date) : txn.date}</td>
-                                    <td class="py-3 px-6 text-left">
-                                        <div class="font-bold">${drAccount} <span class="text-xs text-gray-500 font-normal">Dr.</span></div>
-                                        <div class="pl-8 text-gray-500">To ${crAccount}</div>
-                                        <div class="text-xs italic text-gray-400 mt-1">(${narration})</div>
+                                <tr class="border-b border-gray-700 hover:bg-white/5">
+                                    <td class="py-3 px-6 text-left whitespace-nowrap align-top border-r border-gray-700 text-gray-300">${window.formatDate ? window.formatDate(txn.date) : txn.date}</td>
+                                    <td class="py-3 px-6 text-left align-top border-r border-gray-700">
+                                        <div class="font-bold text-white mb-1">${drAccount} <span class="text-xs text-green-400 font-normal">Dr.</span></div>
+                                        <div class="pl-8 text-white mb-1">To ${crAccount}</div>
+                                        <div class="text-xs italic text-gray-500 mt-1">(${narration})</div>
                                     </td>
-                                    <td class="py-3 px-6 text-center align-top">-</td>
-                                    <td class="py-3 px-6 text-right font-bold align-top">${moneyRound(amount).toFixed(2)}</td>
-                                    <td class="py-3 px-6 text-right align-top"></td>
-                                </tr>
-                                <tr class="border-b border-gray-200 hover:bg-gray-100">
-                                    <td class="py-3 px-6"></td>
-                                    <td class="py-3 px-6"></td>
-                                    <td class="py-3 px-6"></td>
-                                    <td class="py-3 px-6"></td>
-                                    <td class="py-3 px-6 text-right font-bold align-top">${moneyRound(amount).toFixed(2)}</td>
+                                    <td class="py-3 px-6 text-center align-top border-r border-gray-700 text-gray-400">-</td>
+                                    <td class="py-3 px-6 text-right font-bold align-top border-r border-gray-700">
+                                        <div class="mb-1 text-green-300">${db.config.currency}${moneyRound(amount).toFixed(2)}</div>
+                                        <div class="invisible text-xs">0.00</div>
+                                    </td>
+                                    <td class="py-3 px-6 text-right align-top">
+                                        <div class="invisible mb-1">0.00</div>
+                                        <div class="font-bold text-orange-300">${db.config.currency}${moneyRound(amount).toFixed(2)}</div>
+                                    </td>
                                 </tr>
                             `;
                         }
@@ -12351,6 +12382,523 @@ Updated Balances:
                 return;
             }
 
+            // --- CREDITORS LEDGER REPORT ---
+            if (type === 'creditors_ledger') {
+                currentReportTitle = "Creditors Ledger";
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+
+                // Supplier Selector
+                let options = '<option value="">-- Select Supplier --</option>';
+                if (db.suppliers) {
+                    db.suppliers
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .forEach(s => {
+                            options += `<option value="${s.id}">${s.name}</option>`;
+                        });
+                }
+
+                cards.innerHTML = `
+                    <div class="mb-4 flex gap-2 items-center print:hidden w-full max-w-md">
+                        <label class="font-bold text-gray-400">Supplier:</label>
+                        <select id="creditorLedgerSelect" onchange="runReports('creditors_ledger', this.value)" class="flex-1 p-2 bg-karta-input border border-karta-border rounded text-white focus:outline-none focus:border-green-500">
+                            ${options}
+                        </select>
+                    </div>
+                `;
+
+                // If a supplier is selected (passed as arg or from dropdown)
+                const selectedId = arguments[1] ? parseInt(arguments[1]) : '';
+
+                // Restore selection if re-rendering
+                setTimeout(() => {
+                    const sel = document.getElementById('creditorLedgerSelect');
+                    if (sel && selectedId) sel.value = selectedId;
+                }, 50);
+
+                if (selectedId) {
+                    const supplier = db.suppliers.find(s => s.id === selectedId);
+                    const supName = supplier ? supplier.name : 'Unknown Supplier';
+
+                    let html = `<div class="mb-4"><h3 class="text-center font-bold text-xl underline uppercase text-white">Ledger: ${supName}</h3></div>`;
+                    html += `<table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-700 text-gray-300 uppercase text-sm">
+                                <th class="py-3 px-4 border border-gray-600">Date</th>
+                                <th class="py-3 px-4 border border-gray-600">Particulars</th>
+                                <th class="py-3 px-4 border border-gray-600 text-center">Ref/Vch</th>
+                                <th class="py-3 px-4 border border-gray-600 text-right">Debit (Paid)</th>
+                                <th class="py-3 px-4 border border-gray-600 text-right">Credit (Bought)</th>
+                                <th class="py-3 px-4 border border-gray-600 text-right">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-gray-300">`;
+
+                    let balance = 0; // Credit Balance is positive for Suppliers (Liability)
+                    let totalDr = 0;
+                    let totalCr = 0;
+
+                    // Filter transactions for this supplier
+                    const relevantTxns = db.transactions.filter(t => {
+                        // Direct link via entityId
+                        if ((t.type === 'purchase' || t.type === 'payment_out' || t.type === 'return_cash_out') && t.entityId === selectedId) return true;
+                        // Settlements
+                        if (t.settlementId && t.entityId === selectedId) return true;
+                        return false;
+                    }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    // Calculate Opening Balance (Derived: Current Balance - Net Transactions)
+                    // Net Transactions Effect on Supplier (Liability) = Purchases (Cr) - Payments (Dr)
+                    // Current Balance = Opening Balance + Net Txn
+                    // Opening Balance = Current Balance - (SumCr - SumDr of filtered txns)
+
+                    let sumTxnCr = 0;
+                    let sumTxnDr = 0;
+                    relevantTxns.forEach(t => {
+                        if (t.type === 'purchase') {
+                            sumTxnCr += t.total;
+                        } else if (t.type === 'payment_out' || t.type === 'return_cash_out') {
+                            sumTxnDr += t.total;
+                        } else if (t.type === 'purchase' && (t.payType === 'cash' || t.payType === 'split')) {
+                            // This part is tricky because in the loop below we add 'immediate payment' lines.
+                            // But the raw transaction 'purchase' is just the full amount.
+                            // If we count the full purchase as Cr, we must count the immediate payment as Dr.
+                            // Standard purchase txn: total is the full amount.
+                            // My previous logic: Purchase = Cr full.
+                            // Payment = Dr full.
+                            // So filtering 'purchase' and 'payment_out' covers most.
+                            // BUT immediate cash purchase logic below ADDS virtual dr lines.
+                            // We must include those in our sum calc if we want to match the loop.
+                            if (t.payType === 'cash') sumTxnDr += t.total;
+                            else if (t.payType === 'split') sumTxnDr += (t.cashAmount || 0) + (t.bankAmount || 0);
+                        }
+                    });
+
+                    let currentBalance = supplier ? supplier.balance : 0;
+                    // Because supplier balance is "Amount We Owe" (Liability), positive means Credit Balance.
+                    // But wait, the system stores balance. Usually positive for We Owe.
+
+                    let openingBalance = currentBalance - (sumTxnCr - sumTxnDr);
+                    balance = openingBalance;
+
+                    // --- OPENING BALANCE ROW ---
+                    if (Math.abs(openingBalance) > 0.001) {
+                        const type = openingBalance > 0 ? 'Cr' : 'Dr'; // Positive = Credit (Liability)
+                        const side = openingBalance > 0 ? 'By' : 'To';
+
+                        // For totals column alignment:
+                        // If Opening is Cr, it adds to Total Cr of the report VIEW (for balancing).
+                        // Actually, in a T-format, Opening Bal starts the running balance.
+                        // But for the "Total" row at bottom to balance, we usually encompass the opening balance?
+                        // Yes, standardized: Total Dr + Balance c/d = Total Cr + (if opening on Cr).
+                        // Let's just track totalDr/Cr for the columns displayed.
+
+                        if (openingBalance > 0) totalCr += openingBalance;
+                        else totalDr += Math.abs(openingBalance);
+
+                        html += `
+                            <tr class="bg-gray-800/50 italic text-gray-400">
+                                <td class="py-2 px-4 border border-gray-600">Beginning</td>
+                                <td class="py-2 px-4 border border-gray-600 font-bold">${side} Balance b/d</td>
+                                <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right">${openingBalance < 0 ? db.config.currency + Math.abs(openingBalance).toFixed(2) : ''}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right">${openingBalance > 0 ? db.config.currency + Math.abs(openingBalance).toFixed(2) : ''}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right font-bold">${db.config.currency + Math.abs(balance).toFixed(2)} ${type}</td>
+                            </tr>
+                        `;
+                    }
+
+                    if (relevantTxns.length === 0 && Math.abs(openingBalance) < 0.001) {
+                        html += `<tr><td colspan="6" class="p-4 text-center text-gray-500">No transactions found for this supplier.</td></tr>`;
+                    } else {
+                        relevantTxns.forEach(txn => {
+                            let dr = 0;
+                            let cr = 0;
+                            let particular = '';
+                            let ref = txn.id.toString().slice(-6);
+
+                            if (txn.type === 'purchase') {
+                                cr = txn.total;
+                                particular = `By Purchase`;
+                                // If split/cash, we show immediate payment as Debit?
+                                // Let's simplify: Show GROSS purchase as Credit, and Payment as Debit.
+                                // If it was a Cash Purchase, we add a contra line or just show net?
+                                // Better: Show Purchase (Cr).
+                            } else if (txn.type === 'payment_out') {
+                                dr = txn.total;
+                                particular = `To Bank/Cash (Payment)`;
+                                if (txn.settlementId) particular += ` (Settlement)`;
+                            } else if (txn.type === 'return_cash_out') {
+                                // We received cash back? Rare for supplier.
+                                // Usually 'return_cash_in' if we return goods and get cash.
+                                // If 'purchase_return' exists (it should), it would be Debit to Creditor.
+                                // Assuming standard transaction types.
+                                dr = txn.total;
+                                particular = "To Return Refund";
+                            }
+
+                            // Calculate Balance (Credit Nature)
+                            balance = balance + cr - dr;
+                            totalCr += cr;
+                            totalDr += dr;
+
+                            html += `
+                                <tr class="border-b border-gray-700 hover:bg-white/5">
+                                    <td class="py-2 px-4 border border-gray-600">${window.formatDate ? window.formatDate(txn.date) : txn.date.substring(0, 10)}</td>
+                                    <td class="py-2 px-4 border border-gray-600">${particular}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-center font-mono text-xs text-gray-400">${ref}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right text-green-300">${dr ? db.config.currency + moneyRound(dr).toFixed(2) : '-'}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right text-orange-300">${cr ? db.config.currency + moneyRound(cr).toFixed(2) : '-'}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right font-bold">${db.config.currency + Math.abs(balance).toFixed(2)} ${balance >= 0 ? 'Cr' : 'Dr'}</td>
+                                </tr>
+                            `;
+
+                            // Handle Immediate Payment (Cash/Split Purchases)
+                            // If purchase was 'cash' or 'split', we implicitly paid immediately.
+                            // We should show that Payment line to balance properly if we showed full Purchase Cr.
+                            if (txn.type === 'purchase' && (txn.payType === 'cash' || txn.payType === 'split')) {
+                                let paidAmt = 0;
+                                if (txn.payType === 'cash') paidAmt = txn.total;
+                                if (txn.payType === 'split') paidAmt = (txn.cashAmount || 0) + (txn.bankAmount || 0);
+
+                                if (paidAmt > 0) {
+                                    dr = paidAmt;
+                                    cr = 0;
+                                    balance = balance + cr - dr;
+                                    totalDr += dr;
+
+                                    html += `
+                                        <tr class="border-b border-gray-700 hover:bg-white/5 bg-gray-800/30 font-thin italic">
+                                            <td class="py-2 px-4 border border-gray-600 text-xs">↳</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-xs">To Cash/Bank (Immediate)</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-right text-green-300/70">${db.config.currency + moneyRound(dr).toFixed(2)}</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-right">-</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-right font-bold text-xs">${db.config.currency + Math.abs(balance).toFixed(2)} ${balance >= 0 ? 'Cr' : 'Dr'}</td>
+                                        </tr>
+                                    `;
+                                }
+                            }
+                        });
+                    }
+
+                    // --- CLOSING ENTRY (Balance c/d) ---
+                    // We need to add a line to the side with LESS total to make them equal.
+                    // If Balance is Credit (positive), we need to add "To Balance c/d" on Debit side.
+                    // If Balance is Debit (negative), we need to add "By Balance c/d" on Credit side.
+
+                    let closingEntryHtml = '';
+                    if (Math.abs(balance) > 0.001) {
+                        if (balance > 0) { // Credit Balance -> Add to Debit side to close
+                            totalDr += balance;
+                            closingEntryHtml = `
+                                <tr class="border-b border-gray-700 bg-yellow-900/20 text-yellow-200">
+                                    <td class="py-2 px-4 border border-gray-600"></td>
+                                    <td class="py-2 px-4 border border-gray-600 font-bold italic">To Balance c/d</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right font-bold">${db.config.currency + Math.abs(balance).toFixed(2)}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                </tr>`;
+                        } else { // Debit Balance -> Add to Credit side to close
+                            totalCr += Math.abs(balance);
+                            closingEntryHtml = `
+                                <tr class="border-b border-gray-700 bg-yellow-900/20 text-yellow-200">
+                                    <td class="py-2 px-4 border border-gray-600"></td>
+                                    <td class="py-2 px-4 border border-gray-600 font-bold italic">By Balance c/d</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right font-bold">${db.config.currency + Math.abs(balance).toFixed(2)}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                </tr>`;
+                        }
+                    }
+                    html += closingEntryHtml;
+
+                    // Total Row
+                    html += `
+                        <tr class="bg-gray-600 font-bold text-white border-t-2 border-gray-500">
+                            <td colspan="3" class="py-2 px-4 border border-gray-600 text-right uppercase">Total</td>
+                            <td class="py-2 px-4 border border-gray-600 text-right">${db.config.currency + moneyRound(totalDr).toFixed(2)}</td>
+                            <td class="py-2 px-4 border border-gray-600 text-right">${db.config.currency + moneyRound(totalCr).toFixed(2)}</td>
+                            <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                        </tr>
+                    `;
+
+                    // --- NEXT PERIOD OPENING (Balance b/d) ---
+                    if (Math.abs(balance) > 0.001) {
+                        // Opens on the SAME side as the balance nature (Cr balance = By Bal b/d)
+                        const side = balance > 0 ? 'By' : 'To';
+                        const amount = Math.abs(balance);
+                        // If Cr balance (positive), it appears on Cr side.
+
+                        html += `
+                            <tr class="bg-gray-800/30 text-gray-400 italic">
+                                <td class="py-2 px-4 border border-gray-600 text-xs">Next Period</td>
+                                <td class="py-2 px-4 border border-gray-600 font-bold">${side} Balance b/d</td>
+                                <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right text-xs">${balance < 0 ? db.config.currency + amount.toFixed(2) : ''}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right text-xs">${balance > 0 ? db.config.currency + amount.toFixed(2) : ''}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right font-bold text-xs">${db.config.currency + amount.toFixed(2)} ${balance >= 0 ? 'Cr' : 'Dr'}</td>
+                            </tr>
+                         `;
+                    }
+
+                    html += `</tbody></table>`;
+                    tbody.innerHTML = html;
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500 text-xl">Select a Supplier to view Ledger</td></tr>`;
+                    cards.innerHTML += `<div class="col-span-3 text-center p-4 bg-yellow-900/20 text-yellow-200 border border-yellow-700 rounded">Please select a supplier from the dropdown above.</div>`;
+                }
+                return;
+            }
+
+            // --- DEBTORS LEDGER REPORT ---
+            if (type === 'debtors_ledger') {
+                currentReportTitle = "Debtors Ledger";
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+
+                // Customer Selector
+                let options = '<option value="">-- Select Customer --</option>';
+                if (db.customers) {
+                    db.customers
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .forEach(c => {
+                            options += `<option value="${c.id}">${c.name}</option>`;
+                        });
+                }
+
+                cards.innerHTML = `
+                    <div class="mb-4 flex gap-2 items-center print:hidden w-full max-w-md">
+                        <label class="font-bold text-gray-400">Customer:</label>
+                        <select id="debtorLedgerSelect" onchange="runReports('debtors_ledger', this.value)" class="flex-1 p-2 bg-karta-input border border-karta-border rounded text-white focus:outline-none focus:border-green-500">
+                            ${options}
+                        </select>
+                    </div>
+                `;
+
+                // If a customer is selected
+                const selectedId = arguments[1] ? parseInt(arguments[1]) : '';
+
+                // Restore selection
+                setTimeout(() => {
+                    const sel = document.getElementById('debtorLedgerSelect');
+                    if (sel && selectedId) sel.value = selectedId;
+                }, 50);
+
+                if (selectedId) {
+                    const customer = db.customers.find(c => c.id === selectedId);
+                    const custName = customer ? customer.name : 'Unknown Customer';
+
+                    let html = `<div class="mb-4"><h3 class="text-center font-bold text-xl underline uppercase text-white">Ledger: ${custName}</h3></div>`;
+                    html += `<table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-700 text-gray-300 uppercase text-sm">
+                                <th class="py-3 px-4 border border-gray-600">Date</th>
+                                <th class="py-3 px-4 border border-gray-600">Particulars</th>
+                                <th class="py-3 px-4 border border-gray-600 text-center">Inv/Ref</th>
+                                <th class="py-3 px-4 border border-gray-600 text-right">Debit (Sold)</th>
+                                <th class="py-3 px-4 border border-gray-600 text-right">Credit (Recvd)</th>
+                                <th class="py-3 px-4 border border-gray-600 text-right">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-gray-300">`;
+
+                    let balance = 0; // Debit Balance is positive for Debtors (Asset)
+                    let totalDr = 0;
+                    let totalCr = 0;
+
+                    const relevantTxns = db.transactions.filter(t => {
+                        // Direct link via entityId or customerId (legacy sales used customerId)
+                        const isLinked = (t.entityId === selectedId) || (t.customerId === selectedId) || (t.type === 'sale' && t.customerId === selectedId);
+                        if (!isLinked) return false;
+
+                        if (t.type === 'sale' || t.type === 'payment' || t.type === 'return_cash_out') return true;
+                        if (t.type === 'payment_out' && t.entityId === selectedId) return true; // Rare case (paying customer?)
+                        return false;
+                    }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    // Calculate Opening Balance (Derived)
+                    // Current Bal = Opening + Sales(Dr) - Pmts(Cr)
+                    // Opening = Current - (SumDr - SumCr)
+                    let sumTxnDr = 0;
+                    let sumTxnCr = 0;
+                    relevantTxns.forEach(t => {
+                        if (t.type === 'sale') sumTxnDr += t.total;
+                        else if (t.type === 'payment' || t.type === 'return_cash_out') sumTxnCr += t.total;
+                        else if (t.type === 'sale' && t.isReturn) sumTxnCr += t.total; // already handled by isReturn flag usually
+
+                        // Immediate payments on sales
+                        if (t.type === 'sale' && !t.isReturn && (t.payType === 'cash' || t.payType === 'split')) {
+                            let paidAmt = 0;
+                            if (t.payType === 'cash') paidAmt = t.total;
+                            if (t.payType === 'split') paidAmt = (t.cashAmount || 0) + (t.bankAmount || 0);
+                            if (paidAmt > 0) sumTxnCr += paidAmt; // This counts as immediate Cr
+                        }
+                    });
+
+                    let currentBalance = customer ? customer.balance : 0;
+                    let openingBalance = currentBalance - (sumTxnDr - sumTxnCr); // For Debtors (Dr is positive)
+                    balance = openingBalance;
+
+                    // --- OPENING BALANCE ROW ---
+                    if (Math.abs(openingBalance) > 0.001) {
+                        const type = openingBalance > 0 ? 'Dr' : 'Cr';
+                        const side = openingBalance > 0 ? 'To' : 'By'; // Dr opening = To Bal b/d
+
+                        if (openingBalance > 0) totalDr += openingBalance;
+                        else totalCr += Math.abs(openingBalance);
+
+                        html += `
+                            <tr class="bg-gray-800/50 italic text-gray-400">
+                                <td class="py-2 px-4 border border-gray-600">Beginning</td>
+                                <td class="py-2 px-4 border border-gray-600 font-bold">${side} Balance b/d</td>
+                                <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right">${openingBalance > 0 ? db.config.currency + Math.abs(openingBalance).toFixed(2) : ''}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right">${openingBalance < 0 ? db.config.currency + Math.abs(openingBalance).toFixed(2) : ''}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right font-bold">${db.config.currency + Math.abs(balance).toFixed(2)} ${type}</td>
+                            </tr>
+                        `;
+                    }
+
+                    if (relevantTxns.length === 0 && Math.abs(openingBalance) < 0.001) {
+                        html += `<tr><td colspan="6" class="p-4 text-center text-gray-500">No transactions found for this customer.</td></tr>`;
+                    } else {
+                        relevantTxns.forEach(txn => {
+                            let dr = 0;
+                            let cr = 0;
+                            let particular = '';
+                            let ref = txn.invoiceNumber || (txn.id ? txn.id.toString().slice(-6) : '-');
+
+                            if (txn.type === 'sale') {
+                                // Logic check: Returns
+                                if (txn.isReturn) {
+                                    cr = txn.total;
+                                    particular = `By Sales Return`;
+                                } else {
+                                    dr = txn.total;
+                                    particular = `To Sales`;
+                                }
+                            } else if (txn.type === 'payment') {
+                                cr = txn.total;
+                                particular = `By Cash/Bank (Payment)`;
+                                if (txn.settlementId) particular += ` (Settlement)`;
+                            } else if (txn.type === 'return_cash_out') {
+                                // We paid them cash? This mimics 'refund' to customer.
+                                // If we pay customer, their balance (Dr) should increase? Or Liability decrease?
+                                // If they returned goods (Cr to Debtor), and we paid cash (Dr to Debtor?? No)
+                                // If we pay cash, Cash (Cr), Debtor (Dr).
+                                // So Dr is correct.
+                                dr = txn.total;
+                                particular = "To Refund Paid";
+                            }
+
+                            balance = balance + dr - cr;
+                            totalDr += dr;
+                            totalCr += cr;
+
+                            html += `
+                                <tr class="border-b border-gray-700 hover:bg-white/5">
+                                    <td class="py-2 px-4 border border-gray-600">${window.formatDate ? window.formatDate(txn.date) : txn.date.substring(0, 10)}</td>
+                                    <td class="py-2 px-4 border border-gray-600">${particular}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-center font-mono text-xs text-gray-400">${ref}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right text-green-300">${dr ? db.config.currency + moneyRound(dr).toFixed(2) : '-'}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right text-orange-300">${cr ? db.config.currency + moneyRound(cr).toFixed(2) : '-'}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right font-bold">${db.config.currency + Math.abs(balance).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
+                                </tr>
+                            `;
+
+                            // Handle Immediate Payment (Cash/Split Sales)
+                            if (txn.type === 'sale' && !txn.isReturn && (txn.payType === 'cash' || txn.payType === 'split')) {
+                                let paidAmt = 0;
+                                if (txn.payType === 'cash') paidAmt = txn.total;
+                                if (txn.payType === 'split') paidAmt = (txn.cashAmount || 0) + (txn.bankAmount || 0);
+
+                                if (paidAmt > 0) {
+                                    dr = 0;
+                                    cr = paidAmt;
+                                    balance = balance + dr - cr;
+                                    totalCr += cr;
+
+                                    html += `
+                                        <tr class="border-b border-gray-700 hover:bg-white/5 bg-gray-800/30 font-thin italic">
+                                            <td class="py-2 px-4 border border-gray-600 text-xs">↳</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-xs">By Cash/Bank (Immediate)</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-right">-</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-right text-orange-300/70">${db.config.currency + moneyRound(cr).toFixed(2)}</td>
+                                            <td class="py-2 px-4 border border-gray-600 text-right font-bold text-xs">${db.config.currency + Math.abs(balance).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
+                                        </tr>
+                                    `;
+                                }
+                            }
+                        });
+                    }
+
+                    // --- CLOSING ENTRY (Balance c/d) ---
+                    let closingEntryHtml = '';
+                    if (Math.abs(balance) > 0.001) {
+                        if (balance > 0) { // Debit Balance -> Add to Credit side to close
+                            totalCr += balance;
+                            closingEntryHtml = `
+                                <tr class="border-b border-gray-700 bg-yellow-900/20 text-yellow-200">
+                                    <td class="py-2 px-4 border border-gray-600"></td>
+                                    <td class="py-2 px-4 border border-gray-600 font-bold italic">By Balance c/d</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right font-bold">${db.config.currency + Math.abs(balance).toFixed(2)}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                </tr>`;
+                        } else { // Credit Balance -> Add to Debit side to close
+                            totalDr += Math.abs(balance);
+                            closingEntryHtml = `
+                                <tr class="border-b border-gray-700 bg-yellow-900/20 text-yellow-200">
+                                    <td class="py-2 px-4 border border-gray-600"></td>
+                                    <td class="py-2 px-4 border border-gray-600 font-bold italic">To Balance c/d</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right font-bold">${db.config.currency + Math.abs(balance).toFixed(2)}</td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                    <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                                </tr>`;
+                        }
+                    }
+                    html += closingEntryHtml;
+
+                    // Total Row
+                    html += `
+                        <tr class="bg-gray-600 font-bold text-white border-t-2 border-gray-500">
+                            <td colspan="3" class="py-2 px-4 border border-gray-600 text-right uppercase">Total</td>
+                            <td class="py-2 px-4 border border-gray-600 text-right">${db.config.currency + moneyRound(totalDr).toFixed(2)}</td>
+                            <td class="py-2 px-4 border border-gray-600 text-right">${db.config.currency + moneyRound(totalCr).toFixed(2)}</td>
+                            <td class="py-2 px-4 border border-gray-600 text-right"></td>
+                        </tr>
+                    `;
+
+                    // --- NEXT PERIOD OPENING (Balance b/d) ---
+                    if (Math.abs(balance) > 0.001) {
+                        const side = balance > 0 ? 'To' : 'By'; // Dr Balance = To Bal b/d
+                        const amount = Math.abs(balance);
+
+                        html += `
+                            <tr class="bg-gray-800/30 text-gray-400 italic">
+                                <td class="py-2 px-4 border border-gray-600 text-xs">Next Period</td>
+                                <td class="py-2 px-4 border border-gray-600 font-bold">${side} Balance b/d</td>
+                                <td class="py-2 px-4 border border-gray-600 text-center">-</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right text-xs">${balance > 0 ? db.config.currency + amount.toFixed(2) : ''}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right text-xs">${balance < 0 ? db.config.currency + amount.toFixed(2) : ''}</td>
+                                <td class="py-2 px-4 border border-gray-600 text-right font-bold text-xs">${db.config.currency + amount.toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
+                            </tr>
+                         `;
+                    }
+
+                    html += `</tbody></table>`;
+                    tbody.innerHTML = html;
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500 text-xl">Select a Customer to view Ledger</td></tr>`;
+                    cards.innerHTML += `<div class="col-span-3 text-center p-4 bg-yellow-900/20 text-yellow-200 border border-yellow-700 rounded">Please select a customer from the dropdown above.</div>`;
+                }
+                return;
+            }
+
             // --- DEBTORS REPORT ---
             if (type === 'debtors') {
                 const debtorFilterContainer = document.getElementById('debtorFilterContainer');
@@ -12637,6 +13185,38 @@ Updated Balances:
                     `;
                     tbody.appendChild(tr);
                 });
+                return;
+            }
+
+            // --- BANK RECONCILIATION ---
+            if (type === 'bank_rec') {
+                if (bankRecControls) bankRecControls.classList.remove('hidden');
+                currentReportTitle = "Bank Reconciliation Statement";
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+
+                // Populate Bank Accounts
+                const bankSelect = document.getElementById('bankRecAccount');
+                if (bankSelect && bankSelect.options.length === 0) {
+                    // In future, if multiple banks are supported, loop physically through them.
+                    // For now, use the single system bank balance.
+                    const bankBal = db.config.bankBalance || 0;
+                    bankSelect.innerHTML = `<option value="main">Main Bank Account (${db.config.currency} ${bankBal.toFixed(2)})</option>`;
+                }
+
+                // Set default date if empty
+                const brDate = document.getElementById('bankRecDate');
+                if (!brDate.value) brDate.value = new Date().toISOString().split('T')[0];
+
+                renderBankReconciliation();
+                return;
+            }
+
+            // --- VOUCHER REGISTER ---
+            if (type === 'voucher_reg') {
+                if (voucherControls) voucherControls.classList.remove('hidden');
+                currentReportTitle = "Voucher Register";
+                document.getElementById('reportTitle').innerText = currentReportTitle;
+                renderVoucherRegister();
                 return;
             }
 
@@ -13065,6 +13645,256 @@ Updated Balances:
             }
 
             return issues.length === 0;
+        };
+
+        // --- NEW ACCOUNTING MODULES (Bank Reconciliation & Voucher Register) ---
+
+        // Helper: Generate Vouchers from Transactions
+        window.generateVoucherList = function () {
+            if (!db.transactions) return [];
+
+            // Sort by date ascending to simulate sequential voucher numbering
+            return db.transactions.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).map((t, index) => {
+                // Common props
+                const common = {
+                    id: t.id,
+                    seqId: index + 1, // Sequential number 1, 2, 3...
+                    date: t.date,
+                    ref: t.ref || t.id,
+                    total: t.total,
+                    entityName: t.entityName,
+                    reconciled: t.reconciled || false
+                };
+
+                let vType = 'Journal';
+                let dr = 'Suspense';
+                let cr = 'Suspense';
+                let amount = t.total;
+
+                // Logic Mapping
+                if (t.type === 'sale') {
+                    if (t.payType === 'credit') {
+                        vType = 'Sales';
+                        dr = `Debtors (${t.entityName || 'Unknown'})`;
+                        cr = 'Sales A/c';
+                    } else {
+                        vType = 'Receipt';
+                        dr = t.payType === 'bank' ? 'Bank A/c' : 'Cash A/c';
+                        cr = 'Sales A/c';
+                    }
+                }
+                else if (t.type === 'purchase') {
+                    if (t.payType === 'credit') {
+                        vType = 'Purchase';
+                        dr = 'Purchase A/c';
+                        cr = `Creditors (${t.entityName || 'Unknown'})`;
+                    } else {
+                        vType = 'Payment';
+                        dr = 'Purchase A/c';
+                        cr = t.payType === 'bank' ? 'Bank A/c' : 'Cash A/c';
+                    }
+                }
+                else if (t.type === 'expense') {
+                    vType = 'Expense';
+                    dr = `Expense (${t.category || t.entityName || 'General'})`;
+                    cr = t.payType === 'bank' ? 'Bank A/c' : 'Cash A/c';
+                }
+                else if (t.type === 'payment') { // Payment In from customer
+                    vType = 'Receipt';
+                    dr = 'Cash A/c';
+                    cr = `Debtors (${t.entityName || 'Unknown'})`;
+                }
+                else if (t.type === 'payment_out') { // Payment Out to supplier
+                    vType = 'Payment';
+                    dr = `Creditors (${t.entityName || 'Unknown'})`;
+                    cr = 'Cash A/c';
+                }
+                else if (t.type === 'asset_purchase') {
+                    vType = 'Payment';
+                    dr = `Fixed Assets (${t.assetName || 'Asset'})`;
+                    cr = t.payType === 'bank' ? 'Bank A/c' : 'Cash A/c';
+                }
+                else if (t.type === 'return_cash_out' || (t.type === 'sale' && t.isReturn)) {
+                    // Credit Note / Refund
+                    vType = 'Journal';
+                    dr = 'Sales Return A/c';
+                    cr = `Debtors/Cash (${t.entityName || 'Unknown'})`;
+                    amount = Math.abs(t.total);
+                }
+                else {
+                    // Fallback for any unknown types
+                    vType = 'Journal';
+                    dr = `Other (${t.type})`;
+                    cr = 'Suspense';
+                }
+
+                return { ...common, voucherType: vType, dr: dr, cr: cr, amount: amount };
+            }); // No filter needed as we handle all now
+        };
+
+        // Render Bank Reconciliation
+        window.renderBankReconciliation = function () {
+            const tbody = document.getElementById('repTable');
+            const thead = document.getElementById('repHead');
+            const cards = document.getElementById('reportCards');
+            if (tbody) tbody.innerHTML = '';
+            if (cards) cards.innerHTML = ''; // We use custom cards in #bankRecControls but we need to clear main cards to default state
+
+            // Setup Headers
+            if (thead) thead.innerHTML = `
+                <tr>
+                    <th class="p-3 text-left">Date</th>
+                    <th class="p-3 text-left">Ref/Cheque No.</th>
+                    <th class="p-3 text-left">Description</th>
+                    <th class="p-3 text-right">Debit (Deposit)</th>
+                    <th class="p-3 text-right">Credit (Withdrawal)</th>
+                    <th class="p-3 text-center">Cleared?</th>
+                </tr>
+             `;
+
+            // Get Bank Transactions (Transactions where paymode is Bank)
+            const bankTxns = db.transactions.filter(t =>
+                (t.payType === 'bank') ||
+                (t.payType === 'split' && (t.bankAmount > 0))
+            ).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Filter by date if set
+            const filterDate = document.getElementById('bankRecDate').value;
+            let filtered = bankTxns;
+            if (filterDate) {
+                filtered = bankTxns.filter(t => t.date.substring(0, 10) <= filterDate);
+            }
+
+            let systemBalance = 0;
+            let clearedBalance = 0;
+            let unclearedAdd = 0;
+            let unpresented = 0;
+
+            filtered.forEach(t => {
+                let debit = 0; // Deposit
+                let credit = 0; // Withdrawal
+
+                // Determine nature
+                if (t.type === 'sale' || t.type === 'payment') {
+                    debit = t.payType === 'split' ? (t.bankAmount || 0) : t.total;
+                } else {
+                    credit = t.payType === 'split' ? (t.bankAmount || 0) : t.total;
+                }
+
+                systemBalance += (debit - credit);
+
+                if (t.reconciled) {
+                    clearedBalance += (debit - credit);
+                } else {
+                    if (credit > 0) unpresented += credit;
+                    if (debit > 0) unclearedAdd += debit;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-800 text-gray-300 hover:bg-white/5";
+                tr.innerHTML = `
+                    <td class="p-3 text-sm">${window.formatDate(t.date)}</td>
+                    <td class="p-3 text-sm font-mono text-gray-400">#${t.id.toString().slice(-6)}</td>
+                    <td class="p-3 text-sm">${t.entityName || (t.type.toUpperCase())}</td>
+                    <td class="p-3 text-right ${debit > 0 ? 'text-green-400' : 'text-gray-600'}">${debit > 0 ? debit.toFixed(2) : '-'}</td>
+                    <td class="p-3 text-right ${credit > 0 ? 'text-red-400' : 'text-gray-600'}">${credit > 0 ? credit.toFixed(2) : '-'}</td>
+                    <td class="p-3 text-center">
+                        <input type="checkbox" class="w-4 h-4 rounded text-karta-primary focus:ring-karta-primary bg-gray-700 border-gray-600" 
+                               onchange="toggleReconciliation(${t.id}, this.checked)"
+                               ${t.reconciled ? 'checked' : ''}>
+                    </td>
+                 `;
+                if (tbody) tbody.appendChild(tr);
+            });
+
+            // Update Summary Cards
+            const elSys = document.getElementById('brSystemBal');
+            const elAdd = document.getElementById('brUnclearedAdd');
+            const elLess = document.getElementById('brUnclearedLess');
+            const elBank = document.getElementById('brBankBal');
+
+            if (elSys) elSys.innerText = db.config.currency + systemBalance.toFixed(2);
+            if (elAdd) elAdd.innerText = db.config.currency + unclearedAdd.toFixed(2);
+            if (elLess) elLess.innerText = db.config.currency + unpresented.toFixed(2);
+
+            // Reconciled Bank Balance formula: System Balance + Unpresented - Uncleared Deposits
+            const recBal = systemBalance + unpresented - unclearedAdd;
+
+            if (elBank) elBank.innerText = db.config.currency + recBal.toFixed(2);
+        };
+
+        window.toggleReconciliation = function (id, status) {
+            const t = db.transactions.find(x => x.id === id);
+            if (t) {
+                t.reconciled = status;
+                saveDB();
+                renderBankReconciliation();
+            }
+        };
+
+        // Render Voucher Register
+        window.renderVoucherRegister = function () {
+            const tbody = document.getElementById('repTable');
+            const thead = document.getElementById('repHead');
+            const cards = document.getElementById('reportCards');
+            if (tbody) tbody.innerHTML = '';
+            if (cards) cards.innerHTML = '';
+
+            if (thead) thead.innerHTML = `
+                <tr>
+                    <th class="p-3 text-left">Voucher No.</th>
+                    <th class="p-3 text-left">Date</th>
+                    <th class="p-3 text-left">Type</th>
+                    <th class="p-3 text-left">Debit Ledger</th>
+                    <th class="p-3 text-left">Credit Ledger</th>
+                    <th class="p-3 text-right">Amount</th>
+                </tr>
+            `;
+
+            const vouchers = generateVoucherList();
+
+            // Filters
+            const typeFilter = document.getElementById('voucherTypeFilter') ? document.getElementById('voucherTypeFilter').value : 'all';
+            const ledgerFilter = document.getElementById('voucherLedgerFilter') ? document.getElementById('voucherLedgerFilter').value.toLowerCase() : '';
+
+            const filteredVouchers = vouchers.filter(v => {
+                if (typeFilter !== 'all' && v.voucherType !== typeFilter) return false;
+                if (ledgerFilter && !v.dr.toLowerCase().includes(ledgerFilter) && !v.cr.toLowerCase().includes(ledgerFilter)) return false;
+                return true;
+            });
+
+            if (filteredVouchers.length === 0) {
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-gray-500">No vouchers found matching criteria.</td></tr>`;
+            } else {
+                filteredVouchers.forEach((v) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-800 text-gray-300 hover:bg-white/5";
+                    // Format Voucher No as VCH-00001, VCH-00002 etc.
+                    const vNo = 'VCH-' + v.seqId.toString().padStart(5, '0');
+
+                    tr.innerHTML = `
+                        <td class="p-3 font-mono text-xs text-karta-primary">${vNo}</td>
+                        <td class="p-3 text-sm">${window.formatDate(v.date)}</td>
+                        <td class="p-3"><span class="px-2 py-1 rounded text-xs font-bold bg-gray-700 text-white">${v.voucherType}</span></td>
+                        <td class="p-3 text-sm font-bold text-gray-400">${v.dr}</td>
+                        <td class="p-3 text-sm text-gray-500">${v.cr}</td>
+                        <td class="p-3 text-right font-bold text-white">${db.config.currency}${v.amount.toFixed(2)}</td>
+                     `;
+                    if (tbody) tbody.appendChild(tr);
+                });
+            }
+
+            if (cards) {
+                cards.innerHTML = `
+                    <div class="bg-karta-surface border border-karta-border p-6 rounded-lg">
+                        <h4 class="text-gray-400 text-xs uppercase">Total Vouchers</h4>
+                        <h2 class="text-2xl font-bold text-white mt-2">${filteredVouchers.length}</h2>
+                    </div>
+                `;
+            }
+
+            // Set for export
+            currentReportData = filteredVouchers;
         };
 
         // --- Subscription Enforcement ---
