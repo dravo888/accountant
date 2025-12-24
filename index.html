@@ -34,6 +34,28 @@
     <script
         src="https://cdn.jsdelivr.net/npm/@anuz-pandey/nepali-date-picker@latest/dist/nepali-date-picker.bundle.min.js"></script>
     <script>
+        // Suppress CDN source map warnings (harmless network errors that clutter console)
+        (function () {
+            const originalError = console.error;
+            console.error = function (...args) {
+                const errorMsg = args.join(' ');
+                // Filter out source map warnings from Firebase and CDN libraries
+                if (errorMsg.includes('Could not read source map') ||
+                    errorMsg.includes('firebase-app.js.map') ||
+                    errorMsg.includes('firebase-auth.js.map') ||
+                    errorMsg.includes('firebase-database.js.map') ||
+                    errorMsg.includes('jspdf.umd.min.js.map') ||
+                    errorMsg.includes('503 response') ||
+                    errorMsg.includes('ECONNABORTED') ||
+                    errorMsg.includes('ENOTFOUND')) {
+                    // Silently ignore these harmless warnings
+                    return;
+                }
+                // Pass through all other errors
+                originalError.apply(console, args);
+            };
+        })();
+
         // Compatibility fix for NepaliDate UMD export
         // This runs immediately to catch the constructor before any code uses it.
         (function () {
@@ -1229,7 +1251,8 @@
                     <span id="syncStatusIndicator" class="text-green-500"><i class="fa-solid fa-circle"></i>
                         Synced</span>
                 </div>
-                <button onclick="nav('settings'); if(window.loadSettings) window.loadSettings();"
+                <button
+                    onclick="nav('settings'); if(window.loadSettings) window.loadSettings(); if(window.loadInvoiceSettings) window.loadInvoiceSettings();"
                     class="flex items-center gap-2 text-gray-400 hover:text-karta-primary hover:bg-white/5 transition-all w-full p-2 rounded">
                     <i class="fa-solid fa-gear"></i> Settings
                 </button>
@@ -2414,52 +2437,52 @@
                         </div>
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                             <button onclick="runReports('daily')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Daily
+                                class="bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-xs">Daily
                                 Report</button>
                             <button onclick="runReports('sales')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Sales
+                                class="bg-green-600 hover:bg-green-500 text-white py-2 rounded text-xs">Sales
                                 Report</button>
                             <button onclick="runReports('vat')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">VAT
+                                class="bg-purple-600 hover:bg-purple-500 text-white py-2 rounded text-xs">VAT
                                 Report</button>
                             <button onclick="runReports('purchase')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Purchase
+                                class="bg-orange-600 hover:bg-orange-500 text-white py-2 rounded text-xs">Purchase
                                 Report</button>
                             <button onclick="runReports('expense')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Expense
+                                class="bg-red-600 hover:bg-red-500 text-white py-2 rounded text-xs">Expense
                                 Report</button>
                             <button onclick="runReports('balance')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Financial
+                                class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded text-xs">Financial
                                 Statements</button>
                             <button onclick="runReports('debtors')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Debtors
+                                class="bg-cyan-600 hover:bg-cyan-500 text-white py-2 rounded text-xs">Debtors
                                 List</button>
                             <button onclick="runReports('aging')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Debtors
+                                class="bg-teal-600 hover:bg-teal-500 text-white py-2 rounded text-xs">Debtors
                                 Aging</button>
                             <button onclick="runReports('debtors_ledger')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs text-blue-300 border border-blue-900/30">Debtors
+                                class="bg-blue-700 hover:bg-blue-600 text-white py-2 rounded text-xs border border-blue-400">Debtors
                                 Ledger</button>
                             <button onclick="runReports('creditors_aging')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Creditors
+                                class="bg-amber-600 hover:bg-amber-500 text-white py-2 rounded text-xs">Creditors
                                 Aging</button>
                             <button onclick="runReports('creditors_ledger')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs text-orange-300 border border-orange-900/30">Creditors
+                                class="bg-orange-700 hover:bg-orange-600 text-white py-2 rounded text-xs border border-orange-400">Creditors
                                 Ledger</button>
                             <button onclick="runReports('journal')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Journal
+                                class="bg-pink-600 hover:bg-pink-500 text-white py-2 rounded text-xs">Journal
                                 Book</button>
                             <button onclick="runReports('ledger')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">General
+                                class="bg-violet-600 hover:bg-violet-500 text-white py-2 rounded text-xs">General
                                 Ledger</button>
                             <button onclick="runReports('trial')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Trial
+                                class="bg-fuchsia-600 hover:bg-fuchsia-500 text-white py-2 rounded text-xs">Trial
                                 Balance</button>
                             <button onclick="runReports('bank_rec')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Bank
+                                class="bg-sky-600 hover:bg-sky-500 text-white py-2 rounded text-xs">Bank
                                 Reconciliation</button>
                             <button onclick="runReports('voucher_reg')"
-                                class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs">Voucher
+                                class="bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded text-xs">Voucher
                                 Register</button>
                         </div>
 
@@ -2651,50 +2674,70 @@
                         <!-- INVOICE NUMBER MANAGEMENT -->
                         <div class="p-4 bg-white/5 rounded border border-gray-700 mb-4">
                             <h5 class="text-karta-primary font-bold mb-2"><i class="fa-solid fa-receipt"></i>
-                                Sales
-                                Invoice Numbering</h5>
-                            <p class="text-xs text-gray-400 mb-3">Control how your sales invoices are numbered.
+                                Invoice Numbering Format</h5>
+                            <p class="text-xs text-gray-400 mb-3">Customize your invoice numbering format (e.g.,
+                                ABC-2025-001, INV/JAN/050).
                             </p>
 
                             <div class="space-y-3">
+                                <!-- Invoice Prefix -->
                                 <div>
-                                    <label class="block text-xs text-gray-400 mb-2">Current Invoice
-                                        Number</label>
-                                    <div class="flex items-center gap-2">
-                                        <input type="text" id="currentInvoiceNumber" class="input-field flex-1"
-                                            readonly>
-                                        <span class="text-xs text-gray-500">(Auto-generated)</span>
-                                    </div>
+                                    <label class="block text-xs text-gray-400 mb-2">Invoice Prefix/Format
+                                        <span class="text-gray-500">(e.g., ABC-2025-, INV-, KTM/)</span>
+                                    </label>
+                                    <input type="text" id="confInvoicePrefix" class="input-field"
+                                        placeholder="e.g., INV-2025-" oninput="updateInvoicePreview()">
+                                    <p class="text-xs text-gray-500 mt-1">Enter your custom prefix - can include
+                                        letters, numbers, and symbols</p>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <!-- Next Number -->
                                     <div>
-                                        <label class="block text-xs text-gray-400 mb-2">Reset Starting
-                                            Number</label>
-                                        <input type="number" id="invoiceStartNumber" class="input-field"
-                                            placeholder="e.g., 1001" value="1">
+                                        <label class="block text-xs text-gray-400 mb-2">Next Sequential Number</label>
+                                        <input type="number" id="confInvoiceNextNumber" class="input-field"
+                                            placeholder="1" value="1" min="1" oninput="updateInvoicePreview()">
+                                        <p class="text-xs text-gray-500 mt-1">Auto-increments with each invoice</p>
                                     </div>
-                                    <div class="flex items-end">
-                                        <button type="button" onclick="resetInvoiceNumbering()"
-                                            class="w-full bg-orange-700 text-white px-4 py-2 rounded text-xs hover:bg-orange-600 text-center">
-                                            <i class="fa-solid fa-redo"></i> Reset & Start Fresh
+
+                                    <!-- Number Padding -->
+                                    <div>
+                                        <label class="block text-xs text-gray-400 mb-2">Number Padding (Digits)</label>
+                                        <input type="number" id="confInvoicePadding" class="input-field" placeholder="3"
+                                            value="3" min="1" max="10" oninput="updateInvoicePreview()">
+                                        <p class="text-xs text-gray-500 mt-1">001 (3 digits), 0001 (4 digits)</p>
+                                    </div>
+                                </div>
+
+                                <!-- Preview -->
+                                <div class="p-3 bg-green-900/20 border border-green-700 rounded">
+                                    <p class="text-xs text-gray-400 mb-1">Preview - Next Invoice:</p>
+                                    <p class="text-lg font-bold text-green-400" id="nextInvoicePreview">INV-001</p>
+                                </div>
+
+                                <!-- Quick Actions & Save -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-4">
+                                    <button type="button" onclick="saveInvoiceSettings()"
+                                        class="w-full bg-green-600 text-white px-4 py-2 rounded text-xs hover:bg-green-500 text-center font-bold shadow-sm">
+                                        <i class="fa-solid fa-save"></i> Save Configuration
+                                    </button>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <button type="button" onclick="resetInvoiceToDefault()"
+                                            class="bg-gray-700 text-white px-3 py-2 rounded text-xs hover:bg-gray-600 text-center">
+                                            <i class="fa-solid fa-undo"></i> Reset Default
+                                        </button>
+                                        <button type="button" onclick="resetInvoiceNumberOnly()"
+                                            class="bg-orange-700 text-white px-3 py-2 rounded text-xs hover:bg-orange-600 text-center">
+                                            <i class="fa-solid fa-redo"></i> Reset Counter
                                         </button>
                                     </div>
                                 </div>
 
-                                <div
-                                    class="flex items-center gap-2 p-2 bg-blue-900/20 rounded border border-blue-700/50">
-                                    <input type="checkbox" id="autoInvoiceNumber" class="w-4 h-4" checked>
-                                    <label for="autoInvoiceNumber"
-                                        class="text-xs text-gray-300 cursor-pointer">Auto-increment invoice
-                                        numbers
-                                        (recommended)</label>
+                                <div class="p-2 bg-blue-900/20 rounded border border-blue-700/50 text-xs text-blue-300">
+                                    <i class="fa-solid fa-lightbulb"></i>
+                                    <strong>Tip:</strong> You can change the format anytime (e.g., yearly: ABC-2026-,
+                                    monthly: INV/FEB/)
                                 </div>
-
-                                <p class="text-xs text-gray-500 mt-2">
-                                    <i class="fa-solid fa-info-circle"></i> Next invoice will be #<span
-                                        id="nextInvoicePreview">1</span>
-                                </p>
                             </div>
                         </div>
 
@@ -4307,7 +4350,11 @@
                 cashBalance: 0,
                 cashBalance: 0,
                 bankBalance: 0,
-                dateMode: 'english' // 'english' (AD) or 'nepali' (BS)
+                dateMode: 'english', // 'english' (AD) or 'nepali' (BS)
+                // Invoice numbering configuration
+                invoicePrefix: 'INV-',
+                invoiceNextNumber: 1,
+                invoicePadding: 3
             },
             products: [],
             customers: [],
@@ -4320,6 +4367,8 @@
 
         // Start with empty state
         let db = JSON.parse(JSON.stringify(APP_STATE));
+        // Expose db to global scope for functions defined outside the module
+        window.db = db;
         let cart = [];
         let editTxnId = null;
         let currentReportData = [];
@@ -4341,6 +4390,10 @@
             // Ensure cashBalance and bankBalance exist
             if (config.cashBalance === undefined) config.cashBalance = 0;
             if (config.bankBalance === undefined) config.bankBalance = 0;
+            // Ensure invoice config properties exist
+            if (config.invoicePrefix === undefined) config.invoicePrefix = 'INV-';
+            if (config.invoiceNextNumber === undefined) config.invoiceNextNumber = 1;
+            if (config.invoicePadding === undefined) config.invoicePadding = 3;
 
             return {
                 config: config,
@@ -4443,8 +4496,15 @@
                 const localData = localStorage.getItem(DB_KEY);
                 if (localData) {
                     db = ensureDbStructure(JSON.parse(localData));
+                    window.db = db; // Keep global reference in sync
+
+                    // OFFLINE-FIRST: Check if there are pending syncs from last session
+                    if (db.hasPendingSync) {
+                        console.log("⚠️ Detected pending sync from previous session - will retry upload");
+                    }
                 } else {
                     db = JSON.parse(JSON.stringify(APP_STATE));
+                    window.db = db; // Keep global reference in sync
                 }
 
                 refreshUI();
@@ -4461,18 +4521,41 @@
                 // Path is securely isolated to users/{uid}/data
                 const userRef = ref(dbRealtime, 'users/' + user.uid + '/data');
 
-                // Set up real-time listener
+                // Set up real-time listener with OFFLINE-FIRST logic
                 dbUnsubscribe = onValue(userRef, (snapshot) => {
                     const cloudData = snapshot.val();
                     if (cloudData) {
-                        // Data exists in cloud, update local state
-                        // FIX: Run through sanitizer to prevent "undefined" arrays crash
-                        db = ensureDbStructure(cloudData);
+                        // SMART MERGE: Only use cloud data if it's NEWER than local
+                        const localTimestamp = db.lastModified || 0;
+                        const cloudTimestamp = cloudData.lastModified || 0;
 
-                        localStorage.setItem(DB_KEY, JSON.stringify(db)); // Update Isolated Local Storage
-                        refreshUI();
-                        console.log("Data synced from Cloud");
-                        updateSyncStatus("Synced", "text-green-500");
+                        if (cloudTimestamp > localTimestamp) {
+                            // Cloud has newer data - use it
+                            db = ensureDbStructure(cloudData);
+                            window.db = db; // Keep global reference in sync
+                            localStorage.setItem(DB_KEY, JSON.stringify(db));
+                            refreshUI();
+                            console.log("Data synced from Cloud (newer version)");
+                            updateSyncStatus("Synced ✓", "text-green-500");
+                        } else if (cloudTimestamp < localTimestamp) {
+                            // Local is newer - upload to cloud
+                            console.log("⏭ Local data is newer - uploading to cloud");
+                            updateSyncStatus("Uploading local changes...", "text-yellow-500");
+                            set(userRef, db)
+                                .then(() => {
+                                    db.hasPendingSync = false;
+                                    localStorage.setItem(DB_KEY, JSON.stringify(db));
+                                    updateSyncStatus("Synced ✓", "text-green-500");
+                                })
+                                .catch(err => {
+                                    console.error("Upload failed:", err);
+                                    updateSyncStatus("Sync Error", "text-red-500");
+                                });
+                        } else {
+                            // Same timestamp - already in sync
+                            console.log("✓ Data already in sync");
+                            updateSyncStatus("Synced ✓", "text-green-500");
+                        }
                     } else {
                         // No data in cloud (New User), upload current local default
                         updateSyncStatus("Initializing Private DB...", "text-yellow-500");
@@ -4528,6 +4611,7 @@
 
                 // WIPE MEMORY FOR SECURITY
                 db = JSON.parse(JSON.stringify(APP_STATE));
+                window.db = db; // Keep global reference in sync
 
                 appRoot.classList.add('hidden');
                 appRoot.classList.add('opacity-0');
@@ -4771,23 +4855,36 @@
 
             // Debounce: Save after 500ms of inactivity
             saveTimeout = setTimeout(() => {
-                // 1. Save Locally to ISOLATED Key
+                // OFFLINE-FIRST: Add timestamp and pending sync flag
+                db.lastModified = Date.now();
+                db.hasPendingSync = true;
+
+                // 1. Save Locally to ISOLATED Key (with timestamp)
                 localStorage.setItem(DB_KEY, JSON.stringify(db));
 
                 // 2. Auto-Save to Cloud (If Logged In)
                 updateSyncStatus("Saving...", "text-yellow-500");
                 const userRef = ref(dbRealtime, 'users/' + currentUser.uid + '/data');
                 set(userRef, db)
-                    .then(() => updateSyncStatus("Synced ✓", "text-green-500"))
+                    .then(() => {
+                        // Clear pending sync flag after successful upload
+                        db.hasPendingSync = false;
+                        localStorage.setItem(DB_KEY, JSON.stringify(db));
+                        updateSyncStatus("Synced ✓", "text-green-500");
+                    })
                     .catch((err) => {
                         console.error(err);
                         updateSyncStatus("Sync Error", "text-red-500");
+                        // Keep hasPendingSync=true so we retry on next page load
                     });
             }, 500);
 
             // Update UI immediately (no debounce for UI)
             refreshUI();
         }
+        // Expose saveDB to global scope for functions defined outside the module
+        window.saveDB = saveDB;
+
 
         // Data Migration: Fix products with decimal IDs
         function migrateProductIds() {
@@ -9775,7 +9872,7 @@ Updated Balances:
                 doc.text('INVOICE', 14, yPos);
                 yPos += 7;
                 doc.setFontSize(10);
-                doc.text(`Invoice #: ${txn.id.toString().slice(-6)}`, 14, yPos);
+                doc.text(`Invoice #: ${txn.invoiceNumber || txn.ref || txn.id.toString().slice(-6)}`, 14, yPos);
                 yPos += 5;
                 doc.text(`Date: ${window.formatDate(txn.date)}`, 14, yPos);
                 yPos += 5;
@@ -10578,8 +10675,8 @@ Updated Balances:
                              <th style="padding: 8px; text-align: right;">Total</th></tr></thead><tbody>`;
                     currentReportData.forEach(t => {
                         html += `<tr style="border-bottom: 1px solid #f0f0f0;">
-                            <td style="padding: 8px;">${new Date(t.date).toLocaleDateString()}</td>
-                            <td style="padding: 8px;">#${t.id.toString().slice(-6)}</td>
+                            <td style="padding: 8px;">${window.formatDate(t.date)}</td>
+                            <td style="padding: 8px;">#${t.invoiceNumber || t.ref || t.id.toString().slice(-6)}</td>
                             <td style="padding: 8px; text-align: right;">${db.config.currency}${(t.sub || 0).toFixed(2)}</td>
                             <td style="padding: 8px; text-align: right; color: #00c853; font-weight: 500;">${db.config.currency}${(t.tax || 0).toFixed(2)}</td>
                             <td style="padding: 8px; text-align: right;">${db.config.currency}${t.total.toFixed(2)}</td>
@@ -10643,7 +10740,7 @@ Updated Balances:
                                     if (firstRow) {
                                         html += `<tr style="border-bottom: 1px solid #f0f0f0;">
                                             <td style="padding: 8px; font-size: 10px;">${window.formatDate(t.date)}</td>
-                                            <td style="padding: 8px; font-weight: 600; color: #0066cc;">#${t.id.toString().slice(-6)}</td>
+                                            <td style="padding: 8px; font-weight: 600; color: #0066cc;">#${t.supplierInvoiceNumber || t.ref || t.id.toString().slice(-6)}</td>
                                             <td style="padding: 8px; font-weight: 500;">${t.entityName || '-'}</td>
                                             <td style="padding: 8px; color: #333;">${item.productName || item.name || '-'}</td>
                                             <td style="padding: 8px; text-align: center; font-weight: 500;">${itemQty}</td>
@@ -10669,8 +10766,8 @@ Updated Balances:
                                 });
                             } else {
                                 html += `<tr style="border-bottom: 1px solid #f0f0f0;">
-                                    <td style="padding: 8px; font-size: 10px;">${new Date(t.date).toLocaleDateString()}</td>
-                                    <td style="padding: 8px; font-weight: 600; color: #0066cc;">#${t.id.toString().slice(-6)}</td>
+                                    <td style="padding: 8px; font-size: 10px;">${window.formatDate(t.date)}</td>
+                                    <td style="padding: 8px; font-weight: 600; color: #0066cc;">#${t.supplierInvoiceNumber || t.ref || t.id.toString().slice(-6)}</td>
                                     <td style="padding: 8px; font-weight: 500;">${t.entityName || '-'}</td>
                                     <td colspan="4" style="padding: 8px; color: #999;">-</td>
                                     <td style="padding: 8px; text-align: center; background-color: #f0f0f0; font-size: 9px; color: #999;">-</td>
@@ -10707,7 +10804,7 @@ Updated Balances:
                                 showEntry = true;
                                 amount = txn.total;
                                 const entity = txn.entityName || 'Walk-in Customer';
-                                narration = `Being goods sold to ${entity} (Inv #${txn.id})`;
+                                narration = `Being goods sold to ${entity} (Inv #${txn.invoiceNumber || txn.id})`;
                                 crAccount = 'Sales A/c';
                                 if (txn.payType === 'credit') drAccount = `${entity} (Debtor)`;
                                 else if (txn.payType === 'bank') drAccount = 'Bank A/c';
@@ -10750,7 +10847,7 @@ Updated Balances:
                                 showEntry = true;
                                 amount = Math.abs(txn.total);
                                 const entity = txn.entityName || 'Customer';
-                                narration = `Being goods returned by ${entity} (Inv #${txn.ref || txn.id})`;
+                                narration = `Being goods returned by ${entity} (Inv #${txn.invoiceNumber || txn.ref || txn.id})`;
                                 drAccount = 'Sales Return A/c';
                                 crAccount = 'Cash A/c';
                             }
@@ -10816,9 +10913,9 @@ Updated Balances:
                             if (selectedAccount === 'Cash A/c') {
                                 if (txn.payType === 'cash' || txn.cashAmount > 0) {
                                     const amt = (txn.payType === 'split' ? txn.cashAmount : txn.total);
-                                    if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
+                                    if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.invoiceNumber || txn.id})`; isRelevant = true; }
                                     if (txn.type === 'expense') { cr = amt; particular = `By Expense (${txn.category || 'General'})`; isRelevant = true; }
-                                    if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
+                                    if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.supplierInvoiceNumber || txn.ref || txn.id})`; isRelevant = true; }
                                     if (txn.type === 'payment') { dr = amt; particular = `To Customer Payment (${txn.entityName})`; isRelevant = true; }
                                     if (txn.type === 'payment_out') { cr = amt; particular = `By Supplier Payment (${txn.entityName})`; isRelevant = true; }
                                 }
@@ -10832,8 +10929,8 @@ Updated Balances:
                             } else if (selectedAccount === 'Bank A/c') {
                                 if (txn.payType === 'bank' || txn.bankAmount > 0) {
                                     const amt = (txn.payType === 'split' ? txn.bankAmount : txn.total);
-                                    if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
-                                    if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
+                                    if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.invoiceNumber || txn.id})`; isRelevant = true; }
+                                    if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.supplierInvoiceNumber || txn.ref || txn.id})`; isRelevant = true; }
                                 }
                             }
 
@@ -11043,7 +11140,7 @@ Updated Balances:
 
                             html += `<tr style="border-bottom: 1px solid #f0f0f0;">
                                 <td style="padding: 8px;">${window.formatDate(t.date)}</td>
-                                <td style="padding: 8px; font-family: monospace; color: #666;">#${t.id.toString().slice(-6)}</td>
+                                <td style="padding: 8px; font-family: monospace; color: #666;">#${t.invoiceNumber || t.supplierInvoiceNumber || t.ref || t.id.toString().slice(-6)}</td>
                                 <td style="padding: 8px;">${t.entityName || t.type.toUpperCase()}</td>
                                 <td style="padding: 8px; text-align: right; ${debit > 0 ? 'font-weight: bold; color: #00aa00;' : 'color: #999;'}">${debit > 0 ? db.config.currency + debit.toFixed(2) : '-'}</td>
                                 <td style="padding: 8px; text-align: right; ${credit > 0 ? 'font-weight: bold; color: #cc0000;' : 'color: #999;'}">${credit > 0 ? db.config.currency + credit.toFixed(2) : '-'}</td>
@@ -11118,7 +11215,7 @@ Updated Balances:
                             const typeColor = t.type === 'sale' ? '#0066cc' : (t.type === 'purchase' ? '#ff6600' : (t.type === 'expense' ? '#cc0000' : '#666666'));
                             const description = t.entityName || t.items?.[0]?.name || '-';
                             html += `<tr style="border-bottom: 1px solid #f0f0f0;">
-                                <td style="padding: 8px;">${new Date(t.date).toLocaleDateString()}</td>
+                                <td style="padding: 8px;">${window.formatDate(t.date)}</td>
                                 <td style="padding: 8px; text-transform: uppercase; font-weight: 500; font-size: 10px; color: ${typeColor};">${t.type}</td>
                                 <td style="padding: 8px; color: #666;">${description}</td>
                                 <td style="padding: 8px; text-align: right; font-weight: 500;">${db.config.currency}${t.total.toFixed(2)}</td>
@@ -11263,7 +11360,7 @@ Updated Balances:
                     currentReportData.forEach(t => {
                         tableData.push([
                             window.formatDate(t.date),
-                            '#' + t.id.toString().slice(-6),
+                            '#' + (t.invoiceNumber || t.supplierInvoiceNumber || t.ref || t.id.toString().slice(-6)),
                             db.config.currency + (t.sub || 0).toFixed(2),
                             db.config.currency + (t.tax || 0).toFixed(2),
                             db.config.currency + t.total.toFixed(2)
@@ -11388,49 +11485,40 @@ Updated Balances:
                 tempLogoBase64 = null; // Reset temp
             }
 
-            // Load Invoice Settings
-            db.config.invoiceStartNumber = db.config.invoiceStartNumber || 1;
-            db.config.nextInvoiceNumber = db.config.nextInvoiceNumber || 1;
-            db.config.autoInvoiceNumber = db.config.autoInvoiceNumber !== false; // Default true
 
-            document.getElementById('invoiceStartNumber').value = db.config.invoiceStartNumber;
-            document.getElementById('currentInvoiceNumber').value = 'INV-' + String(db.config.nextInvoiceNumber).padStart(3, '0');
-            document.getElementById('autoInvoiceNumber').checked = db.config.autoInvoiceNumber;
-            document.getElementById('nextInvoicePreview').innerText = db.config.nextInvoiceNumber;
+            // Load Invoice Settings (NEW FORMAT - using our flexible invoice system)
+            if (!db.config.invoicePrefix) db.config.invoicePrefix = "INV-";
+            if (!db.config.invoiceNextNumber) db.config.invoiceNextNumber = 1;
+            if (!db.config.invoicePadding) db.config.invoicePadding = 3;
+
+            // Load into UI if elements exist (only on settings page)
+            const prefixEl = document.getElementById('confInvoicePrefix');
+            const nextNumEl = document.getElementById('confInvoiceNextNumber');
+            const paddingEl = document.getElementById('confInvoicePadding');
+
+            if (prefixEl && nextNumEl && paddingEl) {
+                prefixEl.value = db.config.invoicePrefix;
+                nextNumEl.value = db.config.invoiceNextNumber;
+                paddingEl.value = db.config.invoicePadding;
+                if (window.updateInvoicePreview) {
+                    updateInvoicePreview();
+                }
+            }
         }
 
-        // --- INVOICE NUMBERING FUNCTIONS ---
+        // --- INVOICE NUMBERING FUNCTIONS (UPDATED FOR FLEXIBLE FORMAT) ---
+        // NOTE: window.generateInvoiceNumber() is the main function defined at the bottom of this file
+        // This legacy function is kept for backward compatibility but now uses the new system
         window.getNextInvoiceNumber = function () {
-            if (!db.config.autoInvoiceNumber) return null;
-
-            const invNum = db.config.nextInvoiceNumber || 1;
-            db.config.nextInvoiceNumber = (invNum + 1);
-
-            const invoiceNum = 'INV-' + String(invNum).padStart(3, '0');
-
-            saveDB();
-
-            // Update UI preview
-            document.getElementById('nextInvoicePreview').innerText = db.config.nextInvoiceNumber;
-            document.getElementById('currentInvoiceNumber').value = invoiceNum;
-
-            return invoiceNum;
+            // Use the new flexible invoice generation system
+            return window.generateInvoiceNumber ? window.generateInvoiceNumber() : "INV-001";
         };
 
+        // Legacy reset function - kept for compatibility, but note: 
+        // Users should use the settings page invoice format controls instead
         window.resetInvoiceNumbering = function () {
-            const startNum = parseInt(document.getElementById('invoiceStartNumber').value) || 1;
-
-            if (confirm(`Reset invoice numbering to start at #${startNum}? This will affect all future invoices.`)) {
-                db.config.invoiceStartNumber = startNum;
-                db.config.nextInvoiceNumber = startNum;
-                db.config.autoInvoiceNumber = document.getElementById('autoInvoiceNumber').checked;
-                saveDB();
-
-                document.getElementById('currentInvoiceNumber').value = 'INV-' + String(startNum).padStart(3, '0');
-                document.getElementById('nextInvoicePreview').innerText = startNum;
-
-                alert(`✓ Invoice numbering reset! Next invoice will be #${startNum}`);
-            }
+            console.warn('Legacy resetInvoiceNumbering called - please use Settings > Invoice Format instead');
+            // This function is deprecated - invoice format is now managed through Settings UI
         };
 
         window.setAutoInvoiceNumbering = function (enabled) {
@@ -11708,8 +11796,30 @@ Updated Balances:
             if (type !== 'bank_rec' && bankRecControls) bankRecControls.classList.add('hidden');
             if (type !== 'voucher_reg' && voucherControls) voucherControls.classList.add('hidden');
 
-            const fromDate = document.getElementById('repFrom').value;
-            const toDate = document.getElementById('repTo').value;
+            // Get date values based on date mode (AD or BS)
+            let fromDate = '';
+            let toDate = '';
+
+            if (db.config.dateMode === 'nepali') {
+                // Use BS date inputs and convert to AD for filtering
+                const nepFromVal = document.getElementById('repFromNep') ? document.getElementById('repFromNep').value : '';
+                const nepToVal = document.getElementById('repToNep') ? document.getElementById('repToNep').value : '';
+
+                if (nepFromVal && window.convertNepToEng) {
+                    fromDate = window.convertNepToEng(nepFromVal);
+                }
+                if (nepToVal && window.convertNepToEng) {
+                    toDate = window.convertNepToEng(nepToVal);
+                }
+
+                // Fallback to AD inputs if BS inputs are empty
+                if (!fromDate) fromDate = document.getElementById('repFrom').value;
+                if (!toDate) toDate = document.getElementById('repTo').value;
+            } else {
+                // Use AD date inputs directly
+                fromDate = document.getElementById('repFrom').value;
+                toDate = document.getElementById('repTo').value;
+            }
 
 
             // Get "As of Date" for aging reports (defaults to today)
@@ -11894,7 +12004,7 @@ Updated Balances:
                             showEntry = true;
                             amount = txn.total;
                             const entity = txn.entityName || 'Walk-in Customer';
-                            narration = `Being goods sold to ${entity} (Inv #${txn.id})`;
+                            narration = `Being goods sold to ${entity} (Inv #${txn.invoiceNumber || txn.id})`;
 
                             // Credit: Sales A/c (Always)
                             crAccount = 'Sales A/c';
@@ -11912,7 +12022,7 @@ Updated Balances:
                             showEntry = true;
                             amount = txn.total;
                             const entity = txn.entityName || 'Supplier';
-                            narration = `Being goods purchased from ${entity} (Ref #${txn.ref || txn.id})`;
+                            narration = `Being goods purchased from ${entity} (Ref #${txn.supplierInvoiceNumber || txn.ref || txn.id})`;
 
                             // Debit: Purchase A/c (Always)
                             drAccount = 'Purchase A/c';
@@ -11938,7 +12048,7 @@ Updated Balances:
                         else if (txn.type === 'asset_purchase') {
                             showEntry = true;
                             amount = txn.total;
-                            narration = `Being ${txn.assetName} purchased (Ref #${txn.id})`;
+                            narration = `Being ${txn.assetName} purchased (Ref #${txn.invoiceNumber || txn.id})`;
 
                             drAccount = `${txn.assetName} A/c`;
                             if (txn.payType === 'credit' && txn.supplierName && txn.supplierName !== 'N/A') {
@@ -11975,7 +12085,7 @@ Updated Balances:
                             showEntry = true;
                             amount = Math.abs(txn.total);
                             const entity = txn.entityName || 'Customer';
-                            narration = `Being goods returned by ${entity} (Inv #${txn.ref || txn.id})`;
+                            narration = `Being goods returned by ${entity} (Inv #${txn.invoiceNumber || txn.ref || txn.id})`;
 
                             drAccount = 'Sales Return A/c';
                             crAccount = 'Cash A/c'; // Or Customer if credit, simplification here
@@ -12107,9 +12217,9 @@ Updated Balances:
                         } else if (selectedAccount === 'Cash A/c') {
                             if (txn.payType === 'cash' || txn.cashAmount > 0) {
                                 const amt = (txn.payType === 'split' ? txn.cashAmount : txn.total);
-                                if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
+                                if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.invoiceNumber || txn.id})`; isRelevant = true; }
                                 if (txn.type === 'expense') { cr = amt; particular = `By Expense (${txn.category || 'General'})`; isRelevant = true; }
-                                if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
+                                if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.supplierInvoiceNumber || txn.ref || txn.id})`; isRelevant = true; }
                                 if (txn.type === 'payment') { dr = amt; particular = `To Customer Payment (${txn.entityName})`; isRelevant = true; } // Receiving Money
                                 if (txn.type === 'payment_out') { cr = amt; particular = `By Supplier Payment (${txn.entityName})`; isRelevant = true; } // Paying Money
                                 if (txn.type === 'asset_purchase') { cr = amt; particular = `By Asset (${txn.assetName})`; isRelevant = true; }
@@ -12118,8 +12228,8 @@ Updated Balances:
                         } else if (selectedAccount === 'Bank A/c') {
                             if (txn.payType === 'bank' || txn.bankAmount > 0) {
                                 const amt = (txn.payType === 'split' ? txn.bankAmount : txn.total);
-                                if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.id})`; isRelevant = true; }
-                                if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.ref || txn.id})`; isRelevant = true; }
+                                if (txn.type === 'sale') { dr = amt; particular = `To Sales (Inv #${txn.invoiceNumber || txn.id})`; isRelevant = true; }
+                                if (txn.type === 'purchase') { cr = amt; particular = `By Purchase (Inv #${txn.supplierInvoiceNumber || txn.ref || txn.id})`; isRelevant = true; }
                                 if (txn.type === 'expense') { cr = amt; particular = `By Expense (${txn.category || 'General'})`; isRelevant = true; }
                                 if (txn.type === 'asset_purchase') { cr = amt; particular = `By Asset (${txn.assetName})`; isRelevant = true; }
                                 if (txn.type === 'payment') { dr = amt; particular = `To Customer Payment (${txn.entityName})`; isRelevant = true; }
@@ -12514,7 +12624,7 @@ Updated Balances:
                             let dr = 0;
                             let cr = 0;
                             let particular = '';
-                            let ref = txn.id.toString().slice(-6);
+                            let ref = txn.invoiceNumber || txn.ref || txn.id.toString().slice(-6);
 
                             if (txn.type === 'purchase') {
                                 cr = txn.total;
@@ -13356,7 +13466,7 @@ Updated Balances:
                     tr.className = `border-b border-gray-800 text-gray-300`;
                     tr.innerHTML = `
                         <td class="p-3">${window.formatDate(t.date)}</td>
-                        <td class="p-3 font-mono text-xs">#${t.id.toString().slice(-6)}</td>
+                        <td class="p-3 font-mono text-xs">#${t.invoiceNumber || t.ref || t.id.toString().slice(-6)}</td>
                         <td class="p-3 text-xs font-bold text-green-400">${typeLabel}</td>
                         <td class="p-3 text-right">${db.config.currency}${taxableAfterDiscount.toFixed(2)}</td>
                         <td class="p-3 text-right ${txnExempt > 0 ? 'text-yellow-400 font-bold' : ''}">${db.config.currency}${txnExempt.toFixed(2)}</td>
@@ -13394,7 +13504,7 @@ Updated Balances:
                     tr.className = `border-b border-gray-800 text-gray-300 bg-red-900/20`;
                     tr.innerHTML = `
                         <td class="p-3">${window.formatDate(t.date)}</td>
-                        <td class="p-3 font-mono text-xs">#${t.id.toString().slice(-6)}</td>
+                        <td class="p-3 font-mono text-xs">#${t.invoiceNumber || t.ref || t.id.toString().slice(-6)}</td>
                         <td class="p-3 text-xs font-bold text-red-400">RETURN</td>
                         <td class="p-3 text-right">${db.config.currency}${taxableAfterDiscount.toFixed(2)}</td>
                         <td class="p-3 text-right">${db.config.currency}${txnExempt.toFixed(2)}</td>
@@ -13507,8 +13617,8 @@ Updated Balances:
                             if (firstRow) {
                                 // Show transaction-level info only on first row
                                 tr.innerHTML = `
-                                    <td class="p-3 text-gray-400 text-sm">${new Date(t.date).toLocaleDateString()}</td>
-                                    <td class="p-3 font-mono font-bold text-karta-primary text-sm">#${t.id.toString().slice(-6)}</td>
+                                    <td class="p-3 text-gray-400 text-sm">${window.formatDate(t.date)}</td>
+                                    <td class="p-3 font-mono font-bold text-karta-primary text-sm">#${t.supplierInvoiceNumber || t.ref || t.id.toString().slice(-6)}</td>
                                     <td class="p-3 font-bold text-white text-sm">${t.entityName || '-'}</td>
                                     <td class="p-3 text-sm">${item.productName || item.name || '-'}</td>
                                     <td class="p-3 text-center text-white font-bold text-sm">${itemQty}</td>
@@ -13541,8 +13651,8 @@ Updated Balances:
                         const tr = document.createElement('tr');
                         tr.className = "border-b border-gray-800 text-gray-300";
                         tr.innerHTML = `
-                            <td class="p-3 text-gray-400 text-sm">${new Date(t.date).toLocaleDateString()}</td>
-                            <td class="p-3 font-mono font-bold text-karta-primary text-sm">#${t.id.toString().slice(-6)}</td>
+                            <td class="p-3 text-gray-400 text-sm">${window.formatDate(t.date)}</td>
+                            <td class="p-3 font-mono font-bold text-karta-primary text-sm">#${t.supplierInvoiceNumber || t.ref || t.id.toString().slice(-6)}</td>
                             <td class="p-3 font-bold text-white text-sm">${t.entityName || '-'}</td>
                             <td class="p-3 text-gray-500 text-sm">-</td>
                             <td class="p-3 text-center text-sm">-</td>
@@ -13753,22 +13863,104 @@ Updated Balances:
              `;
 
             // Get Bank Transactions (Transactions where paymode is Bank)
+            // Also check paymentMethod for backward compatibility with old settlement records
             const bankTxns = db.transactions.filter(t =>
                 (t.payType === 'bank') ||
+                (t.paymentMethod === 'bank') ||
                 (t.payType === 'split' && (t.bankAmount > 0))
             ).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            // Filter by date if set
+            // Filter by date if set - uses both Bank Rec specific date AND main report date range
             const filterDate = document.getElementById('bankRecDate').value;
-            let filtered = bankTxns;
-            if (filterDate) {
-                filtered = bankTxns.filter(t => t.date.substring(0, 10) <= filterDate);
+
+            // Get date filters based on date mode (AD or BS)
+            let fromDate = '';
+            let toDate = '';
+
+            if (db.config.dateMode === 'nepali') {
+                // Use BS date inputs and convert to AD for filtering
+                const nepFromVal = document.getElementById('repFromNep') ? document.getElementById('repFromNep').value : '';
+                const nepToVal = document.getElementById('repToNep') ? document.getElementById('repToNep').value : '';
+
+                if (nepFromVal && window.convertNepToEng) {
+                    fromDate = window.convertNepToEng(nepFromVal);
+                }
+                if (nepToVal && window.convertNepToEng) {
+                    toDate = window.convertNepToEng(nepToVal);
+                }
+
+                // Fallback to AD inputs if BS inputs are empty
+                if (!fromDate) fromDate = document.getElementById('repFrom') ? document.getElementById('repFrom').value : '';
+                if (!toDate) toDate = document.getElementById('repTo') ? document.getElementById('repTo').value : '';
+            } else {
+                // Use AD date inputs directly
+                fromDate = document.getElementById('repFrom') ? document.getElementById('repFrom').value : '';
+                toDate = document.getElementById('repTo') ? document.getElementById('repTo').value : '';
             }
 
-            let systemBalance = 0;
-            let clearedBalance = 0;
+            let filtered = bankTxns;
+            // Apply From Date filter
+            if (fromDate) {
+                filtered = filtered.filter(t => t.date.substring(0, 10) >= fromDate);
+            }
+            // Apply To Date filter (also use bankRecDate if set)
+            if (filterDate) {
+                filtered = filtered.filter(t => t.date.substring(0, 10) <= filterDate);
+            } else if (toDate) {
+                filtered = filtered.filter(t => t.date.substring(0, 10) <= toDate);
+            }
+
+            // Calculate Opening Bank Balance
+            // The opening balance is determined by taking the current bank balance
+            // and subtracting all bank transactions to get back to the starting point
+            // OR use db.config.openingBankBalance if explicitly set
+            let calculatedOpeningBalance = 0;
+
+            // Calculate from current balance - all bank transactions = opening balance
+            const allBankTxns = db.transactions.filter(t =>
+                (t.payType === 'bank') ||
+                (t.paymentMethod === 'bank') ||
+                (t.payType === 'split' && (t.bankAmount > 0))
+            );
+
+            let totalBankMovement = 0;
+            allBankTxns.forEach(t => {
+                if (t.type === 'sale' || t.type === 'payment') {
+                    totalBankMovement += t.payType === 'split' ? (t.bankAmount || 0) : t.total;
+                } else {
+                    totalBankMovement -= t.payType === 'split' ? (t.bankAmount || 0) : t.total;
+                }
+            });
+
+            // Opening = Current - All Movement
+            const currentBankBalance = db.config.bankBalance || 0;
+            calculatedOpeningBalance = db.config.openingBankBalance !== undefined
+                ? db.config.openingBankBalance
+                : (currentBankBalance - totalBankMovement);
+
+            const openingBankBalance = calculatedOpeningBalance;
+
+            let systemBalance = openingBankBalance;
+            let clearedBalance = openingBankBalance;
             let unclearedAdd = 0;
             let unpresented = 0;
+
+            // Add Opening Balance Row
+            if (tbody) {
+                const openingRow = document.createElement('tr');
+                openingRow.className = "border-b border-gray-800 text-gray-300 bg-blue-900/20";
+                openingRow.innerHTML = `
+                    <td class="p-3 text-sm font-bold">--</td>
+                    <td class="p-3 text-sm font-mono text-gray-400">--</td>
+                    <td class="p-3 text-sm font-bold text-blue-400">Opening Bank Balance</td>
+                    <td class="p-3 text-right text-blue-400 font-bold">${openingBankBalance > 0 ? openingBankBalance.toFixed(2) : '-'}</td>
+                    <td class="p-3 text-right text-gray-600">-</td>
+                    <td class="p-3 text-center">
+                        <span class="text-blue-400 text-xs">B/F</span>
+                    </td>
+                 `;
+                tbody.appendChild(openingRow);
+            }
 
             filtered.forEach(t => {
                 let debit = 0; // Deposit
@@ -13794,7 +13986,7 @@ Updated Balances:
                 tr.className = "border-b border-gray-800 text-gray-300 hover:bg-white/5";
                 tr.innerHTML = `
                     <td class="p-3 text-sm">${window.formatDate(t.date)}</td>
-                    <td class="p-3 text-sm font-mono text-gray-400">#${t.id.toString().slice(-6)}</td>
+                    <td class="p-3 text-sm font-mono text-gray-400">#${t.invoiceNumber || t.ref || t.id.toString().slice(-6)}</td>
                     <td class="p-3 text-sm">${t.entityName || (t.type.toUpperCase())}</td>
                     <td class="p-3 text-right ${debit > 0 ? 'text-green-400' : 'text-gray-600'}">${debit > 0 ? debit.toFixed(2) : '-'}</td>
                     <td class="p-3 text-right ${credit > 0 ? 'text-red-400' : 'text-gray-600'}">${credit > 0 ? credit.toFixed(2) : '-'}</td>
@@ -13853,12 +14045,42 @@ Updated Balances:
 
             const vouchers = generateVoucherList();
 
-            // Filters
+            // Get date filters based on date mode (AD or BS)
+            let fromDate = '';
+            let toDate = '';
+
+            if (db.config.dateMode === 'nepali') {
+                // Use BS date inputs and convert to AD for filtering
+                const nepFromVal = document.getElementById('repFromNep') ? document.getElementById('repFromNep').value : '';
+                const nepToVal = document.getElementById('repToNep') ? document.getElementById('repToNep').value : '';
+
+                if (nepFromVal && window.convertNepToEng) {
+                    fromDate = window.convertNepToEng(nepFromVal);
+                }
+                if (nepToVal && window.convertNepToEng) {
+                    toDate = window.convertNepToEng(nepToVal);
+                }
+
+                // Fallback to AD inputs if BS inputs are empty
+                if (!fromDate) fromDate = document.getElementById('repFrom') ? document.getElementById('repFrom').value : '';
+                if (!toDate) toDate = document.getElementById('repTo') ? document.getElementById('repTo').value : '';
+            } else {
+                // Use AD date inputs directly
+                fromDate = document.getElementById('repFrom') ? document.getElementById('repFrom').value : '';
+                toDate = document.getElementById('repTo') ? document.getElementById('repTo').value : '';
+            }
+
+            // Filters - including date range
             const typeFilter = document.getElementById('voucherTypeFilter') ? document.getElementById('voucherTypeFilter').value : 'all';
             const ledgerFilter = document.getElementById('voucherLedgerFilter') ? document.getElementById('voucherLedgerFilter').value.toLowerCase() : '';
 
             const filteredVouchers = vouchers.filter(v => {
+                // Date range filter
+                if (fromDate && v.date.substring(0, 10) < fromDate) return false;
+                if (toDate && v.date.substring(0, 10) > toDate) return false;
+                // Type filter
                 if (typeFilter !== 'all' && v.voucherType !== typeFilter) return false;
+                // Ledger filter
                 if (ledgerFilter && !v.dr.toLowerCase().includes(ledgerFilter) && !v.cr.toLowerCase().includes(ledgerFilter)) return false;
                 return true;
             });
@@ -14487,7 +14709,7 @@ Updated Balances:
                 entityName: name,
                 items: [],
                 total: amount,
-                paymentMethod: paymentMethod,
+                payType: paymentMethod, // Use payType for consistency with other transactions
                 chequeNo: chequeNo,
                 settlementId: settlement.id,
                 cashBalance: db.config.cashBalance,
@@ -15661,6 +15883,168 @@ Updated Balances:
         });
 
         console.log('[PWA] Offline support initialized');
+
+        // ========== FLEXIBLE INVOICE NUMBERING SYSTEM ==========
+
+        /**
+         * Update the invoice preview when format settings change
+         */
+        window.updateInvoicePreview = function () {
+            const prefix = document.getElementById('confInvoicePrefix')?.value || "";
+            const nextNum = parseInt(document.getElementById('confInvoiceNextNumber')?.value) || 1;
+            const padding = parseInt(document.getElementById('confInvoicePadding')?.value) || 3;
+
+            // Generate preview
+            const paddedNumber = String(nextNum).padStart(padding, '0');
+            const preview = prefix + paddedNumber;
+
+            // Update preview display
+            const previewEl = document.getElementById('nextInvoicePreview');
+            if (previewEl) {
+                previewEl.textContent = preview;
+            }
+        };
+
+        /**
+         * Generate the next invoice number using current settings
+         */
+        window.generateInvoiceNumber = function () {
+            // Safety check for DB
+            if (typeof db === 'undefined' || !db) return "INV-ERROR";
+            if (!db.config) db.config = {};
+
+            // Ensure config exists
+            if (!db.config.invoicePrefix) db.config.invoicePrefix = "INV-";
+            if (!db.config.invoiceNextNumber) db.config.invoiceNextNumber = 1;
+            if (!db.config.invoicePadding) db.config.invoicePadding = 3;
+
+            const prefix = db.config.invoicePrefix;
+            const number = db.config.invoiceNextNumber;
+            const padding = db.config.invoicePadding;
+
+            // Generate invoice number
+            const paddedNumber = String(number).padStart(padding, '0');
+            const invoiceNumber = prefix + paddedNumber;
+
+            // Increment for next time
+            db.config.invoiceNextNumber++;
+
+            return invoiceNumber;
+        };
+
+        /**
+         * Get next invoice number (called during transaction creation)
+         * This function generates the invoice number AND saves to database
+         */
+        window.getNextInvoiceNumber = function () {
+            const invoiceNumber = window.generateInvoiceNumber();
+            // Save the incremented counter to database
+            if (typeof saveDB === 'function') {
+                saveDB();
+            }
+            return invoiceNumber;
+        };
+
+
+        /**
+         * Reset invoice settings to default (INV-001)
+         */
+        window.resetInvoiceToDefault = function () {
+            if (confirm("Reset invoice format to default 'INV-001'?\nThis will change prefix to 'INV-' and restart counter at 1.")) {
+                document.getElementById('confInvoicePrefix').value = "INV-";
+                document.getElementById('confInvoiceNextNumber').value = "1";
+                document.getElementById('confInvoicePadding').value = "3";
+                updateInvoicePreview();
+            }
+        };
+
+        /**
+         * Reset only the invoice counter to 1
+         */
+        window.resetInvoiceNumberOnly = function () {
+            if (confirm("Restart invoice counter at 1?\nPrefix will remain unchanged.")) {
+                document.getElementById('confInvoiceNextNumber').value = "1";
+                updateInvoicePreview();
+            }
+        };
+
+        /**
+         * Reset only the counter to 1, keeping the current prefix
+         */
+        window.resetInvoiceNumberOnly = function () {
+            if (!confirm('Reset the invoice counter to 1? The prefix will remain unchanged.')) return;
+
+            document.getElementById('confInvoiceNextNumber').value = "1";
+            updateInvoicePreview();
+            alert('✓ Invoice counter reset to 1');
+        };
+
+        /**
+         * Load invoice settings when opening settings page
+         */
+        window.loadInvoiceSettings = function () {
+            // Only proceed if elements exist (settings page is loaded)
+            const prefixEl = document.getElementById('confInvoicePrefix');
+            const numberEl = document.getElementById('confInvoiceNextNumber');
+            const paddingEl = document.getElementById('confInvoicePadding');
+
+            // Check if elements exist before proceeding
+            if (!prefixEl || !numberEl || !paddingEl) {
+                // console.log('[Invoice] Settings elements not yet loaded, skipping');
+                return;
+            }
+
+            // Safe check for db
+            if (typeof db !== 'undefined' && db && db.config) {
+                prefixEl.value = db.config.invoicePrefix || "INV-";
+                numberEl.value = db.config.invoiceNextNumber || 1;
+                paddingEl.value = db.config.invoicePadding || 3;
+                updateInvoicePreview();
+            }
+        };
+
+        /**
+         * Save invoice settings
+         */
+        window.saveInvoiceSettings = function () {
+            // Safety check for DB
+            if (typeof db === 'undefined' || !db) {
+                console.error('Database not ready');
+                alert('System is loading. Please try again in a moment.');
+                return;
+            }
+            if (!db.config) db.config = {};
+
+            const prefix = document.getElementById('confInvoicePrefix').value;
+            const nextNum = parseInt(document.getElementById('confInvoiceNextNumber').value);
+            const padding = parseInt(document.getElementById('confInvoicePadding').value);
+
+            if (!prefix) {
+                alert("Please enter an invoice prefix/format.");
+                return;
+            }
+
+            if (isNaN(nextNum) || nextNum < 1) {
+                alert("Please enter a valid next invoice number.");
+                return;
+            }
+
+            if (isNaN(padding) || padding < 1) {
+                alert("Please enter a valid padding number.");
+                return;
+            }
+
+            // Update DB
+            db.config.invoicePrefix = prefix;
+            db.config.invoiceNextNumber = nextNum;
+            db.config.invoicePadding = padding;
+
+            saveDB();
+
+            alert("✓ Invoice settings saved successfully!");
+            updateInvoicePreview();
+        };
+
     </script>
 </body>
 
